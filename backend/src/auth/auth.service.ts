@@ -1,0 +1,216 @@
+import {
+  Injectable,
+  UnauthorizedException,
+  ConflictException,
+  NotFoundException,
+  BadRequestException,
+  Logger,
+  OnModuleInit,
+} from '@nestjs/common';
+import { InjectRepository } from '@nestjs/typeorm';
+import { Repository, IsNull } from 'typeorm';
+import { JwtService } from '@nestjs/jwt';
+import * as bcrypt from 'bcrypt';
+import { Usuario, RolUsuario } from '../usuarios/usuario.entity';
+import { Empresa } from '../empresa/entities/empresa.entity';
+
+@Injectable()
+export class AuthService implements OnModuleInit {
+  private readonly logger = new Logger(AuthService.name);
+
+  constructor(
+    @InjectRepository(Usuario) private readonly usuarioRepo: Repository<Usuario>,
+    @InjectRepository(Empresa) private readonly empresaRepo: Repository<Empresa>,
+    private readonly jwtService: JwtService,
+  ) {}
+
+  async onModuleInit() {
+    await this.initAdmin();
+    await this.syncLegacyUsers();
+  }
+
+  /** Vincula usuarios antiguos (ADMIN/EMISOR) a la primera empresa si no tienen ninguna */
+  private async syncLegacyUsers() {
+    this.logger.log('Sincronizando usuarios legacy...');
+    const mainEmpresa = await this.empresaRepo.findOne({ where: {} }); // Primera empresa
+    if (!mainEmpresa) {
+      this.logger.warn('No hay empresas creadas. Saltando sincronización de usuarios.');
+      return;
+    }
+
+    const legacyUsers = await this.usuarioRepo.find({
+      where: [
+        { rol: RolUsuario.ADMIN, empresa: IsNull() },
+        { rol: RolUsuario.EMISOR, empresa: IsNull() },
+      ],
+      relations: ['empresa'],
+    });
+
+    if (legacyUsers.length > 0) {
+      this.logger.log(`Vinculando ${legacyUsers.length} usuarios a empresa: ${mainEmpresa.nombreLegal}`);
+      for (const user of legacyUsers) {
+        user.empresa = mainEmpresa;
+        await this.usuarioRepo.save(user);
+      }
+    }
+  }
+
+  async login(email: string, password: string) {
+    const user = await this.usuarioRepo.findOne({ 
+      where: { email, activo: true },
+      relations: ['empresa']
+    });
+    if (!user) throw new UnauthorizedException('Credenciales inválidas');
+
+    const ok = await bcrypt.compare(password, user.passwordHash);
+    if (!ok) throw new UnauthorizedException('Credenciales inválidas');
+
+    const payload = { 
+      sub: user.id, 
+      email: user.email, 
+      nombre: user.nombre, 
+      rol: user.rol,
+      empresaId: user.empresa?.id || null 
+    };
+    return {
+      access_token: this.jwtService.sign(payload),
+      usuario: { 
+        id: user.id, 
+        email: user.email, 
+        nombre: user.nombre, 
+        rol: user.rol,
+        empresaId: user.empresa?.id || null 
+      },
+    };
+  }
+
+  async crearUsuario(dto: { email: string; nombre: string; password: string; rol?: RolUsuario }) {
+    const existe = await this.usuarioRepo.findOne({ where: { email: dto.email } });
+    if (existe) throw new ConflictException('El email ya está registrado');
+
+    const passwordHash = await bcrypt.hash(dto.password, 10);
+    const user = this.usuarioRepo.create({
+      email: dto.email, nombre: dto.nombre,
+      passwordHash, rol: dto.rol ?? RolUsuario.EMISOR,
+    });
+    const saved = await this.usuarioRepo.save(user);
+    const { passwordHash: _, ...result } = saved;
+    return result;
+  }
+
+  async listarUsuarios() {
+    const users = await this.usuarioRepo.find({ order: { createdAt: 'DESC' } });
+    return users.map(({ passwordHash: _, ...u }) => u);
+  }
+
+  async cambiarRol(id: string, rol: RolUsuario) {
+    await this.usuarioRepo.update(id, { rol });
+    return this.usuarioRepo.findOne({ where: { id } });
+  }
+
+  async toggleActivo(id: string) {
+    const user = await this.usuarioRepo.findOneOrFail({ where: { id } });
+    await this.usuarioRepo.update(id, { activo: !user.activo });
+    return this.usuarioRepo.findOne({ where: { id } });
+  }
+
+  /** Solo superadmin: recuperar accesos de admins de inquilino sin tocar la BD a mano */
+  async establecerPasswordUsuario(usuarioId: string, password: string) {
+    if (!password || password.length < 6) {
+      throw new BadRequestException('La contraseña debe tener al menos 6 caracteres');
+    }
+    const user = await this.usuarioRepo.findOne({ where: { id: usuarioId } });
+    if (!user) throw new NotFoundException('Usuario no encontrado');
+    const passwordHash = await bcrypt.hash(password, 10);
+    await this.usuarioRepo.update(usuarioId, { passwordHash, activo: true });
+    return { ok: true as const, email: user.email };
+  }
+
+  /** Superadmin: lista TODOS los usuarios del sistema con su empresa */
+  async listarTodosLosUsuarios() {
+    const users = await this.usuarioRepo.find({
+      relations: ['empresa'],
+      order: { createdAt: 'DESC' },
+    });
+    return users.map(({ passwordHash: _, ...u }) => u);
+  }
+
+  /** Superadmin: actualiza nombre, email y/o password de cualquier usuario */
+  async actualizarUsuario(id: string, dto: { nombre?: string; email?: string; password?: string }) {
+    const user = await this.usuarioRepo.findOne({ where: { id } });
+    if (!user) throw new NotFoundException('Usuario no encontrado');
+
+    const updates: Partial<Usuario> = {};
+
+    if (dto.nombre?.trim()) updates.nombre = dto.nombre.trim();
+
+    if (dto.email?.trim()) {
+      const yaExiste = await this.usuarioRepo.findOne({ where: { email: dto.email.trim() } });
+      if (yaExiste && yaExiste.id !== id) {
+        throw new BadRequestException('El correo ya está en uso por otro usuario');
+      }
+      updates.email = dto.email.trim().toLowerCase();
+    }
+
+    if (dto.password) {
+      if (dto.password.length < 6) throw new BadRequestException('La contraseña debe tener al menos 6 caracteres');
+      updates.passwordHash = await bcrypt.hash(dto.password, 10);
+    }
+
+    await this.usuarioRepo.update(id, updates);
+    const saved = await this.usuarioRepo.findOneOrFail({ where: { id }, relations: ['empresa'] });
+    const { passwordHash: _, ...updated } = saved;
+    return updated;
+  }
+
+  /** Superadmin: genera un token de impersonación para una empresa */
+  async impersonarEmpresa(empresaId: string, superadminId: string) {
+    // Find first ADMIN user of that empresa
+    const adminUser = await this.usuarioRepo.findOne({
+      where: { empresa: { id: empresaId }, rol: RolUsuario.ADMIN },
+      relations: ['empresa'],
+    });
+    // Fallback: any user of that empresa
+    const user = adminUser ?? await this.usuarioRepo.findOne({
+      where: { empresa: { id: empresaId } },
+      relations: ['empresa'],
+    });
+    if (!user) throw new NotFoundException('No se encontró un usuario administrador para esta empresa');
+
+    const payload = {
+      sub: user.id, email: user.email, nombre: user.nombre,
+      rol: user.rol, empresaId,
+      impersonando: true, superadminId,
+    };
+    return {
+      access_token: this.jwtService.sign(payload, { expiresIn: '2h' }),
+      usuario: { id: user.id, email: user.email, nombre: user.nombre, rol: user.rol, empresaId, impersonando: true },
+    };
+  }
+
+  /** Crea o RE-SETEA el usuario superadmin maestro de la plataforma */
+  async initAdmin() {
+    const adminEmail = 'superadmin@nexa.com';
+    const exists = await this.usuarioRepo.findOne({ where: { email: adminEmail } });
+
+    if (!exists) {
+      this.logger.log(`Creando Superusuario Maestro: ${adminEmail}`);
+      await this.crearUsuario({
+        email: adminEmail,
+        nombre: 'Nexa SuperAdmin',
+        password: 'SuperAdmin1234',
+        rol: RolUsuario.SUPERADMIN,
+      });
+    } else {
+      this.logger.log(
+        `Superusuario ${adminEmail} ya existe. Asegurando rol y reseteando contraseña...`,
+      );
+      const passwordHash = await bcrypt.hash('SuperAdmin1234', 10);
+      await this.usuarioRepo.update(exists.id, {
+        passwordHash,
+        activo: true,
+        rol: RolUsuario.SUPERADMIN,
+      });
+    }
+  }
+}

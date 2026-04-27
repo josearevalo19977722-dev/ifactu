@@ -1,0 +1,67 @@
+# ── Dependencias ─────────────────────────────────────────────────────────────
+node_modules/
+.pnp
+.pnp.js
+
+# ── Build outputs ─────────────────────────────────────────────────────────────
+dist/
+build/
+.next/
+out/
+
+# ── Variables de entorno — NUNCA subir a git ──────────────────────────────────
+.env
+.env.local
+.env.*.local
+.env.production
+.env.staging
+# .env.example sí se sube (es la plantilla)
+
+# ── Certificados y llaves criptográficas — CRÍTICO ────────────────────────────
+*.key
+*.pem
+*.p12
+*.pfx
+*.crt
+*.cer
+backend/certificados/
+backend/certs/
+backend/uploads/certs/
+Certificados/
+
+# ── Logs ─────────────────────────────────────────────────────────────────────
+*.log
+logs/
+dte_diagnostic.log
+
+# ── Sistema operativo ─────────────────────────────────────────────────────────
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+Thumbs.db
+desktop.ini
+
+# ── Claude Code ───────────────────────────────────────────────────────────────
+.claude/
+
+# ── IDEs ──────────────────────────────────────────────────────────────────────
+.vscode/settings.json
+.idea/
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+
+# ── WhatsApp Web.js ───────────────────────────────────────────────────────────
+backend/.wwebjs_auth/
+backend/.wwebjs_cache/
+
+# ── Uploads de usuarios ───────────────────────────────────────────────────────
+backend/uploads/certs/
+backend/uploads/logo/
+
+# ── Testing / cobertura ───────────────────────────────────────────────────────
+coverage/
+.nyc_output/
