@@ -36,5 +36,18 @@ services:
       postgres:
         condition: service_healthy
 
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+      args:
+        VITE_API_URL: https://ifactu.jsolutionsv.com/api
+    container_name: ifactu_frontend
+    restart: unless-stopped
+    ports:
+      - "127.0.0.1:3005:80"
+    depends_on:
+      - backend
+
 volumes:
   ifactu_pgdata:
