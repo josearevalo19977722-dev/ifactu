@@ -798,20 +798,27 @@ export function TenantsPage() {
                   }
                 </select>
               </div>
-              <div className="form-group">
-                <label className="form-label">Meses de vigencia</label>
-                <input
-                  type="number"
-                  className="form-control"
-                  min={1}
-                  max={24}
-                  value={planForm.meses}
-                  onChange={e => setPlanForm(f => ({ ...f, meses: Math.max(1, Number(e.target.value)) }))}
-                />
-                <p style={{ fontSize: 12, color: 'var(--text-muted)', marginTop: 4 }}>
-                  La suscripción vencerá en {planForm.meses} mes(es) desde hoy.
+              {planForm.planTipo !== 'CUSTOM' && (
+                <div className="form-group">
+                  <label className="form-label">Meses de vigencia</label>
+                  <input
+                    type="number"
+                    className="form-control"
+                    min={1}
+                    max={24}
+                    value={planForm.meses}
+                    onChange={e => setPlanForm(f => ({ ...f, meses: Math.max(1, Number(e.target.value)) }))}
+                  />
+                  <p style={{ fontSize: 12, color: 'var(--text-muted)', marginTop: 4 }}>
+                    La suscripción vencerá en {planForm.meses} mes(es) desde hoy.
+                  </p>
+                </div>
+              )}
+              {planForm.planTipo === 'CUSTOM' && (
+                <p style={{ fontSize: 13, color: 'var(--success)', background: 'var(--success-subtle, #f0fdf4)', padding: '10px 14px', borderRadius: 8, marginTop: 4 }}>
+                  ♾️ Sin fecha de vencimiento — acceso ilimitado permanente.
                 </p>
-              </div>
+              )}
               {asignarPlanMut.isError && (
                 <div style={{ color: '#dc2626', fontSize: 13 }}>
                   Error: {(asignarPlanMut.error as any)?.response?.data?.message ?? 'No se pudo asignar el plan'}
