@@ -36,6 +36,15 @@ services:
       postgres:
         condition: service_healthy
 
+  firmador:
+    image: ghcr.io/minhacienda-sv/svfe-api-firmador:latest
+    container_name: ifactu_firmador
+    restart: unless-stopped
+    volumes:
+      - ./backend/certificados:/certificados
+    depends_on:
+      - backend
+
   frontend:
     build:
       context: ./frontend

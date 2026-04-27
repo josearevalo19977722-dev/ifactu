@@ -47,10 +47,13 @@ export class WhatsappService implements OnModuleInit, OnModuleDestroy {
     this.estado = 'CONECTANDO';
     this.logger.log('Iniciando cliente WhatsApp…');
 
+    const executablePath = process.env.PUPPETEER_EXECUTABLE_PATH || undefined;
+
     this.client = new Client({
       authStrategy: new LocalAuth({ dataPath: './.wwebjs_auth' }),
       puppeteer: {
         headless: true,
+        executablePath,
         args: [
           '--no-sandbox',
           '--disable-setuid-sandbox',
