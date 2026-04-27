@@ -19,7 +19,7 @@ export class SuscripcionesService {
   async crearSuscripcion(empresaId: string, dto: {
     tipo: string;
     fechaInicio: Date;
-    fechaVencimiento: Date;
+    fechaVencimiento: Date | null;
     precioMensual?: number;
     notas?: string;
     /** Límites opcionales — si se pasan, sobreescriben los defaults del tipo */

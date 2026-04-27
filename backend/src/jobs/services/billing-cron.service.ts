@@ -98,9 +98,9 @@ export class BillingCronService {
       .getMany();
 
     for (const s of porVencer) {
-      const dias = Math.ceil(
-        (new Date(s.fechaVencimiento).getTime() - Date.now()) / 86_400_000,
-      );
+      const dias = s.fechaVencimiento
+        ? Math.ceil((new Date(s.fechaVencimiento).getTime() - Date.now()) / 86_400_000)
+        : 99999;
       this.logger.warn(
         `📅 Plan por vencer: empresa="${s.empresa.nombreLegal}" ` +
         `plan=${s.tipo} — vence en ${dias} día(s)`,

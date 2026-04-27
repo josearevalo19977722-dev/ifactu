@@ -582,7 +582,7 @@ export class BillingService implements OnModuleInit {
 
     const hoy = new Date();
     const diasRestantes = suscripcion
-      ? Math.max(0, Math.ceil((new Date(suscripcion.fechaVencimiento).getTime() - hoy.getTime()) / 86_400_000))
+      ? (suscripcion.fechaVencimiento ? Math.max(0, Math.ceil((new Date(suscripcion.fechaVencimiento).getTime() - hoy.getTime()) / 86_400_000)) : 99999)
       : 0;
 
     return {
@@ -637,7 +637,7 @@ export class BillingService implements OnModuleInit {
     empresaId: string,
     planTipo: string,
     meses: number = 1,
-  ): Promise<{ mensaje: string; fechaVencimiento: Date }> {
+  ): Promise<{ mensaje: string; fechaVencimiento: Date | null }> {
     const empresa = await this.empresaRepo.findOne({ where: { id: empresaId } });
     if (!empresa) throw new NotFoundException('Empresa no encontrada');
 

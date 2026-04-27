@@ -41,8 +41,8 @@ export class Suscripcion {
   @Column({ name: 'fecha_inicio', type: 'date' })
   fechaInicio: Date;
 
-  @Column({ name: 'fecha_vencimiento', type: 'date' })
-  fechaVencimiento: Date;
+  @Column({ name: 'fecha_vencimiento', type: 'date', nullable: true })
+  fechaVencimiento: Date | null;
 
   @Column({ name: 'limite_dtes_mensuales', default: 100 })
   limiteDtesMensuales: number;
