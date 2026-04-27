@@ -712,9 +712,9 @@ export function TenantsPage() {
                   <div className="form-group">
                     <label className="form-label">Rol</label>
                     <select className="form-control" value={nuevoUsuario.rol} onChange={e => setNuevoUsuario({ ...nuevoUsuario, rol: e.target.value })}>
-                      <option value="ADMIN">ADMIN</option>
-                      <option value="EMISOR">EMISOR</option>
-                      <option value="VIEWER">VIEWER</option>
+                      <option value="ADMIN">ADMIN — Acceso completo</option>
+                      <option value="CONTADOR">CONTADOR — Reportes y consultas</option>
+                      <option value="EMISOR">EMISOR — Solo emitir documentos</option>
                     </select>
                   </div>
                 </div>
