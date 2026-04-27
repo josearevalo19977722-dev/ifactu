@@ -32,6 +32,7 @@ services:
       - ./backend/certificados:/app/certificados
       - ./backend/certs:/app/certs
       - ./backend/uploads:/app/uploads
+      - ./backend/wwebjs_auth:/app/.wwebjs_auth
     depends_on:
       postgres:
         condition: service_healthy
