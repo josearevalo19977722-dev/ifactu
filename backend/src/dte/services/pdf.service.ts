@@ -37,11 +37,11 @@ export class PdfService {
     const qrMhUrl = `https://admin.factura.gob.sv/consultaPublica?fechaEmi=${dte.fechaEmision}&codigoGeneracion=${dte.codigoGeneracion}`;
     const appPublicUrl = this.config.get<string>('APP_PUBLIC_URL', 'http://localhost:5173');
     const qrIfactuUrl = `${appPublicUrl}/verificar/${dte.codigoGeneracion}`;
-    const qr1 = await QRCode.toBuffer(qrMhUrl,                { errorCorrectionLevel: 'M', width: 80 });
-    const qr2 = await QRCode.toBuffer(dte.codigoGeneracion,   { errorCorrectionLevel: 'M', width: 70 });
-    const qr3 = await QRCode.toBuffer(dte.selloRecepcion || 'PENDIENTE', { errorCorrectionLevel: 'M', width: 70 });
-    const qr4 = await QRCode.toBuffer(dte.numeroControl,      { errorCorrectionLevel: 'M', width: 70 });
-    const qr5 = await QRCode.toBuffer(qrIfactuUrl,            { errorCorrectionLevel: 'M', width: 70 });
+    const qr1 = await QRCode.toBuffer(qrMhUrl,                { errorCorrectionLevel: 'L', width: 200 });
+    const qr2 = await QRCode.toBuffer(dte.codigoGeneracion,   { errorCorrectionLevel: 'L', width: 180 });
+    const qr3 = await QRCode.toBuffer(dte.selloRecepcion || 'PENDIENTE', { errorCorrectionLevel: 'L', width: 180 });
+    const qr4 = await QRCode.toBuffer(dte.numeroControl,      { errorCorrectionLevel: 'L', width: 180 });
+    const qr5 = await QRCode.toBuffer(qrIfactuUrl,            { errorCorrectionLevel: 'L', width: 180 });
 
     return new Promise((resolve, reject) => {
       const doc = new PDFDocument({ size: 'A4', margins: { top: 30, bottom: 10, left: 30, right: 30 } });
@@ -172,7 +172,7 @@ export class PdfService {
 
       // ── 5 QR codes (debajo de la sección superior) ────────────────────────
       const qrY    = Math.max(emHdrY + 4, metaY + metaH + 4);
-      const qrSize = 56;
+      const qrSize = 68;
       const qrGap  = 5;
       // QR 1 grande: Portal MH
       doc.image(qr1, 30, qrY, { width: qrSize + 8 });
