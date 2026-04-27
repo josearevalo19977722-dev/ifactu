@@ -4,6 +4,8 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import apiClient from '../../api/apiClient';
 import { CODIGOS_TIPO_DTE_TODOS, OPCIONES_TIPO_DTE } from '../../constants/tiposDte';
 import { useAuth } from '../../context/AuthContext';
+import { ACTIVIDADES_ECONOMICAS } from '../../catalogs/actividades';
+import { DEPARTAMENTOS, getMunicipios } from '../../catalogs/departamentos';
 
 // Hook para cargar los planes disponibles desde la BD
 function usePlanesConfig() {
@@ -512,21 +514,59 @@ export function TenantsPage() {
                 <label className="form-label">Teléfono</label>
                 <input className="form-control" value={editForm.telefono} onChange={e => setEditForm({...editForm, telefono: e.target.value})} />
               </div>
-              <div className="form-group">
-                <label className="form-label">Cód. Actividad</label>
-                <input className="form-control" value={editForm.codActividad} onChange={e => setEditForm({...editForm, codActividad: e.target.value})} />
+              <div className="form-group" style={{ gridColumn: 'span 2' }}>
+                <label className="form-label">Giro / Actividad Económica</label>
+                <input
+                  className="form-control"
+                  list="edit-lista-actividades"
+                  value={editForm.descActividad}
+                  onChange={e => {
+                    const val = e.target.value;
+                    const found = ACTIVIDADES_ECONOMICAS.find(a => a.descripcion === val);
+                    setEditForm({ ...editForm, descActividad: val, codActividad: found ? found.codigo : editForm.codActividad });
+                  }}
+                  placeholder="Escribe para buscar actividad..."
+                />
+                <datalist id="edit-lista-actividades">
+                  {ACTIVIDADES_ECONOMICAS.map(a => (
+                    <option key={a.codigo} value={a.descripcion}>{a.codigo}</option>
+                  ))}
+                </datalist>
               </div>
               <div className="form-group">
-                <label className="form-label">Desc. Actividad</label>
-                <input className="form-control" value={editForm.descActividad} onChange={e => setEditForm({...editForm, descActividad: e.target.value})} />
+                <label className="form-label">Código Actividad</label>
+                <input
+                  className="form-control"
+                  value={editForm.codActividad}
+                  readOnly
+                  style={{ backgroundColor: 'var(--bg-subtle)', color: 'var(--text-2)' }}
+                />
               </div>
               <div className="form-group">
                 <label className="form-label">Departamento</label>
-                <input className="form-control" value={editForm.departamento} onChange={e => setEditForm({...editForm, departamento: e.target.value})} />
+                <select
+                  className="form-control"
+                  value={editForm.departamento}
+                  onChange={e => setEditForm({ ...editForm, departamento: e.target.value, municipio: '' })}
+                >
+                  <option value="">Seleccione Departamento</option>
+                  {DEPARTAMENTOS.map(d => (
+                    <option key={d.codigo} value={d.codigo}>{d.nombre}</option>
+                  ))}
+                </select>
               </div>
               <div className="form-group">
                 <label className="form-label">Municipio</label>
-                <input className="form-control" value={editForm.municipio} onChange={e => setEditForm({...editForm, municipio: e.target.value})} />
+                <select
+                  className="form-control"
+                  value={editForm.municipio}
+                  onChange={e => setEditForm({ ...editForm, municipio: e.target.value })}
+                >
+                  <option value="">Seleccione Municipio</option>
+                  {getMunicipios(editForm.departamento).map(m => (
+                    <option key={m.codigo} value={m.codigo}>{m.nombre}</option>
+                  ))}
+                </select>
               </div>
               <div className="form-group" style={{ gridColumn: 'span 2' }}>
                 <label className="form-label">Dirección / Complemento</label>
