@@ -28,6 +28,12 @@ const fmtFecha = (f: string) => {
 export function VerificarDte() {
   const { codigoGeneracion } = useParams<{ codigoGeneracion: string }>();
 
+  const copiarYAbrir = (e: React.MouseEvent<HTMLAnchorElement>, url: string, codigo: string) => {
+    e.preventDefault();
+    navigator.clipboard?.writeText(codigo).catch(() => {/* silencioso */});
+    window.open(url, '_blank', 'noopener,noreferrer');
+  };
+
   const { data: dte, isLoading, error } = useQuery<DtePublico>({
     queryKey: ['verificar-dte', codigoGeneracion],
     queryFn: () =>
@@ -166,12 +172,14 @@ export function VerificarDte() {
               <div style={{ padding: '14px 24px', borderTop: '1px solid #f1f5f9', background: '#fafafa' }}>
                 <a
                   href={`https://admin.factura.gob.sv/consultaPublica?fechaEmi=${dte.fechaEmision}`}
-                  target="_blank"
-                  rel="noopener noreferrer"
+                  onClick={e => copiarYAbrir(e, `https://admin.factura.gob.sv/consultaPublica?fechaEmi=${dte.fechaEmision}`, dte.codigoGeneracion)}
                   style={{ fontSize: 12, color: '#3b82f6', textDecoration: 'none', display: 'inline-flex', alignItems: 'center', gap: 5 }}
                 >
                   🏛️ Consultar en el portal del Ministerio de Hacienda →
                 </a>
+                <div style={{ fontSize: 11, color: '#94a3b8', marginTop: 5 }}>
+                  📋 Al hacer clic se copia el código de generación al portapapeles para pegarlo en el portal.
+                </div>
               </div>
             </div>
 
