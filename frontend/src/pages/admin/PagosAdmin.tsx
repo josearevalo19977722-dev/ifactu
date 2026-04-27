@@ -64,7 +64,6 @@ export function PagosAdmin() {
   const [editPaqueteForm, setEditPaqueteForm] = useState({ cantidad: 50, precio: 5, esPermanente: false, notas: '' });
 
   // Catálogo de opciones disponibles para empresas
-  const [showCatalogo, setShowCatalogo] = useState(false);
   const [nuevaOpcion, setNuevaOpcion] = useState({ nombre: '', cantidad: 50, precio: 5, orden: 0 });
 
   // Nuevo paquete desde superadmin
@@ -272,7 +271,6 @@ export function PagosAdmin() {
         <StatCard
           icon="💰"
           iconBg="linear-gradient(135deg, #064e3b, #065f46)"
-          iconColor="#34d399"
           label="Total recaudado"
           value={`$${totalRecaudado.toFixed(2)}`}
           valueColor="#34d399"
@@ -281,7 +279,6 @@ export function PagosAdmin() {
         <StatCard
           icon="✅"
           iconBg="linear-gradient(135deg, #1e3a5f, #1d4ed8)"
-          iconColor="#60a5fa"
           label="Pagos confirmados"
           value={String(pagosPagados)}
           valueColor="#60a5fa"
@@ -290,7 +287,6 @@ export function PagosAdmin() {
         <StatCard
           icon="⏳"
           iconBg="linear-gradient(135deg, #451a03, #92400e)"
-          iconColor="#fbbf24"
           label="Pendientes de pago"
           value={String(pagosPendientes)}
           valueColor="#fbbf24"
@@ -1222,8 +1218,8 @@ export function PagosAdmin() {
 
 // ── Sub-components ────────────────────────────────────────────────────────────
 
-function StatCard({ icon, iconBg, iconColor, label, value, valueColor, sub }: {
-  icon: string; iconBg: string; iconColor: string;
+function StatCard({ icon, iconBg, label, value, valueColor, sub }: {
+  icon: string; iconBg: string;
   label: string; value: string; valueColor: string; sub: string;
 }) {
   return (
