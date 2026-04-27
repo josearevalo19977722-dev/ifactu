@@ -1,0 +1,18 @@
+services:
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: ifactu_backend
+    restart: unless-stopped
+    ports:
+      - "127.0.0.1:3002:3002"
+    env_file:
+      - .env
+    volumes:
+      # Certificados y uploads persisten fuera del contenedor
+      - ./backend/certificados:/app/certificados
+      - ./backend/certs:/app/certs
+      - ./backend/uploads:/app/uploads
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
