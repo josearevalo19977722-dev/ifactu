@@ -65,3 +65,5 @@ backend/uploads/logo/
 # ── Testing / cobertura ───────────────────────────────────────────────────────
 coverage/
 .nyc_output/
+.claude/
+.github/
