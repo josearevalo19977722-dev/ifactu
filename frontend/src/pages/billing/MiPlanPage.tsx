@@ -8,14 +8,14 @@ const PLAN_LABELS: Record<string, string> = {
   BASICA:       'Plan Básico',
   PROFESIONAL:  'Plan Profesional',
   EMPRESA:      'Plan Empresa',
-  CUSTOM:       'Plan Personalizado',
+  CUSTOM:       'Ilimitado / Cortesía',
 };
 
 const PLAN_ICONS: Record<string, string> = {
   BASICA:       '🌱',
   PROFESIONAL:  '🚀',
   EMPRESA:      '🏢',
-  CUSTOM:       '⚙️',
+  CUSTOM:       '♾️',
 };
 
 const ESTADO_COLOR: Record<string, string> = {

@@ -49,14 +49,14 @@ export class BillingCronService {
     const hoy = new Date();
     hoy.setHours(0, 0, 0, 0);
 
-    // Suscripciones activas cuya fecha de vencimiento ya pasó
-    const vencidas = await this.suscripcionRepo.find({
+    // Suscripciones activas cuya fecha de vencimiento ya pasó (excluye CUSTOM sin vencimiento)
+    const vencidas = (await this.suscripcionRepo.find({
       where: {
         estado: EstadoSuscripcion.ACTIVA,
         fechaVencimiento: LessThan(hoy),
       },
       relations: ['empresa'],
-    });
+    })).filter(s => s.tipo !== 'CUSTOM');
 
     if (vencidas.length === 0) {
       this.logger.log('✅ No hay suscripciones vencidas');

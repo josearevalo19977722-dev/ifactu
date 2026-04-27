@@ -85,6 +85,24 @@ export class BillingService implements OnModuleInit {
       }
     }
 
+    // Sembrar plan CUSTOM (Ilimitado / Cortesía) si no existe
+    const existeCustom = await this.planConfigRepo.findOne({ where: { tipo: TipoSuscripcion.CUSTOM } });
+    if (!existeCustom) {
+      await this.planConfigRepo.save(
+        this.planConfigRepo.create({
+          tipo: TipoSuscripcion.CUSTOM,
+          nombre: 'Ilimitado / Cortesía',
+          descripcion: 'Sin límites · Sin vencimiento · Acceso completo',
+          precioMensual: 0,
+          limiteDtesMensuales: 999999,
+          limiteUsuarios: 999999,
+          activo: true,
+          esPlanInicial: false,
+        }),
+      );
+      this.logger.log('Plan CUSTOM (Ilimitado / Cortesía) sembrado en BD');
+    }
+
     // Si ningún plan tiene esPlanInicial=true, marcar BASICA como inicial
     const hayInicial = await this.planConfigRepo.findOne({ where: { esPlanInicial: true } });
     if (!hayInicial) {
@@ -626,8 +644,10 @@ export class BillingService implements OnModuleInit {
     const planDef = await this.getPlanConfig(planTipo);
 
     const hoy = new Date();
-    const vencimiento = new Date(hoy);
-    vencimiento.setMonth(vencimiento.getMonth() + meses);
+    // CUSTOM: sin vencimiento (acceso ilimitado / cortesía)
+    const esCustom = planTipo.toUpperCase() === 'CUSTOM';
+    const vencimiento = esCustom ? null : new Date(hoy);
+    if (!esCustom) vencimiento!.setMonth(vencimiento!.getMonth() + meses);
 
     const suscripcionActiva = await this.suscripciones.obtenerSuscripcionActiva(empresaId);
     if (suscripcionActiva) {
@@ -646,10 +666,12 @@ export class BillingService implements OnModuleInit {
     empresa.pagoAlDia = true;
     await this.empresaRepo.save(empresa);
 
-    this.logger.log(`Plan asignado manualmente: empresa=${empresaId} plan=${planTipo} meses=${meses}`);
+    this.logger.log(`Plan asignado manualmente: empresa=${empresaId} plan=${planTipo}${esCustom ? ' (sin vencimiento)' : ` meses=${meses}`}`);
 
     return {
-      mensaje: `Plan ${planDef.nombre} asignado por ${meses} mes(es). Vence: ${vencimiento.toLocaleDateString('es-SV')}`,
+      mensaje: esCustom
+        ? `Plan Ilimitado / Cortesía asignado. Sin fecha de vencimiento.`
+        : `Plan ${planDef.nombre} asignado por ${meses} mes(es). Vence: ${vencimiento!.toLocaleDateString('es-SV')}`,
       fechaVencimiento: vencimiento,
     };
   }
