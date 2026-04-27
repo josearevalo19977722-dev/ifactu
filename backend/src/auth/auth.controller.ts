@@ -40,8 +40,8 @@ export class AuthController {
   @Get('usuarios')
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles(RolUsuario.ADMIN)
-  listar() {
-    return this.authService.listarUsuarios();
+  listar(@Request() req: any) {
+    return this.authService.listarUsuarios(req.user?.empresaId);
   }
 
   @Post('usuarios')

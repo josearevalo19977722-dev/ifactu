@@ -98,8 +98,9 @@ export class AuthService implements OnModuleInit {
     return result;
   }
 
-  async listarUsuarios() {
-    const users = await this.usuarioRepo.find({ order: { createdAt: 'DESC' } });
+  async listarUsuarios(empresaId?: string) {
+    const where = empresaId ? { empresa: { id: empresaId } } : {};
+    const users = await this.usuarioRepo.find({ where, order: { createdAt: 'DESC' } });
     return users.map(({ passwordHash: _, ...u }) => u);
   }
 
