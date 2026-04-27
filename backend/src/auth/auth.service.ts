@@ -135,6 +135,39 @@ export class AuthService implements OnModuleInit {
     return users.map(({ passwordHash: _, ...u }) => u);
   }
 
+  /** Superadmin: lista usuarios de una empresa específica */
+  async listarUsuariosDeEmpresa(empresaId: string) {
+    const users = await this.usuarioRepo.find({
+      where: { empresa: { id: empresaId } },
+      order: { createdAt: 'ASC' },
+    });
+    return users.map(({ passwordHash: _, ...u }) => u);
+  }
+
+  /** Superadmin: crea un usuario vinculado a una empresa específica */
+  async crearUsuarioParaEmpresa(
+    empresaId: string,
+    dto: { email: string; nombre: string; password: string; rol?: RolUsuario },
+  ) {
+    const empresa = await this.empresaRepo.findOne({ where: { id: empresaId } });
+    if (!empresa) throw new NotFoundException('Empresa no encontrada');
+
+    const existe = await this.usuarioRepo.findOne({ where: { email: dto.email } });
+    if (existe) throw new ConflictException('El email ya está registrado');
+
+    const passwordHash = await bcrypt.hash(dto.password, 10);
+    const user = this.usuarioRepo.create({
+      email: dto.email,
+      nombre: dto.nombre,
+      passwordHash,
+      rol: dto.rol ?? RolUsuario.ADMIN,
+      empresa,
+    });
+    const saved = await this.usuarioRepo.save(user);
+    const { passwordHash: _, ...result } = saved;
+    return result;
+  }
+
   /** Superadmin: actualiza nombre, email y/o password de cualquier usuario */
   async actualizarUsuario(id: string, dto: { nombre?: string; email?: string; password?: string }) {
     const user = await this.usuarioRepo.findOne({ where: { id } });

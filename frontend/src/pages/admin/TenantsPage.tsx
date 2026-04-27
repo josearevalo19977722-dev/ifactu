@@ -77,6 +77,12 @@ export function TenantsPage() {
 
   const [editForm, setEditForm] = useState<any>({});
 
+  // ── Usuarios de empresa ───────────────────────────────────────────────────
+  const [usuariosEmpresa, setUsuariosEmpresa] = useState<any[]>([]);
+  const [nuevoUsuario, setNuevoUsuario] = useState({ email: '', nombre: '', password: '', rol: 'ADMIN' });
+  const [nuevoUsuarioMsg, setNuevoUsuarioMsg] = useState<{ ok: boolean; texto: string } | null>(null);
+  const [creandoUsuario, setCreandoUsuario] = useState(false);
+
   // ── Queries ───────────────────────────────────────────────────────────────
   const { data: tenants = [], isLoading } = useQuery({
     queryKey: ['tenants'],
@@ -153,6 +159,31 @@ export function TenantsPage() {
           : [...CODIGOS_TIPO_DTE_TODOS],
     });
     setEditTenant(t);
+    setNuevoUsuario({ email: '', nombre: '', password: '', rol: 'ADMIN' });
+    setNuevoUsuarioMsg(null);
+    apiClient.get(`/auth/superadmin/empresas/${t.id}/usuarios`)
+      .then(r => setUsuariosEmpresa(r.data))
+      .catch(() => setUsuariosEmpresa([]));
+  }
+
+  async function crearUsuarioEmpresa() {
+    if (!editTenant) return;
+    if (!nuevoUsuario.email || !nuevoUsuario.nombre || !nuevoUsuario.password) {
+      setNuevoUsuarioMsg({ ok: false, texto: 'Completa todos los campos' });
+      return;
+    }
+    setCreandoUsuario(true);
+    try {
+      await apiClient.post(`/auth/superadmin/empresas/${editTenant.id}/usuarios`, nuevoUsuario);
+      setNuevoUsuarioMsg({ ok: true, texto: 'Usuario creado correctamente' });
+      setNuevoUsuario({ email: '', nombre: '', password: '', rol: 'ADMIN' });
+      const r = await apiClient.get(`/auth/superadmin/empresas/${editTenant.id}/usuarios`);
+      setUsuariosEmpresa(r.data);
+    } catch (err: any) {
+      setNuevoUsuarioMsg({ ok: false, texto: err?.response?.data?.message ?? 'Error al crear usuario' });
+    } finally {
+      setCreandoUsuario(false);
+    }
   }
 
   function toggleTipoCreate(codigo: string) {
@@ -636,6 +667,74 @@ export function TenantsPage() {
                 </label>
               </div>
             </div>
+            {/* ── Sección Usuarios ── */}
+            <div style={{ padding: '0 24px 20px' }}>
+              <div className="admin-modal-section" style={{ marginTop: 8 }}>
+                <p className="admin-modal-section__title">Usuarios de la empresa</p>
+                {usuariosEmpresa.length === 0 ? (
+                  <p style={{ fontSize: 13, color: 'var(--text-2)', marginBottom: 12 }}>Sin usuarios registrados.</p>
+                ) : (
+                  <table style={{ width: '100%', fontSize: 13, borderCollapse: 'collapse', marginBottom: 16 }}>
+                    <thead>
+                      <tr style={{ borderBottom: '1px solid var(--border)' }}>
+                        <th style={{ textAlign: 'left', padding: '4px 8px', color: 'var(--text-2)', fontWeight: 500 }}>Nombre</th>
+                        <th style={{ textAlign: 'left', padding: '4px 8px', color: 'var(--text-2)', fontWeight: 500 }}>Email</th>
+                        <th style={{ textAlign: 'left', padding: '4px 8px', color: 'var(--text-2)', fontWeight: 500 }}>Rol</th>
+                        <th style={{ textAlign: 'left', padding: '4px 8px', color: 'var(--text-2)', fontWeight: 500 }}>Estado</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {usuariosEmpresa.map(u => (
+                        <tr key={u.id} style={{ borderBottom: '1px solid var(--border-subtle)' }}>
+                          <td style={{ padding: '6px 8px' }}>{u.nombre}</td>
+                          <td style={{ padding: '6px 8px' }}>{u.email}</td>
+                          <td style={{ padding: '6px 8px' }}><span className="badge badge--info">{u.rol}</span></td>
+                          <td style={{ padding: '6px 8px' }}><span className={`badge ${u.activo ? 'badge--success' : 'badge--danger'}`}>{u.activo ? 'Activo' : 'Inactivo'}</span></td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                )}
+                <p style={{ fontSize: 12, fontWeight: 600, textTransform: 'uppercase', letterSpacing: 0.5, color: 'var(--text-2)', marginBottom: 10 }}>Agregar usuario</p>
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+                  <div className="form-group">
+                    <label className="form-label">Email</label>
+                    <input className="form-control" type="email" value={nuevoUsuario.email} onChange={e => setNuevoUsuario({ ...nuevoUsuario, email: e.target.value })} placeholder="correo@empresa.com" />
+                  </div>
+                  <div className="form-group">
+                    <label className="form-label">Nombre</label>
+                    <input className="form-control" value={nuevoUsuario.nombre} onChange={e => setNuevoUsuario({ ...nuevoUsuario, nombre: e.target.value })} placeholder="Nombre completo" />
+                  </div>
+                  <div className="form-group">
+                    <label className="form-label">Contraseña</label>
+                    <input className="form-control" type="password" value={nuevoUsuario.password} onChange={e => setNuevoUsuario({ ...nuevoUsuario, password: e.target.value })} placeholder="Mínimo 6 caracteres" />
+                  </div>
+                  <div className="form-group">
+                    <label className="form-label">Rol</label>
+                    <select className="form-control" value={nuevoUsuario.rol} onChange={e => setNuevoUsuario({ ...nuevoUsuario, rol: e.target.value })}>
+                      <option value="ADMIN">ADMIN</option>
+                      <option value="EMISOR">EMISOR</option>
+                      <option value="VIEWER">VIEWER</option>
+                    </select>
+                  </div>
+                </div>
+                {nuevoUsuarioMsg && (
+                  <p style={{ fontSize: 13, color: nuevoUsuarioMsg.ok ? 'var(--success)' : 'var(--danger)', marginTop: 6 }}>
+                    {nuevoUsuarioMsg.texto}
+                  </p>
+                )}
+                <button
+                  type="button"
+                  className="btn btn-primary btn-sm"
+                  style={{ marginTop: 10 }}
+                  onClick={crearUsuarioEmpresa}
+                  disabled={creandoUsuario}
+                >
+                  {creandoUsuario ? 'Creando...' : '+ Crear usuario'}
+                </button>
+              </div>
+            </div>
+
             <div className="modal-footer modal-footer--split">
               <button type="button" className="btn btn-outline" onClick={() => setEditTenant(null)}>Cancelar</button>
               <div className="modal-footer__primary" style={{ alignItems: 'center' }}>

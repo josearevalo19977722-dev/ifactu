@@ -96,6 +96,25 @@ export class AuthController {
     return this.authService.actualizarUsuario(id, body);
   }
 
+  /** Lista usuarios de una empresa específica */
+  @Get('superadmin/empresas/:empresaId/usuarios')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(RolUsuario.SUPERADMIN)
+  listarUsuariosEmpresa(@Param('empresaId') empresaId: string) {
+    return this.authService.listarUsuariosDeEmpresa(empresaId);
+  }
+
+  /** Crea un usuario para una empresa específica */
+  @Post('superadmin/empresas/:empresaId/usuarios')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(RolUsuario.SUPERADMIN)
+  crearUsuarioEmpresa(
+    @Param('empresaId') empresaId: string,
+    @Body() body: { email: string; nombre: string; password: string; rol?: RolUsuario },
+  ) {
+    return this.authService.crearUsuarioParaEmpresa(empresaId, body);
+  }
+
   /** Genera token de impersonación para entrar como admin de una empresa */
   @Post('superadmin/impersonar/:empresaId')
   @UseGuards(JwtAuthGuard, RolesGuard)
