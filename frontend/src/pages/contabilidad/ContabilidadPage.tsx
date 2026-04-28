@@ -69,6 +69,7 @@ export function ContabilidadPage() {
   const [tab,  setTab]  = useState<'f07' | 'pac' | 'asientos'>('f07');
   const [detalle, setDetalle]   = useState<Asiento | null>(null);
   const [asPage,  setAsPage]    = useState(1);
+  const [exportando, setExportando] = useState(false);
   const qc = useQueryClient();
 
   const params = `mes=${mes}&anio=${anio}`;
@@ -243,6 +244,276 @@ td{font-size:11px;padding:5px 10px;border-bottom:1px solid #f1f5f9;vertical-alig
     ventana.document.write(html);
     ventana.document.close();
     setTimeout(() => ventana.print(), 500);
+  };
+
+  // ── Print F-14 ─────────────────────────────────────────────────────────────
+  const imprimirPac = () => {
+    if (!qPac.data) return;
+    const d   = qPac.data;
+    const emp = empresa;
+
+    const html = `<!DOCTYPE html><html lang="es"><head><meta charset="UTF-8">
+<title>F-14 — ${MESES[mes-1]} ${anio}</title><style>
+*{box-sizing:border-box;margin:0;padding:0}body{font-family:Arial,sans-serif;font-size:11px;color:#000;background:#fff;padding:24px}
+.wrap{max-width:760px;margin:0 auto}
+.hdr{display:flex;justify-content:space-between;align-items:flex-start;border:2px solid #7c3aed;border-radius:6px;padding:12px 16px;margin-bottom:14px;background:#f5f3ff}
+.hdr-left h1{font-size:15px;font-weight:700;color:#7c3aed;text-transform:uppercase}
+.hdr-left p{font-size:10px;color:#475569;margin-top:3px}
+.hdr-right{text-align:right;font-size:10px;color:#64748b}.hdr-right strong{font-size:13px;color:#7c3aed;display:block}
+.datos{display:grid;grid-template-columns:1fr 1fr;border:1px solid #cbd5e1;border-radius:6px;overflow:hidden;margin-bottom:14px}
+.dato{padding:6px 10px;border-right:1px solid #e2e8f0;border-bottom:1px solid #e2e8f0}.dato:nth-child(even){border-right:none}
+.dato.full{grid-column:1/-1;border-right:none}
+.dato .lbl{font-size:9px;color:#94a3b8;text-transform:uppercase;letter-spacing:.5px;display:block;margin-bottom:2px}
+.dato .val{font-size:11px;font-weight:700;color:#0f172a}
+.kpi-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-bottom:14px}
+.kpi{border-radius:8px;padding:14px 16px}.kpi .lbl{font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:.8px;margin-bottom:6px}
+.kpi .val{font-size:22px;font-weight:900}.kpi.blue{background:#dbeafe;color:#1e40af}
+.kpi.purple{background:#ede9fe;color:#7c3aed}.kpi.yellow{background:#fef3c7;color:#b45309}
+.sec{border:1px solid #cbd5e1;border-radius:6px;margin-bottom:12px;overflow:hidden}
+.sec-hdr{background:#7c3aed;color:#fff;font-weight:700;font-size:10px;padding:6px 12px;text-transform:uppercase;letter-spacing:.8px}
+table{width:100%;border-collapse:collapse}
+th{background:#f5f3ff;font-size:10px;font-weight:700;text-align:left;padding:5px 10px;border-bottom:1px solid #cbd5e1;color:#7c3aed}
+td{font-size:11px;padding:5px 10px;border-bottom:1px solid #f1f5f9;vertical-align:middle}
+.num{text-align:right}.fw{font-weight:700}
+.tot td{background:#ede9fe;font-weight:700;font-size:12px;border-top:2px solid #7c3aed}
+.pac-result{background:#fef3c7;border:2px solid #f59e0b;border-radius:8px;padding:16px 20px;text-align:center;margin-bottom:14px}
+.pac-result .lbl{font-size:11px;color:#78350f;font-weight:700;text-transform:uppercase;margin-bottom:6px}
+.pac-result .val{font-size:28px;font-weight:900;color:#b45309}
+.guia{border:1px solid #fde68a;background:#fffbeb;border-radius:6px;padding:12px 16px;font-size:10px;color:#78350f;margin-bottom:14px}
+.guia strong{font-weight:700}.guia ol{padding-left:16px;margin-top:6px;line-height:1.8}
+.firma{display:grid;grid-template-columns:1fr 1fr;gap:30px;margin-top:24px}
+.firma-box{text-align:center;padding-top:8px;border-top:1px solid #94a3b8;font-size:10px;color:#64748b}
+.nota{font-size:9px;color:#94a3b8;border-top:1px solid #e2e8f0;padding-top:8px;margin-top:12px;line-height:1.5}
+@media print{body{padding:10px}}</style></head><body>
+<div class="wrap">
+
+<div class="hdr">
+  <div class="hdr-left">
+    <h1>Pago a Cuenta Anticipado del ISR — F-14</h1>
+    <p>Ministerio de Hacienda · República de El Salvador</p>
+  </div>
+  <div class="hdr-right">
+    <strong>iFactu</strong>Sistema DTE El Salvador<br>Período: <strong>${MESES[mes-1]} ${anio}</strong>
+  </div>
+</div>
+
+<div class="datos">
+  <div class="dato full"><span class="lbl">Nombre / Razón Social</span><span class="val">${emp?.nombreLegal ?? '—'}</span></div>
+  <div class="dato"><span class="lbl">NIT</span><span class="val">${emp?.nit ?? '—'}</span></div>
+  <div class="dato"><span class="lbl">NRC</span><span class="val">${emp?.nrc ?? '—'}</span></div>
+  <div class="dato"><span class="lbl">Actividad Económica</span><span class="val">${emp?.descActividad ?? '—'}</span></div>
+  <div class="dato"><span class="lbl">Período</span><span class="val">${MESES[mes-1]} ${anio}</span></div>
+</div>
+
+<div class="kpi-grid">
+  <div class="kpi blue"><div class="lbl">Ingresos Brutos</div><div class="val">${fmt(d.ingresosBrutos)}</div></div>
+  <div class="kpi purple"><div class="lbl">Tasa</div><div class="val">${d.tasa}%</div></div>
+  <div class="kpi yellow"><div class="lbl">A Declarar F-14</div><div class="val">${fmt(d.pagoACuenta)}</div></div>
+</div>
+
+<div class="sec">
+  <div class="sec-hdr">Desglose de Ingresos por Tipo de Documento</div>
+  <table>
+    <thead><tr><th style="width:10%">Tipo</th><th style="width:50%">Descripción</th><th class="num">Documentos</th><th class="num">Total</th></tr></thead>
+    <tbody>
+      ${d.porTipo.map(t => `<tr><td style="font-family:monospace;background:#f8fafc;padding:4px 8px">${t.tipoDte}</td><td>${t.nombre}</td><td class="num">${t.cantidad}</td><td class="num fw">${fmt(t.total)}</td></tr>`).join('')}
+    </tbody>
+    <tfoot><tr class="tot"><td colspan="3"><strong>Total Ingresos Brutos</strong></td><td class="num">${fmt(d.ingresosBrutos)}</td></tr></tfoot>
+  </table>
+</div>
+
+<div class="pac-result">
+  <div class="lbl">💼 Pago a Cuenta a Declarar en F-14 (${d.tasa}%)</div>
+  <div class="val">${fmt(d.pagoACuenta)}</div>
+</div>
+
+<div class="guia">
+  <strong>ℹ️ Pasos para declarar el F-14:</strong>
+  <ol>
+    <li>Ingresa al portal de Hacienda: <strong>admin.factura.gob.sv</strong></li>
+    <li>Busca el formulario <strong>F-14 — Declaración y Pago a Cuenta</strong></li>
+    <li>Ingresa los ingresos brutos: <strong>${fmt(d.ingresosBrutos)}</strong></li>
+    <li>El sistema calculará el 1.75%: <strong>${fmt(d.pagoACuenta)}</strong></li>
+    <li>Fecha límite: último día hábil del mes de ${MESES[mes % 12]} ${mes === 12 ? anio + 1 : anio}</li>
+  </ol>
+</div>
+
+<div class="nota">
+  Reporte preparado con iFactu DTE El Salvador. Los valores deben verificarse antes de declarar en Hacienda.<br>
+  NIT: ${emp?.nit ?? '—'} | NRC: ${emp?.nrc ?? '—'} | Período: ${MESES[mes-1]} ${anio}
+</div>
+
+<div class="firma">
+  <div class="firma-box">Firma del Contribuyente o Representante Legal</div>
+  <div class="firma-box">Sello de la Empresa</div>
+</div>
+
+</div></body></html>`;
+
+    const ventana = window.open('', '_blank', 'width=900,height=750');
+    if (!ventana) return;
+    ventana.document.write(html);
+    ventana.document.close();
+    setTimeout(() => ventana.print(), 500);
+  };
+
+  // ── Print Libros Contables (Mayor + Diario) ────────────────────────────────
+  const imprimirAsientos = async () => {
+    if (!qResumen.data) return;
+    setExportando(true);
+    try {
+      const resp = await apiClient.get(`/contabilidad/asientos?${params}&page=1&limit=2000`);
+      const [todosAsientos]: [Asiento[], number] = resp.data;
+      const r   = qResumen.data;
+      const emp = empresa;
+
+      const html = `<!DOCTYPE html><html lang="es"><head><meta charset="UTF-8">
+<title>Libros Contables — ${MESES[mes-1]} ${anio}</title><style>
+*{box-sizing:border-box;margin:0;padding:0}body{font-family:Arial,sans-serif;font-size:10px;color:#000;background:#fff;padding:20px}
+.wrap{max-width:960px;margin:0 auto}
+.hdr{display:flex;justify-content:space-between;align-items:flex-start;border:2px solid #0f172a;border-radius:6px;padding:12px 16px;margin-bottom:14px;background:#f8fafc}
+.hdr-left h1{font-size:14px;font-weight:700;color:#0f172a;text-transform:uppercase}
+.hdr-left p{font-size:9px;color:#475569;margin-top:3px}
+.hdr-right{text-align:right;font-size:9px;color:#64748b}.hdr-right strong{font-size:12px;color:#0f172a;display:block}
+.dato-row{display:flex;gap:24px;padding:8px 0;border-bottom:1px solid #e2e8f0;font-size:10px;color:#475569;margin-bottom:10px}
+.dato-row span strong{color:#0f172a}
+.sec{border:1px solid #cbd5e1;border-radius:6px;margin-bottom:14px;overflow:hidden}
+.sec-hdr{background:#0f172a;color:#fff;font-weight:700;font-size:10px;padding:6px 12px;text-transform:uppercase;letter-spacing:.8px}
+table{width:100%;border-collapse:collapse}
+th{background:#f1f5f9;font-size:9px;font-weight:700;text-align:left;padding:4px 8px;border-bottom:1px solid #cbd5e1;color:#334155}
+td{font-size:10px;padding:4px 8px;border-bottom:1px solid #f1f5f9;vertical-align:middle}
+.num{text-align:right}.fw{font-weight:700}
+.tot td{background:#e2e8f0;font-weight:700;font-size:11px;border-top:2px solid #0f172a}
+.pill{display:inline-block;font-size:8px;padding:1px 5px;border-radius:99px;font-weight:700}
+.pill-v{background:#dbeafe;color:#1e40af}.pill-c{background:#dcfce7;color:#166534}.pill-m{background:#fef3c7;color:#92400e}
+.nota{font-size:8px;color:#94a3b8;border-top:1px solid #e2e8f0;padding-top:6px;margin-top:10px;line-height:1.5}
+@media print{.sec{page-break-inside:avoid}}</style></head><body>
+<div class="wrap">
+
+<div class="hdr">
+  <div class="hdr-left">
+    <h1>📒 Libros Contables — ${MESES[mes-1]} ${anio}</h1>
+    <p>Libro Mayor y Libro Diario · Sistema iFactu DTE El Salvador</p>
+  </div>
+  <div class="hdr-right">
+    <strong>${emp?.nombreLegal ?? ''}</strong>
+    NIT: ${emp?.nit ?? '—'} | NRC: ${emp?.nrc ?? '—'}<br>
+    ${todosAsientos.length} asientos · Balance: ${Math.abs(Number(r.totalDebe) - Number(r.totalHaber)) < 0.01 ? '✓ Cuadrado' : '⚠ Descuadrado'}
+  </div>
+</div>
+
+<div class="sec">
+  <div class="sec-hdr">📊 Libro Mayor — Saldos por Cuenta</div>
+  <table>
+    <thead>
+      <tr><th style="width:10%">Código</th><th style="width:45%">Cuenta</th><th class="num">Debe</th><th class="num">Haber</th><th class="num">Saldo</th></tr>
+    </thead>
+    <tbody>
+      ${r.libroDiario.map(c => `
+      <tr>
+        <td style="font-family:monospace;color:#64748b">${c.codigo}</td>
+        <td>${c.nombre}</td>
+        <td class="num">${c.debe > 0 ? fmt(c.debe) : '—'}</td>
+        <td class="num">${c.haber > 0 ? fmt(c.haber) : '—'}</td>
+        <td class="num fw" style="color:${c.saldo > 0.005 ? '#1e40af' : c.saldo < -0.005 ? '#dc2626' : '#16a34a'}">${Math.abs(c.saldo) < 0.005 ? '—' : c.saldo < 0 ? `(${fmt(Math.abs(c.saldo))})` : fmt(c.saldo)}</td>
+      </tr>`).join('')}
+    </tbody>
+    <tfoot>
+      <tr class="tot">
+        <td colspan="2"><strong>TOTALES</strong></td>
+        <td class="num">${fmt(r.totalDebe)}</td>
+        <td class="num">${fmt(r.totalHaber)}</td>
+        <td class="num" style="color:${Math.abs(Number(r.totalDebe)-Number(r.totalHaber))<0.01?'#16a34a':'#dc2626'}">${Math.abs(Number(r.totalDebe)-Number(r.totalHaber))<0.01?'✓ Cuadrado':fmt(Math.abs(Number(r.totalDebe)-Number(r.totalHaber)))}</td>
+      </tr>
+    </tfoot>
+  </table>
+</div>
+
+<div class="sec">
+  <div class="sec-hdr">📒 Libro Diario — ${todosAsientos.length} Asientos</div>
+  <table>
+    <thead>
+      <tr><th style="width:9%">Fecha</th><th>Descripción</th><th style="width:8%">Tipo</th><th class="num" style="width:11%">Debe</th><th class="num" style="width:11%">Haber</th></tr>
+    </thead>
+    <tbody>
+      ${todosAsientos.map(a => `
+      <tr>
+        <td style="white-space:nowrap">${a.fecha}</td>
+        <td>${a.descripcion}</td>
+        <td><span class="pill ${a.tipo==='DTE_VENTA'?'pill-v':a.tipo==='COMPRA'?'pill-c':'pill-m'}">${a.tipo==='DTE_VENTA'?'Venta':a.tipo==='COMPRA'?'Compra':'Manual'}</span></td>
+        <td class="num">${fmt(a.totalDebe)}</td>
+        <td class="num">${fmt(a.totalHaber)}</td>
+      </tr>`).join('')}
+    </tbody>
+    <tfoot>
+      <tr class="tot">
+        <td colspan="3"><strong>TOTALES</strong></td>
+        <td class="num">${fmt(r.totalDebe)}</td>
+        <td class="num">${fmt(r.totalHaber)}</td>
+      </tr>
+    </tfoot>
+  </table>
+</div>
+
+<div class="nota">
+  Libros generados con iFactu DTE El Salvador · ${new Date().toLocaleDateString('es-SV')} · NIT: ${emp?.nit ?? '—'} | NRC: ${emp?.nrc ?? '—'}
+</div>
+
+</div></body></html>`;
+
+      const ventana = window.open('', '_blank', 'width=1000,height=800');
+      if (!ventana) return;
+      ventana.document.write(html);
+      ventana.document.close();
+      setTimeout(() => ventana.print(), 500);
+    } finally {
+      setExportando(false);
+    }
+  };
+
+  // ── Exportar asientos CSV ──────────────────────────────────────────────────
+  const exportarAsientosCSV = async () => {
+    setExportando(true);
+    try {
+      const resp = await apiClient.get(`/contabilidad/asientos?${params}&page=1&limit=2000`);
+      const [todosAsientos]: [Asiento[], number] = resp.data;
+
+      const filas: string[][] = [
+        ['Fecha','Descripción','Tipo','Total Debe','Total Haber','Código Cuenta','Nombre Cuenta','Debe Línea','Haber Línea'],
+      ];
+      for (const a of todosAsientos) {
+        if (a.lineas.length === 0) {
+          filas.push([a.fecha, a.descripcion, a.tipo, String(a.totalDebe), String(a.totalHaber), '', '', '', '']);
+        } else {
+          a.lineas.forEach((l, i) => {
+            filas.push([
+              i === 0 ? a.fecha        : '',
+              i === 0 ? a.descripcion  : '',
+              i === 0 ? a.tipo         : '',
+              i === 0 ? String(a.totalDebe)  : '',
+              i === 0 ? String(a.totalHaber) : '',
+              l.cuenta,
+              l.nombreCuenta,
+              String(l.debe),
+              String(l.haber),
+            ]);
+          });
+        }
+      }
+
+      const csv  = filas.map(r => r.map(v => `"${String(v).replace(/"/g,'""')}"`).join(',')).join('\r\n');
+      const blob = new Blob(['﻿' + csv], { type: 'text/csv;charset=utf-8;' });
+      const url  = URL.createObjectURL(blob);
+      const a    = document.createElement('a');
+      a.href     = url;
+      a.download = `asientos_${MESES[mes-1].toLowerCase()}_${anio}.csv`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+    } finally {
+      setExportando(false);
+    }
   };
 
   // ── Tab: F-07 ─────────────────────────────────────────────────────────────
@@ -431,6 +702,13 @@ td{font-size:11px;padding:5px 10px;border-bottom:1px solid #f1f5f9;vertical-alig
           ))}
         </div>
 
+        {/* Botón imprimir */}
+        <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: 16 }}>
+          <button className="btn btn-primary" onClick={imprimirPac}>
+            🖨️ Imprimir / Exportar F-14
+          </button>
+        </div>
+
         {/* Desglose */}
         <div className="table-card" style={{ marginBottom: 16 }}>
           <div className="table-header">
@@ -506,6 +784,24 @@ td{font-size:11px;padding:5px 10px;border-bottom:1px solid #f1f5f9;vertical-alig
             <div style={{ fontSize: 12, color: 'var(--text-muted)', marginTop: 4 }}>
               Procesa todos los DTEs emitidos y compras registradas del período
             </div>
+          </div>
+          <div style={{ display: 'flex', gap: 8, marginLeft: 'auto', alignSelf: 'center' }}>
+            <button
+              className="btn"
+              onClick={imprimirAsientos}
+              disabled={!qResumen.data || exportando}
+              title="Imprime Libro Mayor + Libro Diario"
+            >
+              {exportando ? '⏳ Exportando...' : '🖨️ Imprimir libros'}
+            </button>
+            <button
+              className="btn"
+              onClick={exportarAsientosCSV}
+              disabled={exportando}
+              title="Descarga todos los asientos del mes en formato CSV"
+            >
+              {exportando ? '⏳...' : '📥 Exportar CSV'}
+            </button>
           </div>
           {generar.isSuccess && (
             <div style={{ fontSize: 13, color: '#16a34a', background: '#f0fdf4', padding: '8px 14px', borderRadius: 8, border: '1px solid #bbf7d0' }}>
