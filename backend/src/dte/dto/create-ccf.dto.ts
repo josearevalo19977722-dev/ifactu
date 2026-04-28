@@ -1,5 +1,6 @@
 import { Transform, Type } from 'class-transformer';
 import {
+  ArrayMinSize,
   IsArray,
   IsBoolean,
   IsEmail,
@@ -136,6 +137,7 @@ export class CreateCcfDto {
   receptor: ReceptorCcfDto;
 
   @IsArray()
+  @ArrayMinSize(1, { message: 'Debe incluir al menos un ítem' })
   @ValidateNested({ each: true })
   @Type(() => ItemCcfDto)
   items: ItemCcfDto[];
@@ -144,6 +146,7 @@ export class CreateCcfDto {
   condicionOperacion: CondicionOperacion;
 
   @IsArray()
+  @ArrayMinSize(1, { message: 'Debe incluir al menos un pago' })
   @ValidateNested({ each: true })
   @Type(() => PagoDto)
   pagos: PagoDto[];
