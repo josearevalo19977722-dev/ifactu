@@ -1,4 +1,4 @@
-import { useState, useRef } from 'react';
+import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import apiClient from '../../api/apiClient';
 
@@ -69,7 +69,6 @@ export function ContabilidadPage() {
   const [tab,  setTab]  = useState<'f07' | 'pac' | 'asientos'>('f07');
   const [detalle, setDetalle]   = useState<Asiento | null>(null);
   const [asPage,  setAsPage]    = useState(1);
-  const printRef = useRef<HTMLDivElement>(null);
   const qc = useQueryClient();
 
   const params = `mes=${mes}&anio=${anio}`;
@@ -118,49 +117,132 @@ export function ContabilidadPage() {
 
   // ── Print F-07 ─────────────────────────────────────────────────────────────
   const imprimirF07 = () => {
-    const contenido = printRef.current?.innerHTML;
-    if (!contenido) return;
-    const ventana = window.open('', '_blank', 'width=900,height=700');
+    if (!qF07.data) return;
+    const d  = qF07.data;
+    const emp = empresa;
+    const ivaAPagar   = Number(d.f07.ivaPagar);
+    const esRemanente = ivaAPagar < 0;
+
+    const html = `<!DOCTYPE html><html lang="es"><head>
+<meta charset="UTF-8">
+<title>F-07 — ${MESES[mes-1]} ${anio}</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:Arial,sans-serif;font-size:11px;color:#000;background:#fff;padding:24px}
+.wrap{max-width:760px;margin:0 auto}
+/* Encabezado */
+.hdr{display:flex;justify-content:space-between;align-items:flex-start;border:2px solid #1e3a8a;border-radius:6px;padding:12px 16px;margin-bottom:14px;background:#eff6ff}
+.hdr-left h1{font-size:15px;font-weight:700;color:#1e3a8a;text-transform:uppercase}
+.hdr-left p{font-size:10px;color:#475569;margin-top:3px}
+.hdr-right{text-align:right;font-size:10px;color:#64748b}
+.hdr-right strong{font-size:13px;color:#1e3a8a;display:block}
+/* Datos contribuyente */
+.datos{display:grid;grid-template-columns:1fr 1fr;border:1px solid #cbd5e1;border-radius:6px;overflow:hidden;margin-bottom:14px}
+.dato{padding:6px 10px;border-right:1px solid #e2e8f0;border-bottom:1px solid #e2e8f0}
+.dato:nth-child(even){border-right:none}
+.dato.full{grid-column:1/-1;border-right:none}
+.dato .lbl{font-size:9px;color:#94a3b8;text-transform:uppercase;letter-spacing:.5px;display:block;margin-bottom:2px}
+.dato .val{font-size:11px;font-weight:700;color:#0f172a}
+/* Sección */
+.sec{border:1px solid #cbd5e1;border-radius:6px;margin-bottom:12px;overflow:hidden}
+.sec-hdr{background:#1e3a8a;color:#fff;font-weight:700;font-size:10px;padding:6px 12px;text-transform:uppercase;letter-spacing:.8px}
+table{width:100%;border-collapse:collapse}
+th{background:#f0f4ff;font-size:10px;font-weight:700;text-align:left;padding:5px 10px;border-bottom:1px solid #cbd5e1;color:#1e40af}
+td{font-size:11px;padding:5px 10px;border-bottom:1px solid #f1f5f9;vertical-align:middle}
+.num{text-align:right}
+.fw{font-weight:700}
+.tot td{background:#dbeafe;font-weight:700;font-size:12px;border-top:2px solid #1e3a8a}
+.neg{color:#dc2626}
+.pos{color:#16a34a}
+/* Liquidación */
+.liq{border:2px solid #1e3a8a;border-radius:6px;overflow:hidden;margin-bottom:14px}
+.liq-hdr{background:#1e3a8a;color:#fff;font-weight:700;font-size:10px;padding:6px 12px;text-transform:uppercase;letter-spacing:.8px}
+.liq-row{display:flex;justify-content:space-between;align-items:center;padding:8px 14px;border-bottom:1px solid #e2e8f0}
+.liq-row:last-child{border-bottom:none}
+.liq-lbl{font-size:12px;font-weight:600;color:#334155}
+.liq-val{font-size:14px;font-weight:800}
+.liq-result{background:${esRemanente?'#f0fdf4':'#fef2f2'};border-top:2px solid #000}
+.liq-result .liq-lbl{font-size:13px;font-weight:700;color:${esRemanente?'#14532d':'#7f1d1d'}}
+.liq-result .liq-val{font-size:22px;color:${esRemanente?'#16a34a':'#dc2626'}}
+/* Firma */
+.firma{display:grid;grid-template-columns:1fr 1fr;gap:30px;margin-top:24px}
+.firma-box{text-align:center;padding-top:8px;border-top:1px solid #94a3b8;font-size:10px;color:#64748b}
+/* Nota */
+.nota{font-size:9px;color:#94a3b8;border-top:1px solid #e2e8f0;padding-top:8px;margin-top:12px;line-height:1.5}
+@media print{body{padding:10px}}
+</style></head><body>
+<div class="wrap">
+
+<div class="hdr">
+  <div class="hdr-left">
+    <h1>Declaración Mensual del IVA — F-07</h1>
+    <p>Ministerio de Hacienda · República de El Salvador</p>
+  </div>
+  <div class="hdr-right">
+    <strong>iFactu</strong>Sistema DTE El Salvador<br>Período: <strong>${MESES[mes-1]} ${anio}</strong>
+  </div>
+</div>
+
+<div class="datos">
+  <div class="dato full"><span class="lbl">Nombre / Razón Social</span><span class="val">${emp?.nombreLegal ?? '—'}</span></div>
+  <div class="dato"><span class="lbl">NIT</span><span class="val">${emp?.nit ?? '—'}</span></div>
+  <div class="dato"><span class="lbl">NRC</span><span class="val">${emp?.nrc ?? '—'}</span></div>
+  <div class="dato"><span class="lbl">Actividad Económica</span><span class="val">${emp?.descActividad ?? '—'}</span></div>
+  <div class="dato"><span class="lbl">Período</span><span class="val">${MESES[mes-1]} ${anio}</span></div>
+  <div class="dato full"><span class="lbl">Dirección</span><span class="val">${[emp?.complemento, emp?.municipio, emp?.departamento].filter(Boolean).join(', ') || '—'}</span></div>
+</div>
+
+<div class="sec">
+  <div class="sec-hdr">2. Débito Fiscal — Ventas del Período</div>
+  <table>
+    <thead><tr><th style="width:45%">Concepto</th><th class="num">Docs.</th><th class="num">Ventas Exentas</th><th class="num">Ventas Gravadas</th><th class="num">IVA 13%</th></tr></thead>
+    <tbody>
+      <tr><td>Ventas a Consumidores Finales (CF)</td><td class="num">${d.cf.cantidad}</td><td class="num">${Number(d.cf.exenta)>0?fmt(d.cf.exenta):'—'}</td><td class="num">${fmt(d.cf.gravada)}</td><td class="num fw neg">${fmt(d.cf.iva)}</td></tr>
+      <tr><td>Ventas a Contribuyentes (CCF / NC / ND)</td><td class="num">${d.ccf.cantidad}</td><td class="num">${Number(d.ccf.exenta)>0?fmt(d.ccf.exenta):'—'}</td><td class="num">${fmt(d.ccf.gravada)}</td><td class="num fw neg">${fmt(d.ccf.iva)}</td></tr>
+      ${Number(d.reten.cantidad)>0?`<tr><td>IVA Retenido (Comprobantes de Retención)</td><td class="num">${d.reten.cantidad}</td><td class="num">—</td><td class="num">—</td><td class="num fw neg">${fmt(d.reten.total)}</td></tr>`:''}
+    </tbody>
+    <tfoot><tr class="tot"><td colspan="2"><strong>Total Débito Fiscal</strong></td><td class="num">${fmt(Number(d.cf.exenta)+Number(d.ccf.exenta))}</td><td class="num">${fmt(Number(d.cf.gravada)+Number(d.ccf.gravada))}</td><td class="num neg">${fmt(d.f07.debitoFiscal)}</td></tr></tfoot>
+  </table>
+</div>
+
+<div class="sec">
+  <div class="sec-hdr">3. Crédito Fiscal — Compras del Período</div>
+  <table>
+    <thead><tr><th style="width:45%">Concepto</th><th class="num">Docs.</th><th class="num">Compras Exentas</th><th class="num">Compras Gravadas</th><th class="num">IVA Crédito</th></tr></thead>
+    <tbody>
+      <tr><td>Compras internas registradas</td><td class="num">${d.compras.cantidad}</td><td class="num">${Number(d.compras.compraExenta)>0?fmt(d.compras.compraExenta):'—'}</td><td class="num">${fmt(d.compras.compraGravada)}</td><td class="num fw pos">${fmt(d.compras.ivaCredito)}</td></tr>
+    </tbody>
+    <tfoot><tr class="tot"><td colspan="4"><strong>Total Crédito Fiscal</strong></td><td class="num pos">${fmt(d.f07.creditoFiscal)}</td></tr></tfoot>
+  </table>
+</div>
+
+<div class="liq">
+  <div class="liq-hdr">4. Liquidación del Impuesto</div>
+  <div class="liq-row"><span class="liq-lbl">Débito Fiscal del período</span><span class="liq-val neg">${fmt(d.f07.debitoFiscal)}</span></div>
+  <div class="liq-row"><span class="liq-lbl">Menos: Crédito Fiscal del período</span><span class="liq-val pos">(${fmt(d.f07.creditoFiscal)})</span></div>
+  <div class="liq-row liq-result">
+    <span class="liq-lbl">${esRemanente?'✅ Remanente de Crédito Fiscal (a favor)':'💳 IVA a pagar al Fisco'}</span>
+    <span class="liq-val">${fmt(Math.abs(ivaAPagar))}</span>
+  </div>
+</div>
+
+<div class="nota">
+  Declaración preparada con el sistema iFactu DTE El Salvador. Los valores deben verificarse y declararse en el portal de Hacienda antes del último día hábil del mes siguiente al período declarado.<br>
+  NIT: ${emp?.nit??'—'} | NRC: ${emp?.nrc??'—'} | Período: ${MESES[mes-1]} ${anio}
+</div>
+
+<div class="firma">
+  <div class="firma-box">Firma del Contribuyente o Representante Legal</div>
+  <div class="firma-box">Sello de la Empresa</div>
+</div>
+
+</div></body></html>`;
+
+    const ventana = window.open('', '_blank', 'width=900,height=750');
     if (!ventana) return;
-    ventana.document.write(`<!DOCTYPE html><html lang="es"><head>
-      <meta charset="UTF-8">
-      <title>Declaración IVA F-07 — ${MESES[mes-1]} ${anio}</title>
-      <style>
-        * { box-sizing: border-box; margin: 0; padding: 0; }
-        body { font-family: Arial, sans-serif; font-size: 11px; color: #000; background: #fff; padding: 20px; }
-        .f07-wrap { max-width: 780px; margin: 0 auto; }
-        .f07-header { border: 2px solid #000; padding: 10px 14px; margin-bottom: 12px; display: flex; justify-content: space-between; align-items: flex-start; }
-        .f07-title { font-size: 14px; font-weight: 700; text-transform: uppercase; }
-        .f07-subtitle { font-size: 11px; color: #333; margin-top: 2px; }
-        .f07-logo { text-align: right; font-size: 10px; color: #555; }
-        .f07-datos { display: grid; grid-template-columns: 1fr 1fr; gap: 0; border: 1px solid #000; margin-bottom: 12px; }
-        .f07-campo { padding: 5px 8px; border-right: 1px solid #aaa; border-bottom: 1px solid #aaa; }
-        .f07-campo:nth-child(even) { border-right: none; }
-        .f07-campo label { font-size: 9px; color: #555; text-transform: uppercase; display: block; }
-        .f07-campo span { font-size: 11px; font-weight: 600; }
-        .seccion { border: 1px solid #000; margin-bottom: 10px; }
-        .seccion-title { background: #2563eb; color: #fff; font-weight: 700; font-size: 11px; padding: 5px 10px; text-transform: uppercase; letter-spacing: .5px; }
-        table { width: 100%; border-collapse: collapse; }
-        th { background: #e8f0fe; font-size: 10px; text-align: left; padding: 4px 8px; border-bottom: 1px solid #aaa; }
-        td { font-size: 11px; padding: 4px 8px; border-bottom: 1px solid #e5e7eb; vertical-align: middle; }
-        .num { text-align: right; font-weight: 600; }
-        .tot-row td { background: #f0f4ff; font-weight: 700; border-top: 2px solid #2563eb; }
-        .liq { border: 2px solid #000; margin-bottom: 12px; }
-        .liq-row { display: flex; justify-content: space-between; padding: 7px 14px; border-bottom: 1px solid #ccc; font-size: 12px; }
-        .liq-row:last-child { border-bottom: none; }
-        .liq-label { font-weight: 600; }
-        .liq-val { font-weight: 700; font-size: 14px; }
-        .pagar { background: #fef2f2; }
-        .favor { background: #f0fdf4; }
-        .pagar .liq-val { color: #dc2626; }
-        .favor .liq-val { color: #16a34a; }
-        .firma { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin-top: 20px; }
-        .firma-box { border-top: 1px solid #000; padding-top: 4px; text-align: center; font-size: 10px; color: #555; }
-        @media print { body { padding: 10px; } }
-      </style>
-    </head><body>${contenido}</body></html>`);
+    ventana.document.write(html);
     ventana.document.close();
-    setTimeout(() => { ventana.print(); }, 400);
+    setTimeout(() => ventana.print(), 500);
   };
 
   // ── Tab: F-07 ─────────────────────────────────────────────────────────────
@@ -170,8 +252,19 @@ export function ContabilidadPage() {
     if (qF07.isError)   return <ErrorBox />;
     if (!d) return null;
 
-    const ivaAPagar = Number(d.f07.ivaPagar);
+    const ivaAPagar   = Number(d.f07.ivaPagar);
     const esRemanente = ivaAPagar < 0;
+
+    // Fila de tabla helper
+    const TR = ({ label, docs, exenta, gravada, iva, bold }: { label: string; docs?: number; exenta?: number; gravada?: number; iva?: number; bold?: boolean }) => (
+      <tr style={bold ? { background: '#f0f4ff', fontWeight: 700 } : {}}>
+        <td style={{ fontSize: 13, fontWeight: bold ? 700 : 400 }}>{label}</td>
+        <td style={{ textAlign: 'center', color: 'var(--text-muted)', fontSize: 12 }}>{docs != null ? docs : ''}</td>
+        <td style={{ textAlign: 'right', fontSize: 12 }}>{exenta != null && exenta > 0 ? fmt(exenta) : '—'}</td>
+        <td style={{ textAlign: 'right', fontSize: 13, fontWeight: 600 }}>{gravada != null ? fmt(gravada) : '—'}</td>
+        <td style={{ textAlign: 'right', fontSize: 13, fontWeight: bold ? 700 : 600, color: bold ? '#dc2626' : undefined }}>{iva != null ? fmt(iva) : '—'}</td>
+      </tr>
+    );
 
     return (
       <>
@@ -180,8 +273,8 @@ export function ContabilidadPage() {
           {[
             { icon: '🧾', label: 'Facturas CF',      value: String(d.cf.cantidad),              color: 'blue'   },
             { icon: '📄', label: 'CCF / NC / ND',    value: String(d.ccf.cantidad),             color: 'blue'   },
-            { icon: '💰', label: 'Ventas Netas CF',  value: fmt(d.cf.gravada + d.cf.exenta),   color: 'green'  },
-            { icon: '💰', label: 'Ventas Netas CCF', value: fmt(d.ccf.gravada + d.ccf.exenta), color: 'green'  },
+            { icon: '💰', label: 'Ventas Netas CF',  value: fmt(d.cf.gravada),                  color: 'green'  },
+            { icon: '💰', label: 'Ventas Netas CCF', value: fmt(d.ccf.gravada),                 color: 'green'  },
             { icon: '📈', label: 'Débito Fiscal',    value: fmt(d.f07.debitoFiscal),            color: 'red'    },
             { icon: '📉', label: 'Crédito Fiscal',   value: fmt(d.f07.creditoFiscal),           color: 'yellow' },
           ].map(k => (
@@ -196,162 +289,118 @@ export function ContabilidadPage() {
         </div>
 
         {/* Botón imprimir */}
-        <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: 12 }}>
+        <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: 16 }}>
           <button className="btn btn-primary" onClick={imprimirF07}>
             🖨️ Imprimir / Exportar F-07
           </button>
         </div>
 
-        {/* ── Contenido imprimible ─────────────────────────────────────── */}
-        <div ref={printRef}>
-          <div className="f07-wrap">
-
-            {/* Encabezado */}
-            <div className="f07-header">
-              <div>
-                <div className="f07-title">📊 Declaración Mensual del IVA — Formulario F-07</div>
-                <div className="f07-subtitle">Ministerio de Hacienda · El Salvador</div>
+        {/* Datos del contribuyente */}
+        <div className="table-card" style={{ marginBottom: 16 }}>
+          <div className="table-header" style={{ background: 'linear-gradient(135deg,#1e3a8a,#2563eb)' }}>
+            <span style={{ color: '#fff', fontWeight: 700, fontSize: 14 }}>📊 Declaración IVA — F-07 · {d.nombreMes} {d.anio}</span>
+            <span style={{ color: 'rgba(255,255,255,.7)', fontSize: 12 }}>Ministerio de Hacienda · El Salvador</span>
+          </div>
+          <div style={{ padding: '14px 20px', display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '10px 20px' }}>
+            {[
+              { label: 'Nombre / Razón Social', value: empresa?.nombreLegal ?? '—', full: true },
+              { label: 'NIT', value: empresa?.nit ?? '—' },
+              { label: 'NRC', value: empresa?.nrc ?? '—' },
+              { label: 'Actividad Económica', value: empresa?.descActividad ?? '—' },
+              { label: 'Período', value: `${MESES[mes-1]} ${anio}` },
+              { label: 'Dirección', value: [empresa?.complemento, empresa?.municipio, empresa?.departamento].filter(Boolean).join(', ') || '—', full: true },
+            ].map(f => (
+              <div key={f.label} style={f.full ? { gridColumn: '1 / -1' } : {}}>
+                <div style={{ fontSize: 10, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: .5, marginBottom: 2 }}>{f.label}</div>
+                <div style={{ fontSize: 13, fontWeight: 600 }}>{f.value}</div>
               </div>
-              <div className="f07-logo">
-                <div style={{ fontWeight: 700, fontSize: 13 }}>iFactu</div>
-                <div style={{ fontSize: 10, color: '#64748b' }}>Sistema DTE El Salvador</div>
-              </div>
-            </div>
+            ))}
+          </div>
+        </div>
 
-            {/* Datos del contribuyente */}
-            <div className="seccion" style={{ marginBottom: 12 }}>
-              <div className="seccion-title">1. Datos del Contribuyente</div>
-              <div className="f07-datos">
-                <div className="f07-campo" style={{ gridColumn: '1 / -1' }}>
-                  <label>Nombre / Razón Social</label>
-                  <span>{empresa?.nombreLegal ?? '—'}</span>
-                </div>
-                <div className="f07-campo"><label>NIT</label><span>{empresa?.nit ?? '—'}</span></div>
-                <div className="f07-campo"><label>NRC</label><span>{empresa?.nrc ?? '—'}</span></div>
-                <div className="f07-campo"><label>Actividad Económica</label><span>{empresa?.descActividad ?? '—'}</span></div>
-                <div className="f07-campo"><label>Período</label><span>{MESES[mes-1]} {anio}</span></div>
-                <div className="f07-campo" style={{ gridColumn: '1 / -1' }}>
-                  <label>Dirección</label>
-                  <span>{[empresa?.complemento, empresa?.municipio, empresa?.departamento].filter(Boolean).join(', ') || '—'}</span>
-                </div>
-              </div>
-            </div>
+        {/* Débito Fiscal */}
+        <div className="table-card" style={{ marginBottom: 14 }}>
+          <div className="table-header">
+            <span className="table-title">2. Débito Fiscal — Ventas del Período</span>
+          </div>
+          <table className="table">
+            <thead>
+              <tr>
+                <th style={{ width: '42%' }}>Concepto</th>
+                <th style={{ textAlign: 'center' }}>Docs.</th>
+                <th style={{ textAlign: 'right' }}>Ventas Exentas</th>
+                <th style={{ textAlign: 'right' }}>Ventas Gravadas</th>
+                <th style={{ textAlign: 'right' }}>IVA 13%</th>
+              </tr>
+            </thead>
+            <tbody>
+              <TR label="Ventas a Consumidores Finales (CF)" docs={d.cf.cantidad}  exenta={d.cf.exenta}  gravada={d.cf.gravada}  iva={d.cf.iva}  />
+              <TR label="Ventas a Contribuyentes (CCF/NC/ND)" docs={d.ccf.cantidad} exenta={d.ccf.exenta} gravada={d.ccf.gravada} iva={d.ccf.iva} />
+              {d.reten.cantidad > 0 && <TR label={`IVA Retenido (${d.reten.cantidad} CR)`} iva={d.reten.total} />}
+              <TR label="Total Débito Fiscal" exenta={Number(d.cf.exenta)+Number(d.ccf.exenta)} gravada={Number(d.cf.gravada)+Number(d.ccf.gravada)} iva={d.f07.debitoFiscal} bold />
+            </tbody>
+          </table>
+        </div>
 
-            {/* Sección Débito Fiscal */}
-            <div className="seccion">
-              <div className="seccion-title">2. Débito Fiscal — Ventas del Período</div>
-              <table>
-                <thead>
-                  <tr>
-                    <th style={{ width: '50%' }}>Concepto</th>
-                    <th style={{ textAlign: 'right' }}>Docs.</th>
-                    <th style={{ textAlign: 'right' }}>Ventas Exentas</th>
-                    <th style={{ textAlign: 'right' }}>Ventas Gravadas (neto)</th>
-                    <th style={{ textAlign: 'right' }}>IVA 13%</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  <tr>
-                    <td>Ventas a Consumidores Finales (F-CF)</td>
-                    <td className="num">{d.cf.cantidad}</td>
-                    <td className="num">{d.cf.exenta > 0 ? fmt(d.cf.exenta) : '—'}</td>
-                    <td className="num">{fmt(d.cf.gravada)}</td>
-                    <td className="num" style={{ color: '#dc2626', fontWeight: 700 }}>{fmt(d.cf.iva)}</td>
-                  </tr>
-                  <tr>
-                    <td>Ventas a Contribuyentes (CCF / NC / ND)</td>
-                    <td className="num">{d.ccf.cantidad}</td>
-                    <td className="num">{d.ccf.exenta > 0 ? fmt(d.ccf.exenta) : '—'}</td>
-                    <td className="num">{fmt(d.ccf.gravada)}</td>
-                    <td className="num" style={{ color: '#dc2626', fontWeight: 700 }}>{fmt(d.ccf.iva)}</td>
-                  </tr>
-                  {d.reten.cantidad > 0 && (
-                    <tr>
-                      <td>IVA Retenido (Comprobantes de Retención)</td>
-                      <td className="num">{d.reten.cantidad}</td>
-                      <td className="num">—</td>
-                      <td className="num">—</td>
-                      <td className="num">{fmt(d.reten.total)}</td>
-                    </tr>
-                  )}
-                </tbody>
-                <tfoot>
-                  <tr className="tot-row">
-                    <td colSpan={2}><strong>Total Débito Fiscal</strong></td>
-                    <td className="num">{fmt(Number(d.cf.exenta) + Number(d.ccf.exenta))}</td>
-                    <td className="num">{fmt(Number(d.cf.gravada) + Number(d.ccf.gravada))}</td>
-                    <td className="num" style={{ color: '#dc2626' }}>{fmt(d.f07.debitoFiscal)}</td>
-                  </tr>
-                </tfoot>
-              </table>
-            </div>
+        {/* Crédito Fiscal */}
+        <div className="table-card" style={{ marginBottom: 14 }}>
+          <div className="table-header">
+            <span className="table-title">3. Crédito Fiscal — Compras del Período</span>
+          </div>
+          <table className="table">
+            <thead>
+              <tr>
+                <th style={{ width: '42%' }}>Concepto</th>
+                <th style={{ textAlign: 'center' }}>Docs.</th>
+                <th style={{ textAlign: 'right' }}>Compras Exentas</th>
+                <th style={{ textAlign: 'right' }}>Compras Gravadas</th>
+                <th style={{ textAlign: 'right' }}>IVA Crédito</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td>Compras internas registradas</td>
+                <td style={{ textAlign: 'center', color: 'var(--text-muted)', fontSize: 12 }}>{d.compras.cantidad}</td>
+                <td style={{ textAlign: 'right', fontSize: 12 }}>{Number(d.compras.compraExenta) > 0 ? fmt(d.compras.compraExenta) : '—'}</td>
+                <td style={{ textAlign: 'right', fontSize: 13, fontWeight: 600 }}>{fmt(d.compras.compraGravada)}</td>
+                <td style={{ textAlign: 'right', fontSize: 13, fontWeight: 600, color: '#16a34a' }}>{fmt(d.compras.ivaCredito)}</td>
+              </tr>
+              <tr style={{ background: '#f0fdf4', fontWeight: 700 }}>
+                <td colSpan={4} style={{ fontWeight: 700 }}>Total Crédito Fiscal</td>
+                <td style={{ textAlign: 'right', color: '#16a34a', fontWeight: 700 }}>{fmt(d.f07.creditoFiscal)}</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
 
-            {/* Sección Crédito Fiscal */}
-            <div className="seccion" style={{ marginTop: 10 }}>
-              <div className="seccion-title">3. Crédito Fiscal — Compras del Período</div>
-              <table>
-                <thead>
-                  <tr>
-                    <th style={{ width: '50%' }}>Concepto</th>
-                    <th style={{ textAlign: 'right' }}>Docs.</th>
-                    <th style={{ textAlign: 'right' }}>Compras Exentas</th>
-                    <th style={{ textAlign: 'right' }}>Compras Gravadas (neto)</th>
-                    <th style={{ textAlign: 'right' }}>IVA Crédito</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  <tr>
-                    <td>Compras internas registradas</td>
-                    <td className="num">{d.compras.cantidad}</td>
-                    <td className="num">{(d.compras as any).compraExenta > 0 ? fmt((d.compras as any).compraExenta) : '—'}</td>
-                    <td className="num">{fmt(d.compras.compraGravada)}</td>
-                    <td className="num" style={{ color: '#16a34a', fontWeight: 700 }}>{fmt(d.compras.ivaCredito)}</td>
-                  </tr>
-                </tbody>
-                <tfoot>
-                  <tr className="tot-row">
-                    <td colSpan={4}><strong>Total Crédito Fiscal</strong></td>
-                    <td className="num" style={{ color: '#16a34a' }}>{fmt(d.f07.creditoFiscal)}</td>
-                  </tr>
-                </tfoot>
-              </table>
+        {/* Liquidación */}
+        <div style={{
+          border: `2px solid ${esRemanente ? '#16a34a' : '#dc2626'}`,
+          borderRadius: 12, overflow: 'hidden', maxWidth: 560,
+        }}>
+          <div style={{ background: '#1e3a8a', color: '#fff', fontWeight: 700, fontSize: 12, padding: '8px 16px', textTransform: 'uppercase', letterSpacing: .8 }}>
+            4. Liquidación del Impuesto
+          </div>
+          {[
+            { label: 'Débito Fiscal del período',       value: fmt(d.f07.debitoFiscal),   color: '#dc2626' },
+            { label: 'Menos: Crédito Fiscal del período', value: `(${fmt(d.f07.creditoFiscal)})`, color: '#16a34a' },
+          ].map((row, i) => (
+            <div key={i} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '10px 18px', borderBottom: '1px solid #e5e7eb' }}>
+              <span style={{ fontSize: 13, fontWeight: 600 }}>{row.label}</span>
+              <span style={{ fontSize: 15, fontWeight: 700, color: row.color }}>{row.value}</span>
             </div>
-
-            {/* Liquidación */}
-            <div className="liq" style={{ marginTop: 10 }}>
-              <div style={{ background: '#1e3a8a', color: '#fff', fontWeight: 700, fontSize: 11, padding: '5px 10px', textTransform: 'uppercase', letterSpacing: .5 }}>
-                4. Liquidación del Impuesto
-              </div>
-              <div className="liq-row">
-                <span className="liq-label">Débito Fiscal del período</span>
-                <span className="liq-val" style={{ color: '#dc2626' }}>{fmt(d.f07.debitoFiscal)}</span>
-              </div>
-              <div className="liq-row">
-                <span className="liq-label">Menos: Crédito Fiscal del período</span>
-                <span className="liq-val" style={{ color: '#16a34a' }}>({fmt(d.f07.creditoFiscal)})</span>
-              </div>
-              <div className={`liq-row ${esRemanente ? 'favor' : 'pagar'}`} style={{ borderTop: '2px solid #000' }}>
-                <span className="liq-label" style={{ fontSize: 13 }}>
-                  {esRemanente ? '✅ Remanente de Crédito Fiscal (a favor)' : '💳 IVA a pagar al Fisco'}
-                </span>
-                <span className="liq-val" style={{ fontSize: 20 }}>
-                  {fmt(Math.abs(ivaAPagar))}
-                </span>
-              </div>
-            </div>
-
-            {/* Nota legal */}
-            <div style={{ fontSize: 10, color: '#64748b', borderTop: '1px solid #e5e7eb', paddingTop: 8, marginTop: 8 }}>
-              Declaración preparada con el sistema iFactu DTE El Salvador.
-              Los valores deben ser verificados y declarados en el portal de Hacienda antes del último día hábil del mes siguiente al período declarado.
-              NIT: {empresa?.nit ?? '—'} | NRC: {empresa?.nrc ?? '—'} | Período: {MESES[mes-1]} {anio}
-            </div>
-
-            {/* Firmas */}
-            <div className="firma">
-              <div className="firma-box">Firma del Contribuyente o Representante Legal</div>
-              <div className="firma-box">Sello de la Empresa</div>
-            </div>
+          ))}
+          <div style={{
+            display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+            padding: '14px 18px',
+            background: esRemanente ? '#f0fdf4' : '#fef2f2',
+          }}>
+            <span style={{ fontSize: 14, fontWeight: 700, color: esRemanente ? '#14532d' : '#7f1d1d' }}>
+              {esRemanente ? '✅ Remanente de Crédito Fiscal (a favor)' : '💳 IVA a pagar al Fisco'}
+            </span>
+            <span style={{ fontSize: 28, fontWeight: 900, color: esRemanente ? '#16a34a' : '#dc2626' }}>
+              {fmt(Math.abs(ivaAPagar))}
+            </span>
           </div>
         </div>
       </>
