@@ -528,12 +528,12 @@ td{font-size:10px;padding:4px 8px;border-bottom:1px solid #f1f5f9;vertical-align
 
     // Fila de tabla helper
     const TR = ({ label, docs, exenta, gravada, iva, bold }: { label: string; docs?: number; exenta?: number; gravada?: number; iva?: number; bold?: boolean }) => (
-      <tr style={bold ? { background: '#f0f4ff', fontWeight: 700 } : {}}>
-        <td style={{ fontSize: 13, fontWeight: bold ? 700 : 400 }}>{label}</td>
+      <tr style={bold ? { background: 'rgba(59,130,246,0.18)', fontWeight: 700, borderTop: '2px solid rgba(59,130,246,0.4)' } : {}}>
+        <td style={{ fontSize: 13, fontWeight: bold ? 700 : 400, color: bold ? 'var(--text-main)' : undefined }}>{label}</td>
         <td style={{ textAlign: 'center', color: 'var(--text-muted)', fontSize: 12 }}>{docs != null ? docs : ''}</td>
-        <td style={{ textAlign: 'right', fontSize: 12 }}>{exenta != null && exenta > 0 ? fmt(exenta) : '—'}</td>
-        <td style={{ textAlign: 'right', fontSize: 13, fontWeight: 600 }}>{gravada != null ? fmt(gravada) : '—'}</td>
-        <td style={{ textAlign: 'right', fontSize: 13, fontWeight: bold ? 700 : 600, color: bold ? '#dc2626' : undefined }}>{iva != null ? fmt(iva) : '—'}</td>
+        <td style={{ textAlign: 'right', fontSize: 12, color: bold ? 'var(--text-main)' : undefined }}>{exenta != null && exenta > 0 ? fmt(exenta) : '—'}</td>
+        <td style={{ textAlign: 'right', fontSize: 13, fontWeight: 600, color: bold ? 'var(--text-main)' : undefined }}>{gravada != null ? fmt(gravada) : '—'}</td>
+        <td style={{ textAlign: 'right', fontSize: 13, fontWeight: bold ? 800 : 600, color: bold ? '#f87171' : undefined }}>{iva != null ? fmt(iva) : '—'}</td>
       </tr>
     );
 
@@ -636,9 +636,9 @@ td{font-size:10px;padding:4px 8px;border-bottom:1px solid #f1f5f9;vertical-align
                 <td style={{ textAlign: 'right', fontSize: 13, fontWeight: 600 }}>{fmt(d.compras.compraGravada)}</td>
                 <td style={{ textAlign: 'right', fontSize: 13, fontWeight: 600, color: '#16a34a' }}>{fmt(d.compras.ivaCredito)}</td>
               </tr>
-              <tr style={{ background: '#f0fdf4', fontWeight: 700 }}>
-                <td colSpan={4} style={{ fontWeight: 700 }}>Total Crédito Fiscal</td>
-                <td style={{ textAlign: 'right', color: '#16a34a', fontWeight: 700 }}>{fmt(d.f07.creditoFiscal)}</td>
+              <tr style={{ background: 'rgba(34,197,94,0.18)', fontWeight: 700, borderTop: '2px solid rgba(34,197,94,0.4)' }}>
+                <td colSpan={4} style={{ fontWeight: 700, color: 'var(--text-main)' }}>Total Crédito Fiscal</td>
+                <td style={{ textAlign: 'right', color: '#4ade80', fontWeight: 800 }}>{fmt(d.f07.creditoFiscal)}</td>
               </tr>
             </tbody>
           </table>
