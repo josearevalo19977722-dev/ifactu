@@ -131,6 +131,50 @@ export class ReportesService {
 
   // ── Resumen JSON (para vista previa en frontend) ─────────────────────────
 
+  // ── Pago a Cuenta (F-14) — 1.75 % sobre ingresos brutos ─────────────────
+
+  async pagoACuenta(mes: number, anio: number) {
+    const tipos = ['01','03','05','06','07','11','14','15'];
+    const dtes  = await this.getDtesMes(tipos, mes, anio);
+
+    const porTipo: Record<string, { nombre: string; cantidad: number; total: number }> = {};
+    const NOMBRES: Record<string, string> = {
+      '01': 'Factura CF',
+      '03': 'Crédito Fiscal',
+      '05': 'Nota de Crédito',
+      '06': 'Nota de Débito',
+      '07': 'Retención',
+      '11': 'F. Exportación',
+      '14': 'Sujeto Excluido',
+      '15': 'Donación',
+    };
+
+    let ingresosBrutos = 0;
+    for (const dte of dtes) {
+      const t = dte.tipoDte;
+      if (!porTipo[t]) porTipo[t] = { nombre: NOMBRES[t] ?? `Tipo ${t}`, cantidad: 0, total: 0 };
+      const monto = n(dte.totalPagar);
+      // NC reduce ingresos
+      const factor = t === '05' ? -1 : 1;
+      porTipo[t].cantidad += 1;
+      porTipo[t].total     = n(porTipo[t].total + monto * factor);
+      ingresosBrutos       = n(ingresosBrutos   + monto * factor);
+    }
+
+    const tasa        = 1.75;
+    const pagoACuenta = n(ingresosBrutos * tasa / 100);
+
+    return {
+      mes, anio, nombreMes: MESES[mes - 1],
+      ingresosBrutos: n(ingresosBrutos),
+      tasa,
+      pagoACuenta,
+      porTipo: Object.entries(porTipo)
+        .sort((a, b) => a[0].localeCompare(b[0]))
+        .map(([tipoDte, d]) => ({ tipoDte, ...d })),
+    };
+  }
+
   async resumenMes(mes: number, anio: number) {
     const [cf, ccf, reten] = await Promise.all([
       this.getDtesMes(['01'], mes, anio),

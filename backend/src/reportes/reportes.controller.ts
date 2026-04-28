@@ -8,6 +8,15 @@ import { ReportesService } from './reportes.service';
 export class ReportesController {
   constructor(private readonly reportesService: ReportesService) {}
 
+  /** Pago a Cuenta F-14 — 1.75 % sobre ingresos brutos */
+  @Get('pago-a-cuenta')
+  pagoACuenta(
+    @Query('mes')  mes:  string,
+    @Query('anio') anio: string,
+  ) {
+    return this.reportesService.pagoACuenta(Number(mes), Number(anio));
+  }
+
   /** Vista previa JSON para el frontend */
   @Get('resumen')
   resumen(

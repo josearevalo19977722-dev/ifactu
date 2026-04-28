@@ -81,3 +81,6 @@ export const MiPlanPage = lazy(() =>
 export const PagosAdmin = lazy(() =>
   import('../pages/admin/PagosAdmin').then(m => ({ default: m.PagosAdmin })),
 );
+export const ContabilidadPage = lazy(() =>
+  import('../pages/contabilidad/ContabilidadPage').then(m => ({ default: m.ContabilidadPage })),
+);

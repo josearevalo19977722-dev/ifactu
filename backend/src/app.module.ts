@@ -18,6 +18,7 @@ import { EmpresaModule } from './empresa/empresa.module';
 import { JobsModule } from './jobs/module/jobs.module';
 import { SuperadminModule } from './superadmin/superadmin.module';
 import { BillingModule } from './billing/billing.module';
+import { ContabilidadModule } from './contabilidad/contabilidad.module';
 import { ServeStaticModule } from '@nestjs/serve-static';
 import { ScheduleModule } from '@nestjs/schedule';
 import { join } from 'path';
@@ -46,6 +47,7 @@ import { Usuario } from './usuarios/usuario.entity';
     JobsModule,
     SuperadminModule,
     BillingModule,
+    ContabilidadModule,
     ServeStaticModule.forRoot({
       rootPath: join(__dirname, '..', 'uploads'),
       serveRoot: '/uploads',

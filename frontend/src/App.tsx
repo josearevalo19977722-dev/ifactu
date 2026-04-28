@@ -34,6 +34,7 @@ import {
   SaludSistema,
   MiPlanPage,
   PagosAdmin,
+  ContabilidadPage,
 } from './routes/lazyPages';
 import { ImpersonacionBanner } from './components/ImpersonacionBanner';
 import { DteLimiteProvider } from './components/DteLimiteProvider';
@@ -204,6 +205,9 @@ function AppLayout() {
                 <NavLink to="/inventario">
                   <span className="nav-icon" aria-hidden>📦</span> Inventario
                 </NavLink>
+                <NavLink to="/contabilidad">
+                  <span className="nav-icon" aria-hidden>🏦</span> Contabilidad
+                </NavLink>
                 <NavLink to="/reportes">
                   <span className="nav-icon" aria-hidden>📒</span> Libros / Anexos
                 </NavLink>
@@ -288,6 +292,7 @@ function AppLayout() {
             <Route path="/donacion/nuevo" element={<NuevaDonacion />} />
             <Route path="/compras" element={<Compras />} />
             <Route path="/inventario" element={<Inventario />} />
+            <Route path="/contabilidad" element={<ContabilidadPage />} />
             <Route path="/reportes" element={<Reportes />} />
             <Route path="/contactos" element={<Contactos />} />
             <Route path="/contingencia" element={<Contingencia />} />
