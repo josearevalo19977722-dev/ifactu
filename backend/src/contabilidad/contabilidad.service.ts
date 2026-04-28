@@ -193,11 +193,13 @@ export class ContabilidadService {
       this.asientoRepo.createQueryBuilder('a')
         .where('a.fecha >= :desde', { desde })
         .andWhere('a.fecha <= :hasta', { hasta })
-        .select('a.referencia_id', 'rid')
-        .getRawMany(),
+        .select('a.referenciaId')
+        .getMany(),
     ]);
 
-    const idsExistentes = new Set<string>(existentes.map((e: any) => e.rid).filter(Boolean));
+    const idsExistentes = new Set<string>(
+      existentes.map(a => a.referenciaId).filter(Boolean) as string[],
+    );
 
     let generados = 0;
     let omitidos  = 0;
@@ -229,7 +231,7 @@ export class ContabilidadService {
       .where('a.fecha >= :desde', { desde })
       .andWhere('a.fecha <= :hasta', { hasta })
       .orderBy('a.fecha', 'ASC')
-      .addOrderBy('a.created_at', 'ASC')
+      .addOrderBy('a.createdAt', 'ASC')
       .skip((page - 1) * limit)
       .take(limit)
       .getManyAndCount();
