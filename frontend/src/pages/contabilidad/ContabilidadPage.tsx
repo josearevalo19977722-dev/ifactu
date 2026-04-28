@@ -116,6 +116,19 @@ export function ContabilidadPage() {
     },
   });
 
+  const regenerar = useMutation({
+    mutationFn: async () => {
+      await apiClient.delete(`/contabilidad/asientos/limpiar?mes=${mes}&anio=${anio}`);
+      return apiClient.post('/contabilidad/asientos/generar', { mes, anio });
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['asientos-resumen', mes, anio] });
+      qc.invalidateQueries({ queryKey: ['asientos', mes, anio] });
+    },
+  });
+
+  const ocupado = generar.isPending || regenerar.isPending;
+
   // ── Print F-07 ─────────────────────────────────────────────────────────────
   const imprimirF07 = () => {
     if (!qF07.data) return;
@@ -774,15 +787,26 @@ td{font-size:10px;padding:4px 8px;border-bottom:1px solid #f1f5f9;vertical-align
         {/* Acciones */}
         <div style={{ display: 'flex', gap: 16, marginBottom: 20, alignItems: 'flex-start', flexWrap: 'wrap' }}>
           <div>
-            <button
-              className="btn btn-primary"
-              onClick={() => generar.mutate()}
-              disabled={generar.isPending}
-            >
-              {generar.isPending ? '⏳ Generando...' : '⚡ Generar asientos del mes'}
-            </button>
+            <div style={{ display: 'flex', gap: 8 }}>
+              <button
+                className="btn btn-primary"
+                onClick={() => generar.mutate()}
+                disabled={ocupado}
+              >
+                {generar.isPending ? '⏳ Generando...' : '⚡ Generar asientos'}
+              </button>
+              <button
+                className="btn"
+                style={{ background: 'rgba(239,68,68,0.12)', color: '#f87171', border: '1px solid rgba(239,68,68,0.3)' }}
+                onClick={() => { if (window.confirm(`¿Borrar y regenerar todos los asientos de ${MESES[mes-1]} ${anio}? Los asientos actuales se eliminarán.`)) regenerar.mutate(); }}
+                disabled={ocupado}
+                title="Borra los asientos del mes y los recrea desde cero (útil tras corregir datos)"
+              >
+                {regenerar.isPending ? '⏳ Regenerando...' : '🔄 Limpiar y regenerar'}
+              </button>
+            </div>
             <div style={{ fontSize: 12, color: 'var(--text-muted)', marginTop: 4 }}>
-              Procesa todos los DTEs emitidos y compras registradas del período
+              <strong>Generar</strong>: agrega los que faltan · <strong>Limpiar y regenerar</strong>: borra todo y recrea
             </div>
           </div>
           <div style={{ display: 'flex', gap: 8, marginLeft: 'auto', alignSelf: 'center' }}>
@@ -803,13 +827,14 @@ td{font-size:10px;padding:4px 8px;border-bottom:1px solid #f1f5f9;vertical-align
               {exportando ? '⏳...' : '📥 Exportar CSV'}
             </button>
           </div>
-          {generar.isSuccess && (
-            <div style={{ fontSize: 13, color: '#16a34a', background: '#f0fdf4', padding: '8px 14px', borderRadius: 8, border: '1px solid #bbf7d0' }}>
-              ✅ {(generar.data as any).data.generados} asientos generados · {(generar.data as any).data.omitidos} ya existían
+          {(generar.isSuccess || regenerar.isSuccess) && (
+            <div style={{ fontSize: 13, color: '#16a34a', background: 'rgba(22,163,74,0.1)', padding: '8px 14px', borderRadius: 8, border: '1px solid rgba(22,163,74,0.3)' }}>
+              ✅ {((generar.data ?? regenerar.data) as any)?.data?.generados} asientos generados
+              {generar.isSuccess && ` · ${(generar.data as any).data.omitidos} ya existían`}
             </div>
           )}
-          {generar.isError && (
-            <div style={{ fontSize: 13, color: '#dc2626', background: '#fef2f2', padding: '8px 14px', borderRadius: 8, border: '1px solid #fecaca' }}>
+          {(generar.isError || regenerar.isError) && (
+            <div style={{ fontSize: 13, color: '#f87171', background: 'rgba(239,68,68,0.1)', padding: '8px 14px', borderRadius: 8, border: '1px solid rgba(239,68,68,0.3)' }}>
               ❌ Error al generar asientos. Revisa los logs del backend.
             </div>
           )}
@@ -939,45 +964,83 @@ td{font-size:10px;padding:4px 8px;border-bottom:1px solid #f1f5f9;vertical-align
   // ── Modal detalle asiento ─────────────────────────────────────────────────
   const ModalDetalle = () => {
     if (!detalle) return null;
+    const balanceado = Math.abs(detalle.totalDebe - detalle.totalHaber) < 0.01;
     return (
-      <div className="modal-backdrop" onClick={() => setDetalle(null)}>
-        <div className="modal-content" style={{ maxWidth: 580 }} onClick={e => e.stopPropagation()}>
-          <h3 style={{ marginBottom: 4 }}>Asiento Contable</h3>
-          <p style={{ fontSize: 12, color: 'var(--text-muted)', marginBottom: 4 }}>
-            {detalle.fecha} &nbsp;·&nbsp; <PillTipo tipo={detalle.tipo} />
-          </p>
-          <p style={{ fontSize: 14, fontWeight: 600, marginBottom: 16, color: 'var(--text-main)' }}>{detalle.descripcion}</p>
-          <table className="table" style={{ marginBottom: 16 }}>
+      <div
+        style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.65)', zIndex: 9999, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 20 }}
+        onClick={() => setDetalle(null)}
+      >
+        <div
+          style={{ background: 'var(--bg-card)', borderRadius: 16, padding: '28px 32px', maxWidth: 600, width: '100%', maxHeight: '85vh', overflowY: 'auto', boxShadow: '0 32px 80px rgba(0,0,0,0.6)' }}
+          onClick={e => e.stopPropagation()}
+        >
+          {/* Encabezado */}
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 16 }}>
+            <div>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 4 }}>
+                <span style={{ fontSize: 16, fontWeight: 700 }}>Asiento Contable</span>
+                <PillTipo tipo={detalle.tipo} />
+              </div>
+              <div style={{ fontSize: 12, color: 'var(--text-muted)' }}>{detalle.fecha}</div>
+            </div>
+            <button
+              onClick={() => setDetalle(null)}
+              style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: 20, color: 'var(--text-muted)', lineHeight: 1, padding: 4 }}
+              aria-label="Cerrar"
+            >
+              ×
+            </button>
+          </div>
+
+          <div style={{ fontSize: 14, fontWeight: 600, color: 'var(--text-main)', background: 'var(--bg-subtle)', padding: '10px 14px', borderRadius: 8, marginBottom: 20, lineHeight: 1.4 }}>
+            {detalle.descripcion}
+          </div>
+
+          {/* Tabla de líneas */}
+          <table style={{ width: '100%', borderCollapse: 'collapse', marginBottom: 4 }}>
             <thead>
-              <tr>
-                <th style={{ width: 60 }}>Cód.</th>
-                <th>Cuenta</th>
-                <th style={{ textAlign: 'right' }}>Debe</th>
-                <th style={{ textAlign: 'right' }}>Haber</th>
+              <tr style={{ background: 'var(--bg-subtle)' }}>
+                <th style={{ width: 52, padding: '8px 12px', textAlign: 'left', fontSize: 11, fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: .5 }}>Cód.</th>
+                <th style={{ padding: '8px 12px', textAlign: 'left', fontSize: 11, fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: .5 }}>Cuenta</th>
+                <th style={{ padding: '8px 12px', textAlign: 'right', fontSize: 11, fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: .5 }}>Debe</th>
+                <th style={{ padding: '8px 12px', textAlign: 'right', fontSize: 11, fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: .5 }}>Haber</th>
               </tr>
             </thead>
             <tbody>
               {detalle.lineas.map((l, i) => (
-                <tr key={i}>
-                  <td className="mono" style={{ fontSize: 11, color: 'var(--text-muted)' }}>{l.cuenta}</td>
-                  <td style={{ fontSize: 13 }}>{l.nombreCuenta}</td>
-                  <td style={{ textAlign: 'right', color: l.debe > 0 ? '#1e40af' : 'var(--text-muted)', fontWeight: l.debe > 0 ? 700 : 400 }}>
+                <tr key={i} style={{ borderBottom: '1px solid var(--border-color)' }}>
+                  <td style={{ padding: '10px 12px', fontFamily: 'monospace', fontSize: 11, color: 'var(--text-muted)' }}>{l.cuenta}</td>
+                  <td style={{ padding: '10px 12px', fontSize: 13 }}>{l.nombreCuenta}</td>
+                  <td style={{ padding: '10px 12px', textAlign: 'right', color: l.debe > 0 ? '#60a5fa' : 'var(--text-muted)', fontWeight: l.debe > 0 ? 700 : 400, fontSize: 13 }}>
                     {l.debe > 0 ? fmt(l.debe) : '—'}
                   </td>
-                  <td style={{ textAlign: 'right', color: l.haber > 0 ? '#16a34a' : 'var(--text-muted)', fontWeight: l.haber > 0 ? 700 : 400 }}>
+                  <td style={{ padding: '10px 12px', textAlign: 'right', color: l.haber > 0 ? '#4ade80' : 'var(--text-muted)', fontWeight: l.haber > 0 ? 700 : 400, fontSize: 13 }}>
                     {l.haber > 0 ? fmt(l.haber) : '—'}
                   </td>
                 </tr>
               ))}
             </tbody>
             <tfoot>
-              <tr style={{ fontWeight: 700, background: 'var(--bg-subtle)' }}>
-                <td colSpan={2} style={{ textAlign: 'right' }}>Totales</td>
-                <td style={{ textAlign: 'right', color: '#1e40af' }}>{fmt(detalle.totalDebe)}</td>
-                <td style={{ textAlign: 'right', color: '#16a34a' }}>{fmt(detalle.totalHaber)}</td>
+              <tr style={{ background: 'var(--bg-subtle)', borderTop: '2px solid var(--border-color)' }}>
+                <td colSpan={2} style={{ padding: '10px 12px', textAlign: 'right', fontWeight: 700, fontSize: 13 }}>Totales</td>
+                <td style={{ padding: '10px 12px', textAlign: 'right', fontWeight: 800, fontSize: 14, color: '#60a5fa' }}>{fmt(detalle.totalDebe)}</td>
+                <td style={{ padding: '10px 12px', textAlign: 'right', fontWeight: 800, fontSize: 14, color: '#4ade80' }}>{fmt(detalle.totalHaber)}</td>
               </tr>
             </tfoot>
           </table>
+
+          {/* Badge de balance */}
+          <div style={{ textAlign: 'right', marginBottom: 20 }}>
+            <span style={{
+              display: 'inline-block', fontSize: 11, padding: '3px 10px', borderRadius: 99, fontWeight: 700,
+              background: balanceado ? 'rgba(74,222,128,0.15)' : 'rgba(248,113,113,0.15)',
+              color: balanceado ? '#4ade80' : '#f87171',
+              border: `1px solid ${balanceado ? 'rgba(74,222,128,0.4)' : 'rgba(248,113,113,0.4)'}`,
+            }}>
+              {balanceado ? '✓ Cuadrado' : `⚠ Diferencia: ${fmt(Math.abs(detalle.totalDebe - detalle.totalHaber))}`}
+            </span>
+          </div>
+
           <button className="btn" style={{ width: '100%' }} onClick={() => setDetalle(null)}>Cerrar</button>
         </div>
       </div>

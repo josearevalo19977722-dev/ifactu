@@ -29,13 +29,16 @@ function n(v: any): number { return Math.round((Number(v) || 0) * 100) / 100; }
 
 function resumenDte(dte: Dte) {
   const r = (dte.jsonDte as any)?.resumen ?? {};
-  return {
-    totalExenta:  n(r.totalExenta  ?? r.totalCompraExenta   ?? 0),
-    totalNoSuj:   n(r.totalNoSuj   ?? r.totalCompraNoSujeta ?? 0),
-    totalGravada: n(r.totalGravada ?? r.totalCompraAfecta   ?? r.subTotalVentas ?? 0),
-    totalIva:     n(r.totalIva     ?? r.ivaPerci1           ?? 0),
-    totalPagar:   n(r.totalPagar   ?? dte.totalPagar        ?? 0),
-  };
+  const totalExenta  = n(r.totalExenta  ?? r.totalCompraExenta   ?? 0);
+  const totalNoSuj   = n(r.totalNoSuj   ?? r.totalCompraNoSujeta ?? 0);
+  const totalGravada = n(r.totalGravada ?? r.totalCompraAfecta   ?? r.subTotalVentas ?? 0);
+  const totalPagar   = n(r.totalPagar   ?? dte.totalPagar        ?? 0);
+  // totalIva: intentar campo explícito; si no existe derivarlo de la diferencia
+  // (cubre NC/ND donde el campo puede faltar según versión del JSON de MH)
+  const rawIva     = n(r.totalIva ?? r.ivaPerci1 ?? 0);
+  const derivedIva = n(totalPagar - totalGravada - totalExenta - totalNoSuj);
+  const totalIva   = rawIva > 0 ? rawIva : Math.max(0, derivedIva);
+  return { totalExenta, totalNoSuj, totalGravada, totalIva, totalPagar };
 }
 
 function filtrarLineas(lineas: LineaAsiento[]): LineaAsiento[] {
@@ -74,12 +77,15 @@ export class ContabilidadService {
 
     switch (dte.tipoDte) {
       case '01': { // Factura Consumidor Final
+        // En CF el totalGravada puede venir como precio IVA-incluido (precio al consumidor).
+        // Para que el asiento cuadre siempre: ventas_netas = totalPagar - exenta - iva
         descripcion = `CF ${dte.numeroControl} — ${nombre}`;
+        const ventasNetasCF = n(r.totalPagar - r.totalExenta - r.totalIva);
         lineas = filtrarLineas([
-          { ...C.CXC_CF,         debe: r.totalPagar,   haber: 0 },
-          { ...C.VENTAS_CF,      debe: 0, haber: r.totalGravada },
-          { ...C.VENTAS_EXENTAS, debe: 0, haber: r.totalExenta  },
-          { ...C.IVA_DF,         debe: 0, haber: r.totalIva     },
+          { ...C.CXC_CF,         debe: r.totalPagar,  haber: 0              },
+          { ...C.VENTAS_CF,      debe: 0, haber: ventasNetasCF              },
+          { ...C.VENTAS_EXENTAS, debe: 0, haber: r.totalExenta              },
+          { ...C.IVA_DF,         debe: 0, haber: r.totalIva                 },
         ]);
         break;
       }
@@ -173,6 +179,23 @@ export class ContabilidadService {
       lineas,
       ...totales(lineas),
     };
+  }
+
+  // ── Borrar todos los asientos de un mes (para regenerar) ─────────────────
+
+  async limpiarLote(mes: number, anio: number): Promise<{ eliminados: number }> {
+    const desde  = `${anio}-${String(mes).padStart(2,'0')}-01`;
+    const ultimo = new Date(anio, mes, 0).getDate();
+    const hasta  = `${anio}-${String(mes).padStart(2,'0')}-${String(ultimo).padStart(2,'0')}`;
+
+    const result = await this.asientoRepo.createQueryBuilder()
+      .delete()
+      .from(AsientoContable)
+      .where('fecha >= :desde', { desde })
+      .andWhere('fecha <= :hasta', { hasta })
+      .execute();
+
+    return { eliminados: result.affected ?? 0 };
   }
 
   // ── Generación por lote (un mes completo) ─────────────────────────────────
