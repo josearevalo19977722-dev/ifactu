@@ -4,9 +4,10 @@ import { PosRootAliasController } from './pos-root-alias.controller';
 import { ApiKeyGuard } from './api-key.guard';
 import { DteModule } from '../dte/dte.module';
 import { EmpresaModule } from '../empresa/empresa.module';
+import { ComprasModule } from '../compras/compras.module';
 
 @Module({
-  imports: [DteModule, EmpresaModule],
+  imports: [DteModule, EmpresaModule, ComprasModule],
   controllers: [PosController, PosRootAliasController],
   providers: [ApiKeyGuard],
 })

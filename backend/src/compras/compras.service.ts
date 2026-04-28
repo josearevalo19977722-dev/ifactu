@@ -110,6 +110,16 @@ export class ComprasService {
     return { compra, inventario };
   }
 
+  /** Busca una compra por codigoGeneracion (para deduplicación POS) */
+  async buscarPorCodigo(codigoGeneracion: string): Promise<Compra | null> {
+    return this.repo.findOne({ where: { codigoGeneracion } });
+  }
+
+  /** Busca una compra por numeroControl (fallback deduplicación POS) */
+  async buscarPorNumeroControl(numeroControl: string): Promise<Compra | null> {
+    return this.repo.findOne({ where: { numeroControl } });
+  }
+
   async registrar(dto: Partial<Compra>): Promise<Compra> {
     // Calcular IVA crédito automáticamente si no viene
     if (!dto.ivaCredito && dto.compraGravada) {
