@@ -1,6 +1,6 @@
 import {
   Entity, PrimaryGeneratedColumn, Column,
-  ManyToOne, CreateDateColumn,
+  ManyToOne, JoinColumn, CreateDateColumn,
 } from 'typeorm';
 import { Empresa } from '../empresa/entities/empresa.entity';
 
@@ -40,6 +40,7 @@ export class AsientoContable {
   lineas: LineaAsiento[];
 
   @ManyToOne(() => Empresa, { nullable: true })
+  @JoinColumn({ name: 'empresa_id' })
   empresa: Empresa;
 
   @CreateDateColumn({ name: 'created_at' })
