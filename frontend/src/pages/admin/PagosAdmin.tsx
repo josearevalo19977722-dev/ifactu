@@ -240,11 +240,11 @@ export function PagosAdmin() {
     setNuevoForm(f => ({ ...f, [field]: value }));
 
   return (
-    <div style={{ padding: '28px 32px', maxWidth: 1160, minHeight: '100vh', background: '#0f172a' }}>
+    <div style={{ padding: 'clamp(14px, 4vw, 28px) clamp(14px, 4vw, 32px)', maxWidth: 1160, minHeight: '100vh', background: '#0f172a' }}>
 
       {/* ── Page header ────────────────────────────────────────────────────── */}
       <div style={{ marginBottom: 32 }}>
-        <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 16 }}>
+        <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 16, flexWrap: 'wrap' }}>
           <div>
             <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 6 }}>
               <div style={{ width: 36, height: 36, borderRadius: 10, background: 'linear-gradient(135deg, #6366f1, #3b82f6)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 18 }}>
@@ -267,7 +267,7 @@ export function PagosAdmin() {
       </div>
 
       {/* ── Stats ──────────────────────────────────────────────────────────── */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3,1fr)', gap: 16, marginBottom: 32 }}>
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 160px), 1fr))', gap: 16, marginBottom: 32 }}>
         <StatCard
           icon="💰"
           iconBg="linear-gradient(135deg, #064e3b, #065f46)"
@@ -295,7 +295,7 @@ export function PagosAdmin() {
       </div>
 
       {/* ── Tabs ───────────────────────────────────────────────────────────── */}
-      <div style={{ display: 'flex', gap: 2, marginBottom: 24, borderBottom: '1px solid #1e293b', paddingBottom: 0 }}>
+      <div style={{ display: 'flex', gap: 2, marginBottom: 24, borderBottom: '1px solid #1e293b', paddingBottom: 0, overflowX: 'auto', WebkitOverflowScrolling: 'touch' as any }}>
         {(Object.keys(TAB_LABELS) as Tab[]).map(t => (
           <button
             key={t}
@@ -351,8 +351,8 @@ export function PagosAdmin() {
           ) : pagosFiltrados.length === 0 ? (
             <EmptyState icon="🧾" text={busqueda ? 'Sin resultados para la búsqueda' : 'No hay pagos registrados aún'} />
           ) : (
-            <div style={{ background: '#1e293b', border: '1px solid #334155', borderRadius: 12, overflow: 'hidden' }}>
-              <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}>
+            <div style={{ background: '#1e293b', border: '1px solid #334155', borderRadius: 12, overflow: 'hidden', overflowX: 'auto' }}>
+              <table style={{ width: '100%', minWidth: 520, borderCollapse: 'collapse', fontSize: 13 }}>
                 <thead>
                   <tr style={{ background: '#0f172a' }}>
                     {['Empresa', 'Plan', 'Monto', 'Estado', 'OrderCode', 'Fecha'].map(h => (
@@ -614,8 +614,8 @@ export function PagosAdmin() {
         loadOrdenes ? (
           <LoadingState text="Cargando órdenes de N1CO..." />
         ) : (
-          <div style={{ background: '#1e293b', border: '1px solid #334155', borderRadius: 12, overflow: 'hidden' }}>
-            <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}>
+          <div style={{ background: '#1e293b', border: '1px solid #334155', borderRadius: 12, overflow: 'hidden', overflowX: 'auto' }}>
+            <table style={{ width: '100%', minWidth: 480, borderCollapse: 'collapse', fontSize: 13 }}>
               <thead>
                 <tr style={{ background: '#0f172a' }}>
                   {['OrderCode', 'Nombre', 'Total', 'Estado', 'Fecha'].map(h => (
@@ -815,8 +815,8 @@ export function PagosAdmin() {
             {(paquetesExtra as any[]).length === 0 ? (
               <EmptyState icon="📋" text="No hay paquetes extra solicitados" />
             ) : (
-              <div style={{ background: '#1e293b', border: '1px solid #334155', borderRadius: 12, overflow: 'hidden' }}>
-                <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}>
+              <div style={{ background: '#1e293b', border: '1px solid #334155', borderRadius: 12, overflow: 'hidden', overflowX: 'auto' }}>
+                <table style={{ width: '100%', minWidth: 560, borderCollapse: 'collapse', fontSize: 13 }}>
                   <thead>
                     <tr style={{ background: '#0f172a' }}>
                       {['Empresa', 'Cantidad', 'Tipo', 'Precio', 'Estado', 'Fecha', 'Acciones'].map(h => (

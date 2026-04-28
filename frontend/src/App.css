@@ -1805,11 +1805,19 @@ textarea.form-control {
   font-weight: 600;
   color: var(--text);
   line-height: 1.25;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
 }
 .dashboard-shortcut__hint {
   font-size: 0.75rem;
   color: var(--text-3);
   line-height: 1.35;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 .dashboard-shortcut__badge {
   position: absolute;
@@ -1942,8 +1950,35 @@ textarea.form-control {
   }
 }
 @media (max-width: 520px) {
+  /* Stats: 2 columnas en móvil en vez de 1 */
   .stats-grid {
-    grid-template-columns: 1fr;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+  /* Dashboard shortcuts: 2 col fijas en móvil */
+  .dashboard-shortcuts-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+  /* Dashboard shortcut: padding reducido en móvil */
+  .dashboard-shortcut {
+    padding: 10px 12px;
+    gap: 8px;
+    min-height: 64px;
+  }
+  .dashboard-shortcut__icon {
+    width: 32px;
+    height: 32px;
+    font-size: 1rem;
+    border-radius: 8px;
+  }
+  .dashboard-shortcut__title {
+    font-size: 0.78rem;
+  }
+  .dashboard-shortcut__hint {
+    font-size: 0.68rem;
+  }
+  /* Dashboard KPI: 2 col */
+  .dashboard-kpi-wrap {
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
   }
 }
 
@@ -2457,7 +2492,20 @@ textarea.form-control {
     -webkit-overflow-scrolling: touch;
   }
   table {
-    min-width: 520px;
+    min-width: 460px;
+  }
+  /* Stat cards: texto más compacto en móvil */
+  .stat-card {
+    padding: 12px 14px;
+    gap: 10px;
+  }
+  .stat-value { font-size: 1.35rem; }
+  .stat-label { font-size: 0.72rem; }
+  .stat-icon {
+    width: 36px;
+    height: 36px;
+    font-size: 1rem;
+    border-radius: 8px;
   }
 
   /* ── Modales: full width en móvil ── */
