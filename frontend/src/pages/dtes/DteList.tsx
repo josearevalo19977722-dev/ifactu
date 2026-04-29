@@ -2,7 +2,8 @@ import { useState, useCallback, useRef } from 'react';
 import { Link } from 'react-router-dom';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { dteApi } from '../../api/dte.api';
-import { API_BASE, apiClient } from '../../api/apiClient';
+import { API_BASE } from '../../api/apiClient';
+import apiClient from '../../api/apiClient';
 import { EstadoBadge } from '../../components/EstadoBadge';
 import { EmptyState } from '../../components/EmptyState';
 import { parseApiError } from '../../utils/parseApiError';
@@ -34,7 +35,7 @@ export function DteList() {
   // Lista de empresas para el filtro (solo superadmin)
   const { data: empresas = [] } = useQuery({
     queryKey: ['admin-tenants-simple'],
-    queryFn: () => apiClient.get('/admin/tenants').then(r => r.data as { id: string; nombreLegal: string }[]),
+    queryFn: () => apiClient.get<{ id: string; nombreLegal: string }[]>('/admin/tenants').then(r => r.data),
     enabled: isSuperAdmin,
     staleTime: 5 * 60 * 1000,
   });
