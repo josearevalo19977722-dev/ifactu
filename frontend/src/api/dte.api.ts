@@ -27,6 +27,7 @@ export const dteApi = {
     q?: string;
     page?: number;
     limit?: number;
+    empresaId?: string;
   }): Promise<[Dte[], number]> =>
     api.get<[Dte[], number]>('/dte', { params }).then((r) => r.data),
 

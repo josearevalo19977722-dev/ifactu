@@ -2,10 +2,11 @@ import { useState, useCallback, useRef } from 'react';
 import { Link } from 'react-router-dom';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { dteApi } from '../../api/dte.api';
-import { API_BASE } from '../../api/apiClient';
+import { API_BASE, apiClient } from '../../api/apiClient';
 import { EstadoBadge } from '../../components/EstadoBadge';
 import { EmptyState } from '../../components/EmptyState';
 import { parseApiError } from '../../utils/parseApiError';
+import { useAuth } from '../../context/AuthContext';
 import type { Dte, EstadoDte } from '../../types/dte';
 
 const TIPO_LABELS: Record<string, string> = {
@@ -21,12 +22,22 @@ const TIPO_LABELS: Record<string, string> = {
 };
 
 export function DteList() {
+  const { isSuperAdmin } = useAuth();
   const [tipoDte, setTipoDte] = useState('');
   const [estado,  setEstado]  = useState('');
   const [busqueda, setBusqueda] = useState('');
   const [debouncedQ, setDebouncedQ] = useState('');
+  const [filterEmpresaId, setFilterEmpresaId] = useState('');
   const [page,    setPage]    = useState(1);
   const qc = useQueryClient();
+
+  // Lista de empresas para el filtro (solo superadmin)
+  const { data: empresas = [] } = useQuery({
+    queryKey: ['admin-tenants-simple'],
+    queryFn: () => apiClient.get('/admin/tenants').then(r => r.data as { id: string; nombreLegal: string }[]),
+    enabled: isSuperAdmin,
+    staleTime: 5 * 60 * 1000,
+  });
 
   const debounceTimerRef = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
 
@@ -67,13 +78,14 @@ export function DteList() {
   });
 
   const { data, isLoading, error, refetch, isRefetching } = useQuery({
-    queryKey: ['dtes', tipoDte, estado, debouncedQ, page],
+    queryKey: ['dtes', tipoDte, estado, debouncedQ, page, filterEmpresaId],
     queryFn: () => dteApi.listar({
       tipoDte: tipoDte || undefined,
       estado:  estado  || undefined,
       q: debouncedQ || undefined,
       page,
       limit: 20,
+      empresaId: filterEmpresaId || undefined,
     }),
   });
 
@@ -201,6 +213,18 @@ export function DteList() {
                 <option value="CONTINGENCIA">Contingencia</option>
                 <option value="ANULADO">Anulado</option>
               </select>
+              {isSuperAdmin && (
+                <select
+                  className="filter-select"
+                  value={filterEmpresaId}
+                  onChange={(e) => { setFilterEmpresaId(e.target.value); setPage(1); }}
+                >
+                  <option value="">Todas las empresas</option>
+                  {empresas.map((e: any) => (
+                    <option key={e.id} value={e.id}>{e.nombreLegal}</option>
+                  ))}
+                </select>
+              )}
             </div>
           </div>
 
@@ -253,6 +277,7 @@ export function DteList() {
                   <th>Tipo</th>
                   <th>N° Control</th>
                   <th>Fecha</th>
+                  {isSuperAdmin && <th>Empresa</th>}
                   <th>Receptor</th>
                   <th>Total</th>
                   <th>Estado</th>
@@ -262,7 +287,7 @@ export function DteList() {
               <tbody>
                 {dtes.length === 0 ? (
                   <tr>
-                    <td colSpan={7}>
+                    <td colSpan={isSuperAdmin ? 8 : 7}>
                       <EmptyState
                         compact
                         icon="🧾"
@@ -287,6 +312,11 @@ export function DteList() {
                       </td>
                       <td className="mono">{dte.numeroControl}</td>
                       <td>{dte.fechaEmision}</td>
+                      {isSuperAdmin && (
+                        <td style={{ fontSize: '0.8rem', color: 'var(--text-2)', maxWidth: 140, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                          {(dte as any).empresa?.nombreLegal ?? '—'}
+                        </td>
+                      )}
                       <td className="text-main">{dte.receptorNombre ?? '—'}</td>
                       <td className="monto">${Number(dte.totalPagar).toFixed(2)}</td>
                       <td><EstadoBadge estado={dte.estado} /></td>

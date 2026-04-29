@@ -268,14 +268,19 @@ export class DteController {
     @Query('q') q?: string,
     @Query('page') page = '1',
     @Query('limit') limit = '20',
+    @Query('empresaId') filterEmpresaId?: string,
   ) {
     const skip = (Number(page) - 1) * Number(limit);
     const { empresaId, rol } = req.user;
     const isSuper = rol === RolUsuario.SUPERADMIN;
-    const qb = this.dteRepo.createQueryBuilder('dte');
+    const qb = this.dteRepo.createQueryBuilder('dte')
+      .leftJoinAndSelect('dte.empresa', 'empresa');
 
     if (!isSuper) {
       qb.andWhere('dte.empresaId = :empresaId', { empresaId });
+    } else if (filterEmpresaId) {
+      // Superadmin filtrando por empresa específica
+      qb.andWhere('dte.empresaId = :filterEmpresaId', { filterEmpresaId });
     }
 
     if (tipoDte) qb.andWhere('dte.tipoDte = :tipoDte', { tipoDte });
@@ -285,7 +290,8 @@ export class DteController {
       qb.andWhere(new Brackets(w => {
         w.where('LOWER(dte.receptorNombre) LIKE :term', { term })
           .orWhere('LOWER(dte.numeroControl) LIKE :term', { term })
-          .orWhere('LOWER(dte.codigoGeneracion) LIKE :term', { term });
+          .orWhere('LOWER(dte.codigoGeneracion) LIKE :term', { term })
+          .orWhere('LOWER(empresa.nombreLegal) LIKE :term', { term });
       }));
     }
 
