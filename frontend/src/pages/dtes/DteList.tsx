@@ -355,60 +355,66 @@ export function DteList() {
       </div>
 
       {selectedDte && (
-        <div className="modal-backdrop">
-          <div className="modal-content" style={{ maxWidth: 500 }}>
-            <h3>Anular Documento {selectedDte.numeroControl}</h3>
-            <p style={{ fontSize: 13, color: '#64748b', marginBottom: 20 }}>
-              Esta acción enviará un evento de invalidación al Ministerio de Hacienda.
-            </p>
-
-            <div className="form-group">
-              <label className="form-label">Motivo de Anulación</label>
-              <textarea 
-                className="form-control" 
-                rows={3} 
-                value={motivo}
-                onChange={e => setMotivo(e.target.value)}
-                placeholder="Ej: Error en datos del receptor o productos..."
-              />
+        <div className="modal-overlay" onClick={() => setSelectedDte(null)}>
+          <div className="modal" style={{ width: 'min(500px, calc(100vw - 32px))' }} onClick={e => e.stopPropagation()}>
+            <div className="modal-header">
+              <span className="modal-title">Anular {selectedDte.numeroControl}</span>
+              <button className="modal-close" onClick={() => setSelectedDte(null)}>✕</button>
             </div>
-
-            <div className="grid" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16, marginTop: 16 }}>
-              <div className="form-group">
-                <label className="form-label">Nombre Responsable</label>
-                <input 
-                  className="form-control" 
-                  value={responsable}
-                  onChange={e => setResponsable(e.target.value)}
-                />
-              </div>
-              <div className="form-group">
-                <label className="form-label">DUI Responsable</label>
-                <input 
-                  className="form-control" 
-                  value={numDocResp}
-                  onChange={e => setNumDocResp(e.target.value)}
-                />
-              </div>
-            </div>
-
-            {anularMut.isError && (
-              <p style={{ color: '#ef4444', fontSize: 13, marginTop: 12 }}>
-                {(anularMut.error as any)?.response?.data?.message
-                  ?? (anularMut.error as any)?.message
-                  ?? 'Error al anular. Intenta de nuevo.'}
+            <div className="modal-body">
+              <p style={{ fontSize: 13, color: 'var(--text-2)', marginBottom: 16, marginTop: 0 }}>
+                Esta acción enviará un evento de invalidación al Ministerio de Hacienda y no se puede deshacer.
               </p>
-            )}
 
-            <div style={{ marginTop: 16, display: 'flex', justifyContent: 'flex-end', gap: 12 }}>
+              <div className="form-group">
+                <label className="form-label">Motivo de Anulación</label>
+                <textarea
+                  className="form-control"
+                  rows={3}
+                  value={motivo}
+                  onChange={e => setMotivo(e.target.value)}
+                  placeholder="Ej: Error en datos del receptor o productos..."
+                />
+              </div>
+
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16, marginTop: 12 }}>
+                <div className="form-group">
+                  <label className="form-label">Nombre Responsable</label>
+                  <input
+                    className="form-control"
+                    value={responsable}
+                    onChange={e => setResponsable(e.target.value)}
+                    placeholder="Nombre completo"
+                  />
+                </div>
+                <div className="form-group">
+                  <label className="form-label">DUI Responsable</label>
+                  <input
+                    className="form-control"
+                    value={numDocResp}
+                    onChange={e => setNumDocResp(e.target.value)}
+                    placeholder="00000000-0"
+                  />
+                </div>
+              </div>
+
+              {anularMut.isError && (
+                <p style={{ color: 'var(--danger)', fontSize: 13, marginTop: 12, marginBottom: 0 }}>
+                  ⚠ {(anularMut.error as any)?.response?.data?.message
+                    ?? (anularMut.error as any)?.message
+                    ?? 'Error al anular. Intenta de nuevo.'}
+                </p>
+              )}
+            </div>
+
+            <div className="modal-footer">
               <button className="btn btn-ghost" onClick={() => setSelectedDte(null)}>Cancelar</button>
               <button
-                className="btn btn-primary"
-                style={{ backgroundColor: '#ef4444' }}
+                className="btn btn-danger"
                 disabled={!motivo || !responsable || !numDocResp || anularMut.isPending}
                 onClick={() => anularMut.mutate()}
               >
-                {anularMut.isPending ? 'Procesando...' : 'Confirmar Anulación'}
+                {anularMut.isPending ? 'Procesando…' : 'Confirmar Anulación'}
               </button>
             </div>
           </div>
