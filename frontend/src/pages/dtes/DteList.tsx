@@ -62,15 +62,11 @@ export function DteList() {
     mutationFn: () => {
       if (!selectedDte) throw new Error('Sin documento seleccionado');
       return dteApi.anular(selectedDte.id, {
-      tipoAnulacion: 2,
-      motivoAnulacion: motivo,
-      nombreResponsable: responsable,
-      tipDocResponsable: '13',
-      numDocResponsable: numDocResp,
-      nombreSolicita: responsable,
-      tipDocSolicita: '13',
-      numDocSolicita: numDocResp,
-    });
+        tipoAnulacion: 2,
+        motivoAnulacion: motivo,
+        nombreResponsable: responsable,
+        numDocResponsable: numDocResp,
+      });
     },
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ['dtes'] });
@@ -396,12 +392,20 @@ export function DteList() {
               </div>
             </div>
 
-            <div style={{ marginTop: 24, display: 'flex', justifyContent: 'flex-end', gap: 12 }}>
+            {anularMut.isError && (
+              <p style={{ color: '#ef4444', fontSize: 13, marginTop: 12 }}>
+                {(anularMut.error as any)?.response?.data?.message
+                  ?? (anularMut.error as any)?.message
+                  ?? 'Error al anular. Intenta de nuevo.'}
+              </p>
+            )}
+
+            <div style={{ marginTop: 16, display: 'flex', justifyContent: 'flex-end', gap: 12 }}>
               <button className="btn btn-ghost" onClick={() => setSelectedDte(null)}>Cancelar</button>
-              <button 
-                className="btn btn-primary" 
+              <button
+                className="btn btn-primary"
                 style={{ backgroundColor: '#ef4444' }}
-                disabled={!motivo || !responsable || anularMut.isPending}
+                disabled={!motivo || !responsable || !numDocResp || anularMut.isPending}
                 onClick={() => anularMut.mutate()}
               >
                 {anularMut.isPending ? 'Procesando...' : 'Confirmar Anulación'}

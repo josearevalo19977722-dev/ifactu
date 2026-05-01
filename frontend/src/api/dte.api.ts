@@ -7,11 +7,11 @@ export interface InvalidarPayload {
   tipoAnulacion: 1 | 2 | 3;
   motivoAnulacion: string;
   nombreResponsable: string;
-  tipDocResponsable: string;
   numDocResponsable: string;
-  nombreSolicita: string;
-  tipDocSolicita: string;
-  numDocSolicita: string;
+  tipDocResponsable?: string;
+  nombreSolicita?: string;
+  tipDocSolicita?: string;
+  numDocSolicita?: string;
 }
 
 export const dteApi = {
@@ -35,7 +35,7 @@ export const dteApi = {
     api.get<Dte>(`/dte/${id}`).then((r) => r.data),
 
   anular: (dteId: string, payload: InvalidarPayload): Promise<Dte> =>
-    api.post<Dte>('/dte/invalidar', { dteId, ...payload }).then((r) => r.data),
+    api.post<Dte>(`/dte/${dteId}/anular`, payload).then((r) => r.data),
 
   consultarMh: (id: string): Promise<Dte> =>
     api.post<Dte>(`/dte/${id}/consultar-mh`).then((r) => r.data),
