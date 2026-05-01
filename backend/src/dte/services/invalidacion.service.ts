@@ -126,8 +126,8 @@ export class InvalidacionService {
     const url    = this.config.get<string>('MH_ANULAR_URL', '');
     const nit    = getNitEmisor(empresa);
     const token  = await this.authMh.getToken(empresa);
-    // /anulardte espera el JWS codificado en Base64 (a diferencia de /recepciondte)
-    const documento = Buffer.from(jwsToken).toString('base64');
+    // Mismo formato que /recepciondte: JWS directo, sin re-codificar en Base64
+    const documento = jwsToken;
 
     const idEnvio = Date.now().toString(); // Hacienda prefiere numérico
     this.logger.debug(`Enviando invalidación MH - idEnvio: ${idEnvio}`);
@@ -139,6 +139,7 @@ export class InvalidacionService {
       idEnvio,
       version: 2,
       documento,
+      nitEmisor: nit,
     };
 
     try {
