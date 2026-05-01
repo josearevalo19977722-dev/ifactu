@@ -76,6 +76,18 @@ export function DteDetalle() {
   const puedeAnular = dte.estado === 'RECIBIDO';
   const puedNota    = dte.estado === 'RECIBIDO' && esCcf;
 
+  const descargarJson = () => {
+    const contenido = JSON.stringify(dte.jsonDte ?? {}, null, 2);
+    const blob = new Blob([contenido], { type: 'application/json' });
+    const url  = URL.createObjectURL(blob);
+    const a    = document.createElement('a');
+    const nombreArchivo = `${dte.numeroControl ?? dte.id}.json`;
+    a.href     = url;
+    a.download = nombreArchivo;
+    a.click();
+    URL.revokeObjectURL(url);
+  };
+
   return (
     <div style={{ flex: 1 }}>
       <div className="topbar">
@@ -91,6 +103,9 @@ export function DteDetalle() {
           >
             ↓ PDF
           </a>
+          <button className="btn btn-sm" onClick={descargarJson}>
+            ↓ JSON
+          </button>
           {(dte.estado === 'PENDIENTE' || dte.estado === 'CONTINGENCIA') && (
             <button
               className="btn btn-sm"
