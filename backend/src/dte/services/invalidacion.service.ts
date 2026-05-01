@@ -160,7 +160,16 @@ export class InvalidacionService {
       }
     } catch (err) {
       if (err instanceof BadRequestException) throw err;
-      // Error de red — guardamos el intento pero no cambiamos estado
+      // Loguear el body de respuesta del MH para diagnóstico
+      const responseData = err.response?.data;
+      if (responseData) {
+        this.logger.error(`MH 400 response: ${JSON.stringify(responseData)}`);
+        const mhMsg = responseData.descripcionMsg
+          ?? responseData.mensaje
+          ?? responseData.message
+          ?? JSON.stringify(responseData);
+        throw new BadRequestException(`MH rechazó: ${mhMsg}`);
+      }
       throw new BadRequestException(
         `Error al comunicar con el MH: ${err.message}`,
       );
