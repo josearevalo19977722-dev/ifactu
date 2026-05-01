@@ -32,6 +32,23 @@ export class InvalidacionService {
     private readonly empresaRepo: Repository<Empresa>,
   ) {}
 
+  /**
+   * Busca un DTE por UUID interno, codigoGeneracion o numeroControl.
+   * Usado por el endpoint POS /dte/:ref/anular para aceptar cualquier referencia.
+   */
+  async buscarPorRef(ref: string, empresaId: string): Promise<Dte | null> {
+    const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+    if (uuidRegex.test(ref)) {
+      return this.dteRepo.findOne({ where: { id: ref, empresa: { id: empresaId } } });
+    }
+    return this.dteRepo.findOne({
+      where: [
+        { codigoGeneracion: ref, empresa: { id: empresaId } },
+        { numeroControl:    ref, empresa: { id: empresaId } },
+      ],
+    });
+  }
+
   async anular(dto: InvalidarDteDto, empresaId: string): Promise<Dte> {
     const dte = await this.dteRepo.findOne({ 
       where: { id: dto.dteId, empresa: { id: empresaId } } 
@@ -85,11 +102,12 @@ export class InvalidacionService {
         tipoAnulacion: dto.tipoAnulacion,
         motivoAnulacion: (dto.motivoAnulacion || '').substring(0, 250), // Límite esquema v2
         nombreResponsable: dto.nombreResponsable,
-        tipDocResponsable: dto.tipDocResponsable,
+        tipDocResponsable: dto.tipDocResponsable ?? '13',
         numDocResponsable: dto.numDocResponsable,
-        nombreSolicita: dto.nombreSolicita,
-        tipDocSolicita: dto.tipDocSolicita,
-        numDocSolicita: dto.numDocSolicita,
+        // Si no se envían los campos de quien solicita, se usan los del responsable
+        nombreSolicita: dto.nombreSolicita ?? dto.nombreResponsable,
+        tipDocSolicita: dto.tipDocSolicita ?? dto.tipDocResponsable ?? '13',
+        numDocSolicita: dto.numDocSolicita ?? dto.numDocResponsable,
       },
     };
 

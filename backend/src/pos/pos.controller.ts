@@ -56,17 +56,35 @@ export class PosController {
   }
 
   /**
-   * POST /api/pos/dte/:id/anular
+   * POST /api/pos/dte/:ref/anular
    * Anula un DTE previamente RECIBIDO usando autenticación por X-API-Key.
+   * :ref puede ser el UUID interno, el codigoGeneracion (UUID de Hacienda)
+   * o el numeroControl — iFactu resuelve automáticamente.
+   *
+   * Campos mínimos requeridos en el body:
+   *   tipoAnulacion    : 1 | 2 | 3  (acepta string o número)
+   *   motivoAnulacion  : string
+   *   nombreResponsable: string
+   *   numDocResponsable: string  (DUI/NIT del responsable)
+   *
+   * Campos opcionales (si se omiten se copia el responsable):
+   *   tipDocResponsable, nombreSolicita, tipDocSolicita, numDocSolicita
    */
-  @Post('dte/:id/anular')
+  @Post('dte/:ref/anular')
   async anularDte(
-    @Param('id') id: string,
+    @Param('ref') ref: string,
     @Body() dto: Omit<InvalidarDteDto, 'dteId'>,
     @Req() req: any,
   ) {
     const empresaId = req.empresa.id;
-    const dte = await this.invalidacionService.anular({ ...dto, dteId: id }, empresaId);
+
+    // Resolver el DTE por UUID interno, codigoGeneracion o numeroControl
+    const dteEncontrado = await this.invalidacionService.buscarPorRef(ref, empresaId);
+    if (!dteEncontrado) {
+      throw new Error(`DTE no encontrado con referencia: ${ref}`);
+    }
+
+    const dte = await this.invalidacionService.anular({ ...dto, dteId: dteEncontrado.id }, empresaId);
     return {
       success: true,
       dte: this.ticketService.getVariablesForTicket(dte),

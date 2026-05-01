@@ -24,7 +24,7 @@
 
 ### URL Base
 ```
-https://tu-dominio-ifactu.com/api/pos
+https://ifactu.jsolutionsv.com/api/pos
 ```
 
 > [!IMPORTANT]
