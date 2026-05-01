@@ -113,10 +113,21 @@ export class InvalidacionService {
 
     const jsonFirmado = await this.signer.firmar(jsonAnulacion, empresa);
 
+    // Extraer el JWS token igual que TransmitterService
+    let jwsToken: string;
+    if (typeof jsonFirmado === 'string') {
+      jwsToken = jsonFirmado;
+    } else if ((jsonFirmado as any).body) {
+      jwsToken = (jsonFirmado as any).body;
+    } else {
+      jwsToken = JSON.stringify(jsonFirmado);
+    }
+
     const url    = this.config.get<string>('MH_ANULAR_URL', '');
     const nit    = getNitEmisor(empresa);
     const token  = await this.authMh.getToken(empresa);
-    const documento = Buffer.from(JSON.stringify(jsonFirmado)).toString('base64');
+    // /anulardte espera el JWS codificado en Base64 (a diferencia de /recepciondte)
+    const documento = Buffer.from(jwsToken).toString('base64');
 
     const idEnvio = Date.now().toString(); // Hacienda prefiere numérico
     this.logger.debug(`Enviando invalidación MH - idEnvio: ${idEnvio}`);
