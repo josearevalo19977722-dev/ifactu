@@ -385,6 +385,68 @@ export class DteController {
     return this.invalidacionService.anular({ ...dto, dteId: id }, req.user.empresaId);
   }
 
+  /**
+   * GET /dte/exportar/zip?desde=YYYY-MM-DD&hasta=YYYY-MM-DD&tipo=pdf|json|ambos
+   * Descarga un ZIP con los PDFs y/o JSONs de los DTEs en el rango de fechas.
+   */
+  @Get('exportar/zip')
+  async exportarZip(
+    @Req() req: any,
+    @Res() res: Response,
+    @Query('desde') desde?: string,
+    @Query('hasta') hasta?: string,
+    @Query('tipo') tipo: 'pdf' | 'json' | 'ambos' = 'ambos',
+  ) {
+    // eslint-disable-next-line @typescript-eslint/no-var-requires
+    const archiver = require('archiver') as typeof import('archiver');
+
+    const { empresaId, rol } = req.user;
+    const isSuper = rol === RolUsuario.SUPERADMIN;
+
+    const qb = this.dteRepo.createQueryBuilder('dte');
+    if (!isSuper) qb.andWhere('dte.empresaId = :empresaId', { empresaId });
+    if (desde)   qb.andWhere('dte.fechaEmision >= :desde', { desde });
+    if (hasta)   qb.andWhere('dte.fechaEmision <= :hasta', { hasta });
+    qb.andWhere("dte.estado != 'ANULADO'");
+    const dtes = await qb.orderBy('dte.fechaEmision', 'ASC').getMany();
+
+    const archive = archiver('zip', { zlib: { level: 6 } });
+    const chunks: Buffer[] = [];
+    archive.on('data', (chunk: Buffer) => chunks.push(chunk));
+
+    await new Promise<void>(async (resolve, reject) => {
+      archive.on('end', resolve);
+      archive.on('error', reject);
+
+      for (const dte of dtes) {
+        const nombre = (dte.numeroControl ?? dte.id).replace(/[^a-zA-Z0-9\-_]/g, '_');
+
+        if (tipo === 'json' || tipo === 'ambos') {
+          const jsonBuf = Buffer.from(JSON.stringify(dte.jsonDte ?? {}, null, 2), 'utf-8');
+          archive.append(jsonBuf, { name: `json/${nombre}.json` });
+        }
+
+        if (tipo === 'pdf' || tipo === 'ambos') {
+          try {
+            const pdfBuf = await this.pdfService.generarPdf(dte.id);
+            archive.append(pdfBuf, { name: `pdf/${nombre}.pdf` });
+          } catch (_) { /* si el PDF falla, se omite */ }
+        }
+      }
+
+      archive.finalize();
+    });
+
+    const zipBuf = Buffer.concat(chunks);
+    const rango = `${desde ?? 'inicio'}_${hasta ?? 'fin'}`;
+    res.set({
+      'Content-Type': 'application/zip',
+      'Content-Disposition': `attachment; filename="DTE_${tipo}_${rango}.zip"`,
+      'Content-Length': zipBuf.length,
+    });
+    res.end(zipBuf);
+  }
+
   @Get(':id/pdf')
   async descargarPdf(@Param('id') id: string, @Req() req: any, @Res() res: Response) {
     const { empresaId, rol } = req.user;

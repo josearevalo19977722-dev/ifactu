@@ -66,7 +66,16 @@ export function ContabilidadPage() {
   const ahora     = new Date();
   const [mes,  setMes]  = useState(ahora.getMonth() + 1);
   const [anio, setAnio] = useState(ahora.getFullYear());
-  const [tab,  setTab]  = useState<'f07' | 'pac' | 'asientos'>('f07');
+  const [tab,  setTab]  = useState<'f07' | 'pac' | 'asientos' | 'zip'>('f07');
+
+  // ── Estado descarga ZIP ────────────────────────────────────────────────────
+  const [zipDesde,  setZipDesde]  = useState(() => {
+    const d = new Date(); d.setDate(1);
+    return d.toISOString().split('T')[0];
+  });
+  const [zipHasta,  setZipHasta]  = useState(() => new Date().toISOString().split('T')[0]);
+  const [zipTipo,   setZipTipo]   = useState<'pdf' | 'json' | 'ambos'>('ambos');
+  const [zipLoading, setZipLoading] = useState(false);
   const [detalle, setDetalle]   = useState<Asiento | null>(null);
   const [asPage,  setAsPage]    = useState(1);
   const [exportando, setExportando] = useState(false);
@@ -1077,11 +1086,12 @@ td{font-size:10px;padding:4px 8px;border-bottom:1px solid #f1f5f9;vertical-align
         </div>
 
         {/* Tabs */}
-        <div style={{ display: 'flex', gap: 4, marginBottom: 20, borderBottom: '2px solid var(--border-color)' }}>
+        <div style={{ display: 'flex', gap: 4, marginBottom: 20, borderBottom: '2px solid var(--border-color)', overflowX: 'auto' }}>
           {([
             { id: 'f07',      label: '📊 Declaración IVA (F-07)' },
             { id: 'pac',      label: '💼 Pago a Cuenta (F-14)'   },
             { id: 'asientos', label: '📒 Asientos Contables'      },
+            { id: 'zip',      label: '📦 Descargar DTEs'          },
           ] as const).map(t => (
             <button key={t.id} onClick={() => setTab(t.id)} style={{
               background: 'none', border: 'none', cursor: 'pointer',
@@ -1098,6 +1108,92 @@ td{font-size:10px;padding:4px 8px;border-bottom:1px solid #f1f5f9;vertical-align
         {tab === 'f07'      && <TabF07 />}
         {tab === 'pac'      && <TabPac />}
         {tab === 'asientos' && <TabAsientos />}
+
+        {/* ── Tab Descargar DTEs (ZIP) ──────────────────────────────── */}
+        {tab === 'zip' && (
+          <div className="table-card" style={{ padding: '24px 28px' }}>
+            <h3 style={{ margin: '0 0 6px', fontSize: 16, fontWeight: 700 }}>📦 Descargar DTEs por rango de fechas</h3>
+            <p style={{ margin: '0 0 24px', fontSize: 13, color: 'var(--text-muted)' }}>
+              Descarga todos los DTEs (no anulados) del período seleccionado en formato ZIP.
+            </p>
+
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: 16, marginBottom: 24 }}>
+              <div className="form-group" style={{ marginBottom: 0 }}>
+                <label className="form-label">Desde</label>
+                <input
+                  className="form-control"
+                  type="date"
+                  value={zipDesde}
+                  onChange={e => setZipDesde(e.target.value)}
+                />
+              </div>
+              <div className="form-group" style={{ marginBottom: 0 }}>
+                <label className="form-label">Hasta</label>
+                <input
+                  className="form-control"
+                  type="date"
+                  value={zipHasta}
+                  onChange={e => setZipHasta(e.target.value)}
+                />
+              </div>
+            </div>
+
+            {/* Opciones de tipo */}
+            <div style={{ marginBottom: 28 }}>
+              <label className="form-label" style={{ marginBottom: 10, display: 'block' }}>¿Qué descargar?</label>
+              <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap' }}>
+                {([
+                  { v: 'pdf',   icon: '📄', label: 'Solo PDFs',        desc: 'Una carpeta pdf/ con los comprobantes' },
+                  { v: 'json',  icon: '{ }', label: 'Solo JSONs',       desc: 'Una carpeta json/ con los archivos DTE' },
+                  { v: 'ambos', icon: '📦', label: 'PDFs + JSONs',      desc: 'Carpetas pdf/ y json/ en el mismo ZIP' },
+                ] as const).map(op => (
+                  <label key={op.v} style={{
+                    flex: '1 1 160px', cursor: 'pointer', padding: '14px 16px', borderRadius: 10,
+                    border: `2px solid ${zipTipo === op.v ? 'var(--primary)' : 'var(--border-color)'}`,
+                    background: zipTipo === op.v ? 'rgba(59,130,246,0.08)' : 'var(--surface)',
+                    transition: 'all .15s',
+                  }}>
+                    <input type="radio" name="zipTipo" value={op.v} checked={zipTipo === op.v}
+                      onChange={() => setZipTipo(op.v)} style={{ display: 'none' }} />
+                    <div style={{ fontSize: 22, marginBottom: 6 }}>{op.icon}</div>
+                    <div style={{ fontWeight: 700, fontSize: 14, marginBottom: 3 }}>{op.label}</div>
+                    <div style={{ fontSize: 12, color: 'var(--text-muted)' }}>{op.desc}</div>
+                  </label>
+                ))}
+              </div>
+            </div>
+
+            <button
+              className="btn btn-primary"
+              disabled={zipLoading || !zipDesde || !zipHasta}
+              style={{ minWidth: 200 }}
+              onClick={async () => {
+                setZipLoading(true);
+                try {
+                  const token = localStorage.getItem('dte_token');
+                  const params = new URLSearchParams({ desde: zipDesde, hasta: zipHasta, tipo: zipTipo });
+                  const r = await fetch(
+                    `${(await import('../../api/apiClient')).API_BASE.replace(/\/$/, '')}/dte/exportar/zip?${params}`,
+                    { headers: token ? { Authorization: `Bearer ${token}` } : {} },
+                  );
+                  if (!r.ok) throw new Error(`HTTP ${r.status}`);
+                  const blob = await r.blob();
+                  const a = document.createElement('a');
+                  a.href = URL.createObjectURL(blob);
+                  a.download = `DTE_${zipTipo}_${zipDesde}_${zipHasta}.zip`;
+                  a.click();
+                  URL.revokeObjectURL(a.href);
+                } catch (e) {
+                  alert('Error al generar el ZIP. Intenta de nuevo.');
+                } finally {
+                  setZipLoading(false);
+                }
+              }}
+            >
+              {zipLoading ? '⏳ Generando ZIP...' : `⬇ Descargar ZIP (${zipTipo === 'pdf' ? 'PDFs' : zipTipo === 'json' ? 'JSONs' : 'PDFs + JSONs'})`}
+            </button>
+          </div>
+        )}
       </div>
 
       <ModalDetalle />
