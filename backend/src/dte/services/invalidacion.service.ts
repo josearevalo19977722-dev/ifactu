@@ -71,6 +71,13 @@ export class InvalidacionService {
 
     const ambiente = getAmbiente(empresa, this.config);
 
+    // Extraer datos del receptor desde el jsonDte original
+    const jsonOriginal = dte.jsonDte as any;
+    const receptorJson = jsonOriginal?.receptor ?? {};
+    const receptorNombre    = receptorJson.nombre    ?? dte.receptorNombre ?? 'CLIENTE FINAL';
+    const receptorTipoDoc   = receptorJson.tipoDocumento ?? receptorJson.tipoDui ?? '13';
+    const receptorNumDoc    = receptorJson.numDocumento  ?? receptorJson.numDui  ?? '0000000000-0';
+
     const jsonAnulacion = {
       identificacion: {
         version: 2,
@@ -80,23 +87,28 @@ export class InvalidacionService {
         horAnula,
       },
       emisor: {
-        nit: getNitEmisor(empresa),
-        nrc: empresa.nrc.replace(/-/g, ''),
+        nit:  getNitEmisor(empresa),
+        // nrc no va en invalidación (schema v2 no lo permite)
         nombre: empresa.nombreLegal,
         telefono: empresa.telefono,
         correo: empresa.correo,
-        codEstableMH:    (empresa.codEstableMh || '').toString().padStart(4, '0'),
-        codPuntoVentaMH: (empresa.codPuntoVentaMh || '').toString().padStart(4, '0'),
-        nomEstablecimiento: empresa.nombreComercial || null,
+        codEstable:    (empresa.codEstableMh  || '0').toString().padStart(4, '0'),
+        codPuntoVenta: (empresa.codPuntoVentaMh || '0').toString().padStart(4, '0'),
+        tipoEstablecimiento: empresa.tipoEstablecimiento || '02',
+        nomEstablecimiento: empresa.nombreComercial || empresa.nombreLegal,
       },
       documento: {
-        tipoDte: dte.tipoDte,
+        tipoDte:          dte.tipoDte,
         codigoGeneracion: dte.codigoGeneracion,
-        selloRecibido: dte.selloRecepcion,
-        numeroControl: dte.numeroControl,
-        fecEmi: dte.fechaEmision,
-        montoIva: this.calcularIva(dte),
+        selloRecibido:    dte.selloRecepcion,
+        numeroControl:    dte.numeroControl,
+        fecEmi:           dte.fechaEmision,
+        montoIva:         this.calcularIva(dte),
         codigoGeneracionR: null,
+        // Campos del receptor requeridos por schema v2
+        tipoDocumento: receptorTipoDoc,
+        numDocumento:  receptorNumDoc,
+        nombre:        receptorNombre,
       },
       motivo: {
         tipoAnulacion: dto.tipoAnulacion,
