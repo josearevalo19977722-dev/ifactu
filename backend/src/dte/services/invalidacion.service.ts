@@ -71,12 +71,13 @@ export class InvalidacionService {
 
     const ambiente = getAmbiente(empresa, this.config);
 
-    // Extraer datos del receptor desde el jsonDte original
+    // Extraer datos del receptor EXACTAMENTE como están en el jsonDte original
+    // (Hacienda valida que coincidan con lo que recibió en el DTE original)
     const jsonOriginal = dte.jsonDte as any;
-    const receptorJson = jsonOriginal?.receptor ?? {};
-    const receptorNombre    = receptorJson.nombre    ?? dte.receptorNombre ?? 'CLIENTE FINAL';
-    const receptorTipoDoc   = receptorJson.tipoDocumento ?? receptorJson.tipoDui ?? '13';
-    const receptorNumDoc    = receptorJson.numDocumento  ?? receptorJson.numDui  ?? '0000000000-0';
+    const receptorJson = jsonOriginal?.receptor ?? null;
+    const receptorNombre  = receptorJson?.nombre        ?? null;
+    const receptorTipoDoc = receptorJson?.tipoDocumento ?? null;
+    const receptorNumDoc  = receptorJson?.numDocumento  ?? null;
 
     const jsonAnulacion = {
       identificacion: {
