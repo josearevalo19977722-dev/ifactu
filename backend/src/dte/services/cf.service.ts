@@ -307,15 +307,15 @@ export class CfService {
         totalLetras: montoALetras(totalPagar),
         saldoFavor: 0,
         condicionOperacion: dto.condicionOperacion || 1,
-        pagos: [
-          { 
-            codigo: '01', 
-            montoPago: totalPagar, 
-            referencia: null,
-            plazo: null,
-            periodo: null 
-          }
-        ],
+        pagos: (dto.pagos && dto.pagos.length > 0)
+          ? dto.pagos.map(p => ({
+              codigo:     p.codigo,
+              montoPago:  p.montoPago,
+              referencia: p.referencia || null,
+              plazo:      p.plazo      || null,
+              periodo:    p.periodo    || null,
+            }))
+          : [{ codigo: '01', montoPago: totalPagar, referencia: null, plazo: null, periodo: null }],
         numPagoElectronico: dto.numPagoElectronico || null,
       },
       extension: null,

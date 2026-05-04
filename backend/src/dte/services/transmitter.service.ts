@@ -24,6 +24,15 @@ export interface RespuestaMh {
 const RETRY_INTENTOS = 2;
 const RETRY_ESPERA_MS = 8000;
 
+// Contador atómico para idEnvio — evita colisiones por timestamp en alta concurrencia
+let _idEnvioCounter = 0;
+function nextIdEnvio(): string {
+  _idEnvioCounter = (_idEnvioCounter + 1) % 1_000_000_000;
+  // Combina counter + últimos 3 dígitos de ms para unicidad entre reinicios
+  const suffix = (Date.now() % 1000).toString().padStart(3, '0');
+  return `${_idEnvioCounter}${suffix}`.slice(-10); // Max 10 dígitos que acepta MH
+}
+
 @Injectable()
 export class TransmitterService {
   private readonly logger = new Logger(TransmitterService.name);
@@ -73,7 +82,7 @@ export class TransmitterService {
     
     const documento = tokenStr;
     
-    const idEnvio = (Date.now() % 1000000000).toString(); // Max 9 dígitos — MH acepta hasta 10
+    const idEnvio = nextIdEnvio();
 
     const payload = {
       ambiente,

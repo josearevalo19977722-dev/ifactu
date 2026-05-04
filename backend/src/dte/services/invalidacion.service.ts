@@ -142,7 +142,7 @@ export class InvalidacionService {
     // Mismo formato que /recepciondte: JWS directo, sin re-codificar en Base64
     const documento = jwsToken;
 
-    const idEnvio = Date.now().toString(); // Hacienda prefiere numérico
+    const idEnvio = (Date.now() % 1_000_000_000).toString(); // Max 9 dígitos numéricos
     this.logger.debug(`Enviando invalidación MH - idEnvio: ${idEnvio}`);
     this.logger.debug(`JSON Original (sin firma): ${JSON.stringify(jsonAnulacion, null, 2)}`);
 
