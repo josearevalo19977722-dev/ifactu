@@ -16,7 +16,10 @@ export class EmpresaService implements OnModuleInit {
     private readonly repo: Repository<Empresa>,
     private readonly config: ConfigService,
   ) {
-    this.encryptionKey = this.config.get('DB_ENCRYPTION_KEY', '');
+    this.encryptionKey = (this.config.get('DB_ENCRYPTION_KEY', '') || '').trim();
+    if (this.encryptionKey.length !== 64) {
+      console.error(`[EmpresaService] DB_ENCRYPTION_KEY inválida: longitud=${this.encryptionKey.length} (se requieren 64 chars hex)`);
+    }
   }
 
   async onModuleInit() {
