@@ -138,17 +138,15 @@ export class DonacionService {
         horEmi,
         tipoMoneda:    'USD',
       },
-      // Tipo 15: emisor = "donante" con campos distintos al emisor estándar
+      // Tipo 15: emisor = "donante" usa campo 'nit' directo (igual que receptor en CCF)
       donante: {
-        tipoDocumento:  '36',                          // 36=NIT (donante siempre contribuyente)
-        numDocumento:   getNitEmisor(empresa),          // NIT sin guiones
+        nit:            getNitEmisor(empresa),
         nrc:            empresa.nrc.replace(/-/g, ''),
         nombre:         empresa.nombreLegal,
         codActividad:   empresa.codActividad,
         descActividad:  empresa.descActividad,
         codDomiciliado: 1,                             // 1=Domiciliado
         codPais:        'SV',
-        // NO: nit, nombreComercial, tipoEstablecimiento, codEstable/MH, codPuntoVenta/MH
         direccion: {
           departamento: empresa.departamento,
           municipio:    empresa.municipio,
@@ -157,14 +155,10 @@ export class DonacionService {
         telefono: empresa.telefono,
         correo:   empresa.correo,
       },
-      // Tipo 15: donatario SÍ requiere estructura completa con establecimiento
+      // Tipo 15: donatario — sin campo 'nit', usa tipoDocumento + numDocumento
       donatario: {
         tipoDocumento:       dto.donatario.tipoDocumento,
         numDocumento:        dto.donatario.numDocumento.replace(/-/g, ''),
-        // Hacienda tipo 15 requiere campo 'nit' separado (igual que receptor en CCF)
-        nit:                 dto.donatario.tipoDocumento === '36'
-                               ? dto.donatario.numDocumento.replace(/-/g, '')
-                               : null,
         ...(dto.donatario.nrc?.replace(/-/g, '') ? { nrc: dto.donatario.nrc.replace(/-/g, '') } : {}),
         nombre:              dto.donatario.nombre,
         nombreComercial:     dto.donatario.nombreComercial || dto.donatario.nombre,
