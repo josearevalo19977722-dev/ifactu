@@ -138,9 +138,10 @@ export class DonacionService {
         horEmi,
         tipoMoneda:    'USD',
       },
-      // Tipo 15: emisor = "donante" usa campo 'nit' directo (igual que receptor en CCF)
+      // Tipo 15: donante usa tipoDocumento + numDocumento (NO campo 'nit')
       donante: {
-        nit:            getNitEmisor(empresa),
+        tipoDocumento:  '36',
+        numDocumento:   getNitEmisor(empresa),
         nrc:            empresa.nrc.replace(/-/g, ''),
         nombre:         empresa.nombreLegal,
         codActividad:   empresa.codActividad,
