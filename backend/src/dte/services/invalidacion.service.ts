@@ -13,6 +13,7 @@ import { svDateTime } from '../../utils/sv-datetime';
 import { AuthMhService } from '../../auth-mh/auth-mh.service';
 import { getAmbiente, getNitEmisor } from './mh-config.helper';
 import { EmpresaService } from '../../empresa/services/empresa.service';
+import { NotificacionDteService } from './notificacion-dte.service';
 
 // No existe un "tipoDte" de anulación — el endpoint /anulardte recibe el evento de invalidación
 
@@ -30,6 +31,7 @@ export class InvalidacionService {
     private readonly empresaService: EmpresaService,
     @InjectRepository(Empresa)
     private readonly empresaRepo: Repository<Empresa>,
+    private readonly notificacion: NotificacionDteService,
   ) {}
 
   /**
@@ -178,6 +180,18 @@ export class InvalidacionService {
           (data.selloRecibido ? ` | Sello: ${data.selloRecibido}` : '');
         dte.codigoMsg = data.codigoMsg ?? null;
         dte.descripcionMsg = data.descripcionMsg ?? null;
+
+        // Notificar al receptor que el documento fue anulado
+        const savedDte = await this.dteRepo.save(dte);
+        const jsonOrig = jsonOriginal as any;
+        this.notificacion.programar({
+          dte:      savedDte,
+          correo:   jsonOrig?.receptor?.correo   ?? null,
+          telefono: jsonOrig?.receptor?.telefono ?? null,
+          nombre:   receptorNombre ?? 'Cliente',
+          empresa,
+        });
+        return savedDte;
       } else {
         throw new BadRequestException(
           `MH rechazó la anulación: ${data.descripcionMsg ?? JSON.stringify(data)}`,
@@ -199,8 +213,6 @@ export class InvalidacionService {
         `Error al comunicar con el MH: ${err.message}`,
       );
     }
-
-    return this.dteRepo.save(dte);
   }
 
   private calcularIva(dte: Dte): number {
