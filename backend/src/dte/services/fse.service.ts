@@ -158,15 +158,15 @@ export class FseService {
       return {
         numItem: index + 1,
         tipoItem: item.tipoItem || 1,
-        numeroDocumento: null,
         cantidad: item.cantidad,
         codigo: item.codigo || null,
-        codTributo: null,
         uniMedida: item.uniMedida || 59,
         descripcion: item.descripcion,
         precioUni: precioUnitario,
         montoDescu: montoDescu,
-        compra: compra,
+        compraNoSujeta: 0,
+        compraExenta:   0,
+        compraAfectada: compra,
       };
     });
 
@@ -235,9 +235,6 @@ export class FseService {
         pagos: [{ codigo: '01', montoPago: totalPagar, referencia: null, plazo: null, periodo: null }],
         observaciones: dto.observaciones || null,
       },
-      ventaTercero: null,
-      extension: null,
-      apendice: null,
     };
 
     return json;
