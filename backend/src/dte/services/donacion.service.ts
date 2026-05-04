@@ -160,7 +160,7 @@ export class DonacionService {
       // Tipo 15: donatario SÍ requiere estructura completa con establecimiento
       donatario: {
         tipoDocumento:       dto.donatario.tipoDocumento,
-        numDocumento:        dto.donatario.numDocumento,
+        numDocumento:        dto.donatario.numDocumento.replace(/-/g, ''),
         nrc:                 dto.donatario.nrc?.replace(/-/g, '') || null,
         nombre:              dto.donatario.nombre,
         nombreComercial:     dto.donatario.nombreComercial || dto.donatario.nombre,
