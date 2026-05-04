@@ -92,7 +92,12 @@ export function NuevoCf() {
       </div>
 
       <div className="page">
-        <form onSubmit={handleSubmit(setPendingData)}>
+        <form onSubmit={handleSubmit((data) => {
+          // Asegurar que montoPago refleje el total real antes de enviar
+          const total = Math.round((data.items.reduce((s, i) => s + (i.precioUni * i.cantidad), 0)) * 100) / 100;
+          data.pagos = data.pagos.map((p, i) => ({ ...p, montoPago: i === 0 ? total : p.montoPago }));
+          setPendingData(data);
+        })}>
 
           {/* Receptor */}
           <div className="form-section">

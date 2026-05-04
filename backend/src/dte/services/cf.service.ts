@@ -308,9 +308,10 @@ export class CfService {
         saldoFavor: 0,
         condicionOperacion: dto.condicionOperacion || 1,
         pagos: (dto.pagos && dto.pagos.length > 0)
-          ? dto.pagos.map(p => ({
+          ? dto.pagos.map((p, idx) => ({
               codigo:     p.codigo,
-              montoPago:  p.montoPago,
+              // Si montoPago viene en 0 o vacío, usar totalPagar en el primer pago
+              montoPago:  (p.montoPago && p.montoPago > 0) ? p.montoPago : (idx === 0 ? totalPagar : 0),
               referencia: p.referencia || null,
               plazo:      p.plazo      || null,
               periodo:    p.periodo    || null,
