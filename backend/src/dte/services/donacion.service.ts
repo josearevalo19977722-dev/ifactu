@@ -161,6 +161,10 @@ export class DonacionService {
       donatario: {
         tipoDocumento:       dto.donatario.tipoDocumento,
         numDocumento:        dto.donatario.numDocumento.replace(/-/g, ''),
+        // Hacienda tipo 15 requiere campo 'nit' separado (igual que receptor en CCF)
+        nit:                 dto.donatario.tipoDocumento === '36'
+                               ? dto.donatario.numDocumento.replace(/-/g, '')
+                               : null,
         ...(dto.donatario.nrc?.replace(/-/g, '') ? { nrc: dto.donatario.nrc.replace(/-/g, '') } : {}),
         nombre:              dto.donatario.nombre,
         nombreComercial:     dto.donatario.nombreComercial || dto.donatario.nombre,
