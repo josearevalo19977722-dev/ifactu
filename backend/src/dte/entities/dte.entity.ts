@@ -5,6 +5,7 @@ import {
   CreateDateColumn,
   UpdateDateColumn,
   ManyToOne,
+  Index,
 } from 'typeorm';
 import { Empresa } from '../../empresa/entities/empresa.entity';
 import { Sucursal } from '../../empresa/entities/sucursal.entity';
@@ -19,6 +20,7 @@ export enum EstadoDte {
 }
 
 @Entity('dtes')
+@Index(['numeroControl', 'empresa'], { unique: true })
 export class Dte {
   @PrimaryGeneratedColumn('uuid')
   id: string;
@@ -27,7 +29,7 @@ export class Dte {
   @Column({ length: 2 })
   tipoDte: string;
 
-  @Column({ unique: true })
+  @Column()
   numeroControl: string;
 
   @Column({ unique: true })
