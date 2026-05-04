@@ -136,6 +136,7 @@ export class FexeService {
         precioUni,
         montoDescu,
         ventaGravada,
+        tributos:     null,
         noGravado:    0,
       };
     });
@@ -189,18 +190,18 @@ export class FexeService {
         regimen:         null,
       },
       receptor: {
-        tipoPersona:      dto.receptor.tipoPersona     || 2,   // 1=Natural, 2=Jurídica
+        tipoPersona:      dto.receptor.tipoPersona     || 2,
         nombreComercial:  dto.receptor.nombreComercial || dto.receptor.nombre,
         nombre:           dto.receptor.nombre,
         descActividad:    dto.receptor.descActividad   || 'Importaciones',
         codPais:          dto.receptor.codPais,
         nombrePais:       dto.receptor.nombrePais,
-        ...(dto.receptor.complemento?.trim()   ? { complemento:   dto.receptor.complemento.trim()   } : {}),
-        // tipoDocumento y numDocumento solo si tienen valor válido (no vacío)
-        ...(dto.receptor.tipoDocumento?.trim() ? { tipoDocumento: dto.receptor.tipoDocumento.trim() } : {}),
-        ...(dto.receptor.numDocumento?.trim()  ? { numDocumento:  dto.receptor.numDocumento.trim()  } : {}),
-        ...(dto.receptor.telefono?.trim()      ? { telefono:      dto.receptor.telefono.trim()      } : {}),
-        ...(dto.receptor.correo?.trim()        ? { correo:        dto.receptor.correo.trim()        } : {}),
+        complemento:      dto.receptor.complemento?.trim() || null,
+        // Requeridos por esquema FEXE — usar defaults si no se proporcionan
+        tipoDocumento:    dto.receptor.tipoDocumento?.trim() || '37',
+        numDocumento:     dto.receptor.numDocumento?.trim()  || 'N/A',
+        telefono:         dto.receptor.telefono?.trim()      || '00000000',
+        ...(dto.receptor.correo?.trim() ? { correo: dto.receptor.correo.trim() } : {}),
       },
       otrosDocumentos: null,
       ventaTercero:    null,
@@ -218,7 +219,7 @@ export class FexeService {
         observaciones:       dto.observaciones || 'N/A',
         flete:               dto.flete   ?? 0,
         seguro:              dto.seguro  ?? 0,
-        dincoterms:          dto.incoterms     || 'DAP',
+        codIncoterms:        dto.incoterms     || 'DAP',
         descIncoterms:       dto.descIncoterms || 'Delivered at Place',
         pagos: [{ codigo: '01', montoPago: totalPagar, referencia: null, plazo: null, periodo: null }],
         numPagoElectronico:  null,
