@@ -50,8 +50,13 @@ export class NotaService {
     this.empresaService.assertTipoDteHabilitado(empresa, tipoDte);
     if (!empresa.nit) throw new Error('La empresa no tiene NIT configurado');
 
-    // Obtener el DTE referenciado (debe ser CCF recibido)
-    const dteRef = await this.dteRepo.findOne({ where: { id: dto.dteReferenciadoId, empresa: { id: empresaId } } });
+    // Obtener el DTE referenciado por codigoGeneracion o id interno
+    const dteRef = await this.dteRepo.findOne({
+      where: [
+        { codigoGeneracion: dto.dteReferenciadoId.toUpperCase(), empresa: { id: empresaId } },
+        { id: dto.dteReferenciadoId, empresa: { id: empresaId } },
+      ],
+    });
     if (!dteRef) {
       throw new NotFoundException(`DTE referenciado ${dto.dteReferenciadoId} no encontrado o no pertenece a su empresa`);
     }
