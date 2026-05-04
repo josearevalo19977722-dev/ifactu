@@ -3,13 +3,14 @@ import { ConfigService } from '@nestjs/config';
 
 /**
  * Lee el ambiente MH desde la empresa.
- * Prioridad: empresa.mhAmbiente → variable de entorno MH_AMBIENTE → '00' (pruebas).
+ * Prioridad: empresa.mhAmbiente → variable de entorno MH_AMBIENTE → '01' (pruebas).
+ * '00' = producción, '01' = pruebas/sandbox
  */
 export function getAmbiente(
   empresa: { mhAmbiente?: string } | null | undefined,
   config: ConfigService,
 ): string {
-  return empresa?.mhAmbiente || config.get<string>('MH_AMBIENTE', '00');
+  return empresa?.mhAmbiente || config.get<string>('MH_AMBIENTE', '01');
 }
 
 /**
