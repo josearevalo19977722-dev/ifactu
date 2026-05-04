@@ -164,9 +164,7 @@ export class FseService {
         descripcion: item.descripcion,
         precioUni: precioUnitario,
         montoDescu: montoDescu,
-        compraNoSujeta: 0,
-        compraExenta:   0,
-        compraAfectada: compra,
+        compra,
       };
     });
 
@@ -235,6 +233,7 @@ export class FseService {
         pagos: [{ codigo: '01', montoPago: totalPagar, referencia: null, plazo: null, periodo: null }],
         observaciones: dto.observaciones || null,
       },
+      apendice: null,
     };
 
     return json;
