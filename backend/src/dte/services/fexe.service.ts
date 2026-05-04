@@ -219,8 +219,8 @@ export class FexeService {
         observaciones:       dto.observaciones || 'N/A',
         flete:               dto.flete   ?? 0,
         seguro:              dto.seguro  ?? 0,
-        codIncoterms:        dto.incoterms     || '05',   // CAT-031: 05=DAP
-        descIncoterms:       dto.descIncoterms || 'DAP - Entrega en el lugar',
+        codIncoterms:        null,
+        descIncoterms:       dto.descIncoterms || dto.incoterms || null,
         pagos: [{ codigo: '01', montoPago: totalPagar, referencia: null, plazo: null, periodo: null }],
         numPagoElectronico:  null,
       },
