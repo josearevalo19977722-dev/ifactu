@@ -121,37 +121,32 @@ export class FexeService {
     const ambiente = getAmbiente(empresa, this.config);
     const r2 = (num: number) => Math.round(num * 100) / 100;
 
-    let totalGravada = 0;
-    let totalDescu = 0;
-
     const cuerpoDocumentoNum = dto.items.map((item, index) => {
-      const cantidad = item.cantidad || 1;
-      const precioUnitario = r2(item.precioUni || 0);
-      const ventaGravada = r2(precioUnitario * cantidad);
-      
-      totalGravada += ventaGravada;
-
+      const cantidad     = item.cantidad || 1;
+      const precioUni    = r2(item.precioUni || 0);
+      const montoDescu   = r2(item.montoDescu || 0);
+      const ventaGravada = r2(precioUni * cantidad - montoDescu);
       return {
-        numItem: index + 1,
-        tipoItem: item.tipoItem || 1,
-        numeroDocumento: null,
-        cantidad: item.cantidad,
-        codigo: item.codigo || null,
-        codTributo: null,
-        uniMedida: item.uniMedida || 59,
-        descripcion: item.descripcion,
-        precioUni: precioUnitario,
-        montoDescu: 0,
-        ventaGravada: ventaGravada,
-        tributos: null,
-        noGravado: 0,
+        numItem:      index + 1,
+        // NO tipoItem, NO codTributo, NO numeroDocumento, NO tributos
+        cantidad,
+        codigo:       item.codigo || null,
+        uniMedida:    item.uniMedida || 59,
+        descripcion:  item.descripcion,
+        precioUni,
+        montoDescu,
+        ventaGravada,
+        noGravado:    0,
       };
     });
 
-    totalGravada = r2(totalGravada);
-    totalDescu = r2(totalDescu);
-    const subTotal = r2(totalGravada - totalDescu);
-    const totalPagar = r2(subTotal);
+    const totalGravada = r2(dto.items.reduce((s, i) => {
+      const pu = r2(i.precioUni || 0);
+      const md = r2(i.montoDescu || 0);
+      return s + r2(pu * (i.cantidad || 1) - md);
+    }, 0));
+    const totalDescu   = r2(dto.items.reduce((s, i) => s + r2(i.montoDescu || 0), 0));
+    const totalPagar   = r2(totalGravada);
 
     const json = {
       identificacion: {
@@ -163,20 +158,20 @@ export class FexeService {
         tipoModelo: 1,
         tipoOperacion: 1,
         tipoContingencia: null,
-        motivoContin: null,
-        tipoExportacion: dto.tipoExportacion || 1,
+        motivoContigencia: null,   // esquema FEXE: "motivoContigencia", NO "motivoContin"
+        // NO tipoExportacion aquí — va en emisor.tipoItemExpor
         fecEmi,
         horEmi,
         tipoMoneda: 'USD',
       },
-      documentoRelacionado: null,
+      // NO documentoRelacionado (no permitido en FEXE)
       emisor: {
-        nit:               getNitEmisor(empresa),
-        nrc:               empresa.nrc.replace(/-/g, ''),
-        nombre:            empresa.nombreLegal,
-        codActividad:      empresa.codActividad,
-        descActividad:     empresa.descActividad,
-        nombreComercial:   empresa.nombreComercial || null,
+        nit:                 getNitEmisor(empresa),
+        nrc:                 empresa.nrc.replace(/-/g, ''),
+        nombre:              empresa.nombreLegal,
+        codActividad:        empresa.codActividad,
+        descActividad:       empresa.descActividad,
+        nombreComercial:     empresa.nombreComercial || null,
         tipoEstablecimiento: empresa.tipoEstablecimiento,
         direccion: {
           departamento: empresa.departamento,
@@ -189,25 +184,30 @@ export class FexeService {
         codEstable:      (empresa.codEstableMh || '').toString().padStart(4, '0'),
         codPuntoVentaMH: (empresa.codPuntoVentaMh || '').toString().padStart(4, '0'),
         codPuntoVenta:   (empresa.codPuntoVentaMh || '').toString().padStart(4, '0'),
+        tipoItemExpor:   dto.tipoExportacion || 2,  // tipoExportacion se ubica aquí
         recintoFiscal:   null,
         regimen:         null,
       },
       receptor: {
-        nombre:        dto.receptor.nombre,
-        codPais:       dto.receptor.codPais,
-        nombrePais:    dto.receptor.nombrePais,
-        complemento:   dto.receptor.complemento || null,
-        tipoDocumento: dto.receptor.tipoDocumento || null,
-        numDocumento:  dto.receptor.numDocumento || null,
-        telefono:      dto.receptor.telefono || null,
-        correo:        dto.receptor.correo || null,
+        tipoPersona:      dto.receptor.tipoPersona     || 2,   // 1=Natural, 2=Jurídica
+        nombreComercial:  dto.receptor.nombreComercial || dto.receptor.nombre,
+        nombre:           dto.receptor.nombre,
+        descActividad:    dto.receptor.descActividad   || 'Importaciones',
+        codPais:          dto.receptor.codPais,
+        nombrePais:       dto.receptor.nombrePais,
+        ...(dto.receptor.complemento?.trim()   ? { complemento:   dto.receptor.complemento.trim()   } : {}),
+        // tipoDocumento y numDocumento solo si tienen valor válido (no vacío)
+        ...(dto.receptor.tipoDocumento?.trim() ? { tipoDocumento: dto.receptor.tipoDocumento.trim() } : {}),
+        ...(dto.receptor.numDocumento?.trim()  ? { numDocumento:  dto.receptor.numDocumento.trim()  } : {}),
+        ...(dto.receptor.telefono?.trim()      ? { telefono:      dto.receptor.telefono.trim()      } : {}),
+        ...(dto.receptor.correo?.trim()        ? { correo:        dto.receptor.correo.trim()        } : {}),
       },
       otrosDocumentos: null,
-      ventaTercero: null,
+      ventaTercero:    null,
       cuerpoDocumento: cuerpoDocumentoNum,
       resumen: {
         totalGravada,
-        descuGravada:        totalDescu,
+        descuento:           totalDescu,         // "descuento" no "descuGravada"
         porcentajeDescuento: 0,
         totalDescu,
         montoTotalOperacion: totalPagar,
@@ -215,10 +215,15 @@ export class FexeService {
         totalPagar,
         totalLetras:         montoALetras(totalPagar),
         condicionOperacion:  dto.condicionOperacion || 1,
+        observaciones:       dto.observaciones || 'N/A',
+        flete:               dto.flete   ?? 0,
+        seguro:              dto.seguro  ?? 0,
+        dincoterms:          dto.incoterms     || 'DAP',
+        descIncoterms:       dto.descIncoterms || 'Delivered at Place',
         pagos: [{ codigo: '01', montoPago: totalPagar, referencia: null, plazo: null, periodo: null }],
         numPagoElectronico:  null,
       },
-      extension: null,
+      // NO extension (no permitido en FEXE)
       apendice: null,
     };
 

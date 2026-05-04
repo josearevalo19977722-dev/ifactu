@@ -56,6 +56,20 @@ export class ReceptorFexeDto {
   @IsNotEmpty()
   nombre: string;
 
+  /** 1=Persona Natural, 2=Persona Jurídica (requerido por esquema FEXE) */
+  @IsOptional()
+  @IsNumber()
+  tipoPersona?: number;
+
+  @IsOptional()
+  @IsString()
+  nombreComercial?: string;
+
+  /** Actividad económica del receptor extranjero (requerido por esquema FEXE) */
+  @IsOptional()
+  @IsString()
+  descActividad?: string;
+
   /** Código del país destino (CAT-020, ISO 3166-1 alpha-2) */
   @IsString()
   @IsNotEmpty()
@@ -104,11 +118,30 @@ export class CreateFexeDto {
   @IsNumber()
   condicionOperacion: number;
 
-  /** Tipo de exportación: 1=Bienes, 2=Servicios, 3=Ambos */
+  /** Tipo de exportación: 1=Bienes, 2=Servicios, 3=Ambos (va en emisor.tipoItemExpor) */
   @IsNumber()
   tipoExportacion: number;
 
   @IsOptional()
   @IsString()
   observaciones?: string;
+
+  /** Términos de comercio internacional (INCOTERMS), ej: DAP, FOB, CIF */
+  @IsOptional()
+  @IsString()
+  incoterms?: string;
+
+  @IsOptional()
+  @IsString()
+  descIncoterms?: string;
+
+  /** Flete de la exportación (0 si no aplica) */
+  @IsOptional()
+  @IsNumber()
+  flete?: number;
+
+  /** Seguro de la exportación (0 si no aplica) */
+  @IsOptional()
+  @IsNumber()
+  seguro?: number;
 }
