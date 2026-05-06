@@ -1,14 +1,17 @@
 import { useNavigate } from 'react-router-dom';
+import { useQueryClient } from '@tanstack/react-query';
 import { useAuth } from '../context/AuthContext';
 
 export function ImpersonacionBanner() {
   const { impersonando, usuario, salirImpersonacion } = useAuth();
   const navigate = useNavigate();
+  const qc = useQueryClient();
 
   if (!impersonando) return null;
 
   function handleSalir() {
     salirImpersonacion();
+    qc.clear(); // Limpiar caché al salir de impersonación
     navigate('/admin/tenants');
   }
 

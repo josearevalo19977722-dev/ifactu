@@ -1,4 +1,5 @@
-import { Entity, PrimaryGeneratedColumn, Column, CreateDateColumn, UpdateDateColumn } from 'typeorm';
+import { Entity, PrimaryGeneratedColumn, Column, CreateDateColumn, UpdateDateColumn, ManyToOne, Index } from 'typeorm';
+import { Empresa } from '../empresa/entities/empresa.entity';
 
 export enum TipoContacto {
   CLIENTE    = 'CLIENTE',
@@ -62,6 +63,13 @@ export class Contacto {
 
   @Column({ nullable: true, type: 'varchar' })
   nombrePais: string | null;
+
+  @Index()
+  @Column({ type: 'uuid', nullable: true })
+  empresaId: string | null;
+
+  @ManyToOne(() => Empresa, { nullable: true, onDelete: 'CASCADE' })
+  empresa: Empresa;
 
   @CreateDateColumn() createdAt: Date;
   @UpdateDateColumn() updatedAt: Date;

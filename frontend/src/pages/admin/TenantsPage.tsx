@@ -125,6 +125,7 @@ export function TenantsPage() {
       setImpersonandoId(empresaId);
       const { data } = await apiClient.post(`/auth/superadmin/impersonar/${empresaId}`);
       iniciarImpersonacion(data.access_token, data.usuario);
+      qc.clear(); // Limpiar caché de React Query para que cargue datos del nuevo tenant
       navigate('/');
     } catch (err: any) {
       alert(err?.response?.data?.message ?? 'No se pudo iniciar impersonación');
