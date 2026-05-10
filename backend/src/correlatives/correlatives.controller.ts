@@ -9,15 +9,13 @@ export class CorrelativesController {
 
   @Get()
   async listar(@Request() req) {
-    if (!req.user.empresa) return [];
-    return this.correlativesService.listar(req.user.empresa.id);
+    if (!req.user.empresaId) return [];
+    return this.correlativesService.listar(req.user.empresaId);
   }
 
   @Post('inicializar')
   async inicializar(@Request() req, @Body() body: any) {
-    // Solo permitir si el usuario tiene empresa asignada
-    if (!req.user.empresa) return { error: 'No tienes empresa asignada' };
-    
-    return this.correlativesService.inicializar(req.user.empresa, body);
+    if (!req.user.empresaId) return { error: 'No tienes empresa asignada' };
+    return this.correlativesService.inicializar(req.user.empresaId, body);
   }
 }

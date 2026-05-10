@@ -73,13 +73,14 @@ export class CorrelativesService {
     });
   }
 
-  async inicializar(empresa: any, data: {
+  async inicializar(empresaId: string, data: {
     tipoDte: string,
     sucursal: string,
     pos: string,
     ultimoNumero: number,
     anio?: number
   }) {
+    const empresa = await this.empresaService.findById(empresaId);
     const anio = data.anio || new Date().getFullYear();
     const ambiente = getAmbiente(empresa, this.config);
 
