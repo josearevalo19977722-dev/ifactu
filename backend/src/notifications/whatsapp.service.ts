@@ -47,6 +47,9 @@ export class WhatsappService implements OnModuleInit, OnModuleDestroy {
     this.estado = 'CONECTANDO';
     this.logger.log('Iniciando cliente WhatsApp…');
 
+    // Limpiar locks SIEMPRE antes de arrancar (locks huérfanos del rebuild anterior)
+    this.limpiarChromeLocks();
+
     const executablePath = process.env.PUPPETEER_EXECUTABLE_PATH || undefined;
 
     this.client = new Client({
