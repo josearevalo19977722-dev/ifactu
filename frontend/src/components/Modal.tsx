@@ -17,7 +17,11 @@ export function Modal({ open, onClose, title, children, footer, maxWidth = 520 }
   const titleId = useId();
   const panelRef = useRef<HTMLDivElement>(null);
   const previouslyFocused = useRef<HTMLElement | null>(null);
+  // Ref para onClose — evita re-ejecutar efectos cuando el padre recrea la función
+  const onCloseRef = useRef(onClose);
+  useEffect(() => { onCloseRef.current = onClose; }, [onClose]);
 
+  // Efecto de apertura: foco inicial + scroll lock + restaurar foco al cerrar
   useEffect(() => {
     if (!open) return;
     previouslyFocused.current = document.activeElement as HTMLElement | null;
@@ -30,10 +34,24 @@ export function Modal({ open, onClose, title, children, footer, maxWidth = 520 }
       focusables[0]?.focus();
     }, 0);
 
+    const prevOverflow = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+
+    return () => {
+      window.clearTimeout(t);
+      document.body.style.overflow = prevOverflow;
+      previouslyFocused.current?.focus?.();
+    };
+  }, [open]); // ← solo depende de `open`, no de onClose
+
+  // Efecto de teclado: Escape y Tab — usa ref para no recrear el listener
+  useEffect(() => {
+    if (!open) return;
+
     const onKeyDown = (e: KeyboardEvent) => {
       if (e.key === 'Escape') {
         e.preventDefault();
-        onClose();
+        onCloseRef.current();
         return;
       }
       if (e.key !== 'Tab' || !panelRef.current) return;
@@ -46,27 +64,15 @@ export function Modal({ open, onClose, title, children, footer, maxWidth = 520 }
       const first = focusables[0];
       const last = focusables[focusables.length - 1];
       if (e.shiftKey) {
-        if (document.activeElement === first) {
-          e.preventDefault();
-          last.focus();
-        }
+        if (document.activeElement === first) { e.preventDefault(); last.focus(); }
       } else if (document.activeElement === last) {
-        e.preventDefault();
-        first.focus();
+        e.preventDefault(); first.focus();
       }
     };
 
     document.addEventListener('keydown', onKeyDown);
-    const prevOverflow = document.body.style.overflow;
-    document.body.style.overflow = 'hidden';
-
-    return () => {
-      window.clearTimeout(t);
-      document.removeEventListener('keydown', onKeyDown);
-      document.body.style.overflow = prevOverflow;
-      previouslyFocused.current?.focus?.();
-    };
-  }, [open, onClose]);
+    return () => document.removeEventListener('keydown', onKeyDown);
+  }, [open]); // ← solo depende de `open`
 
   if (!open) return null;
 
