@@ -58,7 +58,10 @@ export class AuthMhService {
       );
 
       const rawToken  = data.body?.token ?? data.token ?? '';
-      if (!rawToken) throw new Error('Hacienda no devolvió un token válido');
+      if (!rawToken) {
+        this.logger.error(`Respuesta MH sin token para ${empresa.nombreLegal}: ${JSON.stringify(data)}`);
+        throw new Error('Hacienda no devolvió un token válido');
+      }
 
       // El MH ya devuelve el token con "Bearer " incluido (e.g. "Bearer eyJ...")
       // Si no lo incluye, lo agregamos nosotros para no duplicarlo.
