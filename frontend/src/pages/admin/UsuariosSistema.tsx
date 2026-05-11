@@ -57,7 +57,7 @@ export function UsuariosSistema() {
   // Todas las empresas del sistema (para el selector)
   const { data: todasEmpresas = [] } = useQuery<EmpresaOpcion[]>({
     queryKey: ['todas-empresas'],
-    queryFn:  () => apiClient.get('/tenants').then(r => r.data),
+    queryFn:  () => apiClient.get('/admin/tenants').then(r => r.data),
     enabled:  !!gestionando,
   });
 
