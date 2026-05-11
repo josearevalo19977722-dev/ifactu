@@ -86,7 +86,7 @@ export function GestionCorrelativos() {
                     <td><span className="badge">{c.anio}</span></td>
                     <td>{c.sucursal} / {c.pos}</td>
                     <td style={{ fontWeight: 700, fontSize: 16 }}>{c.ultimoNumero}</td>
-                    <td>{c.ambiente === '1' ? 'Pruebas' : 'Producción'}</td>
+                    <td>{c.ambiente === '00' ? 'Pruebas' : 'Producción'}</td>
                     <td style={{ color: 'var(--success)', fontWeight: 600 }}>{Number(c.ultimoNumero) + 1}</td>
                   </tr>
                 ))
