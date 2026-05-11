@@ -268,9 +268,9 @@ function AppLayout() {
               </button>
             </div>
           </div>
-          <div className="env-badge">
+          <div className={`env-badge${empresaPerfil?.mhAmbiente === '01' ? ' env-badge--prod' : ''}`}>
             <div className="env-dot" />
-            Ambiente pruebas (MH)
+            {empresaPerfil?.mhAmbiente === '01' ? 'Ambiente producción (MH)' : 'Ambiente pruebas (MH)'}
           </div>
         </div>
       </aside>

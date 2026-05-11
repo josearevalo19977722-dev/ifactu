@@ -320,6 +320,8 @@
   flex-shrink: 0;
 }
 .env-dot.prod { background: #22c55e; box-shadow: 0 0 0 2px rgba(34,197,94,.25); }
+.env-badge--prod { background: rgba(34,197,94,.08); color: #22c55e; }
+.env-badge--prod .env-dot { background: #22c55e; box-shadow: 0 0 0 2px rgba(34,197,94,.25); }
 
 /* ── Main content ──────────────────────────────────────────── */
 .content {
