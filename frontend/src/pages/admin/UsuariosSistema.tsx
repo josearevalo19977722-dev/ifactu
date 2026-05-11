@@ -12,6 +12,11 @@ interface UsuarioSistema {
   empresa:   { id: string; nombreLegal: string } | null;
 }
 
+interface EmpresaOpcion {
+  id:          string;
+  nombreLegal: string;
+}
+
 const ROL_BADGE: Record<string, { bg: string; color: string }> = {
   SUPERADMIN: { bg: '#e9d5ff', color: '#5b21b6' },
   ADMIN:      { bg: '#fecaca', color: '#7f1d1d' },
@@ -29,15 +34,31 @@ const EMPTY_FORM: EditForm = { nombre: '', email: '', password: '' };
 
 export function UsuariosSistema() {
   const qc = useQueryClient();
-  const [busqueda, setBusqueda]       = useState('');
-  const [editando, setEditando]       = useState<UsuarioSistema | null>(null);
-  const [form, setForm]               = useState<EditForm>(EMPTY_FORM);
-  const [mostrarPw, setMostrarPw]     = useState(false);
-  const [errorModal, setErrorModal]   = useState('');
+  const [busqueda, setBusqueda]         = useState('');
+  const [editando, setEditando]         = useState<UsuarioSistema | null>(null);
+  const [form, setForm]                 = useState<EditForm>(EMPTY_FORM);
+  const [mostrarPw, setMostrarPw]       = useState(false);
+  const [errorModal, setErrorModal]     = useState('');
+  // Modal gestión empresas contador
+  const [gestionando, setGestionando]   = useState<UsuarioSistema | null>(null);
 
   const { data: usuarios = [], isLoading } = useQuery<UsuarioSistema[]>({
     queryKey: ['superadmin-usuarios'],
     queryFn:  () => apiClient.get('/auth/superadmin/usuarios').then(r => r.data),
+  });
+
+  // Empresas asignadas al contador seleccionado
+  const { data: empresasContador = [], refetch: refetchEmpresasContador } = useQuery<EmpresaOpcion[]>({
+    queryKey: ['contador-empresas', gestionando?.id],
+    queryFn:  () => apiClient.get(`/auth/superadmin/usuarios/${gestionando!.id}/empresas`).then(r => r.data),
+    enabled:  !!gestionando,
+  });
+
+  // Todas las empresas del sistema (para el selector)
+  const { data: todasEmpresas = [] } = useQuery<EmpresaOpcion[]>({
+    queryKey: ['todas-empresas'],
+    queryFn:  () => apiClient.get('/tenants').then(r => r.data),
+    enabled:  !!gestionando,
   });
 
   const actualizarMut = useMutation({
@@ -52,6 +73,18 @@ export function UsuariosSistema() {
     onError: (e: any) => {
       setErrorModal(e?.response?.data?.message ?? 'Error al actualizar');
     },
+  });
+
+  const asignarMut = useMutation({
+    mutationFn: ({ usuarioId, empresaId }: { usuarioId: string; empresaId: string }) =>
+      apiClient.post(`/auth/superadmin/usuarios/${usuarioId}/empresas/${empresaId}`).then(r => r.data),
+    onSuccess: () => refetchEmpresasContador(),
+  });
+
+  const quitarMut = useMutation({
+    mutationFn: ({ usuarioId, empresaId }: { usuarioId: string; empresaId: string }) =>
+      apiClient.post(`/auth/superadmin/usuarios/${usuarioId}/empresas/${empresaId}/quitar`).then(r => r.data),
+    onSuccess: () => refetchEmpresasContador(),
   });
 
   // ── Filtrado ──────────────────────────────────────────────────────────────
@@ -82,6 +115,10 @@ export function UsuariosSistema() {
     if (Object.keys(body).length === 0) { setEditando(null); return; }
     actualizarMut.mutate({ id: editando.id, body });
   }
+
+  // Empresas disponibles (no asignadas aún) para el select
+  const asignadasIds = new Set(empresasContador.map(e => e.id));
+  const disponibles  = todasEmpresas.filter(e => !asignadasIds.has(e.id));
 
   return (
     <div style={{ flex: 1 }}>
@@ -144,13 +181,22 @@ export function UsuariosSistema() {
                           {u.activo ? 'Activo' : 'Inactivo'}
                         </span>
                       </td>
-                      <td>
+                      <td style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
                         <button
                           className="btn btn-sm btn-ghost"
                           onClick={() => abrirEditar(u)}
                         >
                           ✏️ Editar
                         </button>
+                        {u.rol === 'CONTADOR' && (
+                          <button
+                            className="btn btn-sm btn-ghost"
+                            style={{ color: 'var(--primary)' }}
+                            onClick={() => setGestionando(u)}
+                          >
+                            🏢 Empresas
+                          </button>
+                        )}
                       </td>
                     </tr>
                   );
@@ -250,6 +296,117 @@ export function UsuariosSistema() {
                 disabled={actualizarMut.isPending}
               >
                 {actualizarMut.isPending ? 'Guardando…' : 'Guardar cambios'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ── Modal gestión de empresas del CONTADOR ── */}
+      {gestionando && (
+        <div
+          style={{
+            position: 'fixed', inset: 0,
+            background: 'rgba(0,0,0,.45)',
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+            zIndex: 1000,
+          }}
+          onClick={(e) => { if (e.target === e.currentTarget) setGestionando(null); }}
+        >
+          <div style={{
+            background: 'var(--surface)',
+            borderRadius: 12,
+            padding: 28,
+            width: '100%',
+            maxWidth: 500,
+            boxShadow: '0 20px 60px rgba(0,0,0,.3)',
+          }}>
+            <h3 style={{ margin: '0 0 4px', fontSize: '1.1rem' }}>
+              🏢 Empresas del contador
+            </h3>
+            <p style={{ margin: '0 0 20px', fontSize: '.85rem', color: 'var(--text-2)' }}>
+              {gestionando.nombre} — {gestionando.email}
+            </p>
+
+            {/* Lista de empresas ya asignadas */}
+            <p style={{ fontSize: '.8rem', fontWeight: 600, color: 'var(--text-2)', marginBottom: 8, textTransform: 'uppercase', letterSpacing: '.05em' }}>
+              Empresas asignadas
+            </p>
+            {empresasContador.length === 0 ? (
+              <p style={{ color: 'var(--text-3)', fontSize: '.875rem', marginBottom: 16 }}>
+                Sin empresas asignadas aún.
+              </p>
+            ) : (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 6, marginBottom: 20 }}>
+                {empresasContador.map(emp => (
+                  <div
+                    key={emp.id}
+                    style={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'space-between',
+                      background: 'var(--surface-2, rgba(0,0,0,.04))',
+                      border: '1px solid var(--border)',
+                      borderRadius: 8,
+                      padding: '8px 12px',
+                    }}
+                  >
+                    <span style={{ fontSize: '.9rem' }}>🏢 {emp.nombreLegal}</span>
+                    <button
+                      className="btn btn-sm"
+                      style={{ color: 'var(--danger, #ef4444)', background: 'none', border: '1px solid var(--danger, #ef4444)', padding: '2px 10px' }}
+                      disabled={quitarMut.isPending}
+                      onClick={() => quitarMut.mutate({ usuarioId: gestionando.id, empresaId: emp.id })}
+                    >
+                      Quitar
+                    </button>
+                  </div>
+                ))}
+              </div>
+            )}
+
+            {/* Selector para agregar nueva empresa */}
+            {disponibles.length > 0 && (
+              <>
+                <p style={{ fontSize: '.8rem', fontWeight: 600, color: 'var(--text-2)', marginBottom: 8, textTransform: 'uppercase', letterSpacing: '.05em' }}>
+                  Agregar empresa
+                </p>
+                <div style={{ display: 'flex', gap: 8 }}>
+                  <select
+                    id="select-nueva-empresa"
+                    className="form-control"
+                    defaultValue=""
+                  >
+                    <option value="" disabled>Selecciona una empresa…</option>
+                    {disponibles.map(emp => (
+                      <option key={emp.id} value={emp.id}>{emp.nombreLegal}</option>
+                    ))}
+                  </select>
+                  <button
+                    className="btn btn-primary"
+                    disabled={asignarMut.isPending}
+                    onClick={() => {
+                      const sel = (document.getElementById('select-nueva-empresa') as HTMLSelectElement).value;
+                      if (!sel) return;
+                      asignarMut.mutate({ usuarioId: gestionando.id, empresaId: sel });
+                      (document.getElementById('select-nueva-empresa') as HTMLSelectElement).value = '';
+                    }}
+                  >
+                    {asignarMut.isPending ? '…' : '+ Agregar'}
+                  </button>
+                </div>
+              </>
+            )}
+
+            {disponibles.length === 0 && empresasContador.length > 0 && (
+              <p style={{ fontSize: '.875rem', color: 'var(--text-3)', marginTop: 8 }}>
+                ✅ Este contador ya tiene acceso a todas las empresas disponibles.
+              </p>
+            )}
+
+            <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: 24 }}>
+              <button className="btn btn-primary" onClick={() => setGestionando(null)}>
+                Cerrar
               </button>
             </div>
           </div>
