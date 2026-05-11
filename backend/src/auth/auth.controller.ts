@@ -67,8 +67,11 @@ export class AuthController {
   @Post('usuarios')
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles(RolUsuario.ADMIN)
-  crear(@Body() body: { email: string; nombre: string; password: string; rol?: RolUsuario }) {
-    return this.authService.crearUsuario(body);
+  crear(@Request() req: any, @Body() body: { email: string; nombre: string; password: string; rol?: RolUsuario }) {
+    const empresaId = req.user?.empresaId ?? null;
+    return empresaId
+      ? this.authService.crearUsuarioParaEmpresa(empresaId, body)
+      : this.authService.crearUsuario(body);
   }
 
   @Patch('usuarios/:id/rol')
