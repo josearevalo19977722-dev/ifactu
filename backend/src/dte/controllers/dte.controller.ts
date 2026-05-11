@@ -65,57 +65,72 @@ export class DteController {
     private readonly empresaService: EmpresaService,
   ) {}
 
+  private assertNoContador(req: any) {
+    if (req.user?.rol === RolUsuario.CONTADOR) {
+      throw new ForbiddenException('Los usuarios CONTADOR no pueden emitir documentos tributarios');
+    }
+  }
+
   @Post('cf')
   @UseGuards(LimiteDtesGuard)
   emitirCf(@Body() dto: CreateCfDto, @Req() req: any) {
+    this.assertNoContador(req);
     return this.cfService.emitir(dto, req.user.empresaId, dto.codEstable, dto.codPuntoVenta);
   }
 
   @Post('ccf')
   @UseGuards(LimiteDtesGuard)
   emitirCcf(@Body() dto: CreateCcfDto, @Req() req: any) {
+    this.assertNoContador(req);
     return this.ccfService.emitir(dto, req.user.empresaId, dto.codEstable, dto.codPuntoVenta);
   }
 
   @Post('nc')
   @UseGuards(LimiteDtesGuard)
   emitirNc(@Body() dto: CreateNotaDto, @Req() req: any) {
+    this.assertNoContador(req);
     return this.notaService.emitirNc(dto, req.user.empresaId);
   }
 
   @Post('nd')
   @UseGuards(LimiteDtesGuard)
   emitirNd(@Body() dto: CreateNotaDto, @Req() req: any) {
+    this.assertNoContador(req);
     return this.notaService.emitirNd(dto, req.user.empresaId);
   }
 
   @Post('fexe')
   @UseGuards(LimiteDtesGuard)
   emitirFexe(@Body() dto: CreateFexeDto, @Req() req: any) {
+    this.assertNoContador(req);
     return this.fexeService.emitir(dto, req.user.empresaId);
   }
 
   @Post('nre')
   @UseGuards(LimiteDtesGuard)
   emitirNre(@Body() dto: CreateNreDto, @Req() req: any) {
+    this.assertNoContador(req);
     return this.nreService.emitir(dto, req.user.empresaId);
   }
 
   @Post('retencion')
   @UseGuards(LimiteDtesGuard)
   emitirRetencion(@Body() dto: CreateRetencionDto, @Req() req: any) {
+    this.assertNoContador(req);
     return this.retencionService.emitir(dto, req.user.empresaId);
   }
 
   @Post('fse')
   @UseGuards(LimiteDtesGuard)
   emitirFse(@Body() dto: CreateFseDto, @Req() req: any) {
+    this.assertNoContador(req);
     return this.fseService.emitir(dto, req.user.empresaId);
   }
 
   @Post('donacion')
   @UseGuards(LimiteDtesGuard)
   emitirDonacion(@Body() dto: CreateDonacionDto, @Req() req: any) {
+    this.assertNoContador(req);
     return this.donacionService.emitir(dto, req.user.empresaId);
   }
 

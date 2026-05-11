@@ -160,6 +160,8 @@ function AppLayout() {
 
           {!isSuperAdmin && (
             <>
+              {/* CONTADOR no puede emitir DTEs */}
+              {usuario.rol !== 'CONTADOR' && (
               <div className="nav-group">
                 <p className="nav-label">Emitir DTE</p>
                 {puede('01') && (
@@ -198,6 +200,7 @@ function AppLayout() {
                   </NavLink>
                 )}
               </div>
+              )}
               <div className="nav-group">
                 <p className="nav-label">Contabilidad</p>
                 <NavLink to="/compras">
