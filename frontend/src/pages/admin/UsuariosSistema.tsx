@@ -14,7 +14,8 @@ interface UsuarioSistema {
 
 interface EmpresaOpcion {
   id:          string;
-  nombreLegal: string;
+  nombre?:     string;   // GET /auth/superadmin/usuarios/:id/empresas
+  nombreLegal?: string;  // GET /admin/tenants
 }
 
 const ROL_BADGE: Record<string, { bg: string; color: string }> = {
@@ -351,7 +352,7 @@ export function UsuariosSistema() {
                       padding: '8px 12px',
                     }}
                   >
-                    <span style={{ fontSize: '.9rem' }}>🏢 {emp.nombreLegal}</span>
+                    <span style={{ fontSize: '.9rem' }}>🏢 {emp.nombreLegal || emp.nombre}</span>
                     <button
                       className="btn btn-sm"
                       style={{ color: 'var(--danger, #ef4444)', background: 'none', border: '1px solid var(--danger, #ef4444)', padding: '2px 10px' }}
@@ -379,7 +380,7 @@ export function UsuariosSistema() {
                   >
                     <option value="" disabled>Selecciona una empresa…</option>
                     {disponibles.map(emp => (
-                      <option key={emp.id} value={emp.id}>{emp.nombreLegal}</option>
+                      <option key={emp.id} value={emp.id}>{emp.nombreLegal || emp.nombre}</option>
                     ))}
                   </select>
                   <button
