@@ -8,10 +8,12 @@ import { Empresa } from '../empresa/entities/empresa.entity';
 import { AuthService } from './auth.service';
 import { AuthController } from './auth.controller';
 import { JwtStrategy } from './jwt.strategy';
+import { ExtensionLicenseModule } from '../extension-license/extension-license.module';
 
 @Module({
   imports: [
     TypeOrmModule.forFeature([Usuario, Empresa]),
+    ExtensionLicenseModule,
     PassportModule,
     JwtModule.registerAsync({
       imports: [ConfigModule],

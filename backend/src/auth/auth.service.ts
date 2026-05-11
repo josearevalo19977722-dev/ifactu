@@ -13,6 +13,7 @@ import { JwtService } from '@nestjs/jwt';
 import * as bcrypt from 'bcrypt';
 import { Usuario, RolUsuario } from '../usuarios/usuario.entity';
 import { Empresa } from '../empresa/entities/empresa.entity';
+import { ExtensionLicenseService } from '../extension-license/extension-license.service';
 
 @Injectable()
 export class AuthService implements OnModuleInit {
@@ -22,6 +23,7 @@ export class AuthService implements OnModuleInit {
     @InjectRepository(Usuario) private readonly usuarioRepo: Repository<Usuario>,
     @InjectRepository(Empresa) private readonly empresaRepo: Repository<Empresa>,
     private readonly jwtService: JwtService,
+    private readonly extensionLic: ExtensionLicenseService,
   ) {}
 
   async onModuleInit() {
@@ -156,6 +158,11 @@ export class AuthService implements OnModuleInit {
       passwordHash, rol: dto.rol ?? RolUsuario.EMISOR,
     });
     const saved = await this.usuarioRepo.save(user);
+
+    if (saved.rol === RolUsuario.CONTADOR) {
+      await this.extensionLic.generarParaContador(saved.id, saved.nombre, saved.email);
+    }
+
     const { passwordHash: _, ...result } = saved;
     return result;
   }
@@ -227,6 +234,11 @@ export class AuthService implements OnModuleInit {
       empresa,
     });
     const saved = await this.usuarioRepo.save(user);
+
+    if (saved.rol === RolUsuario.CONTADOR) {
+      await this.extensionLic.generarParaContador(saved.id, saved.nombre, saved.email);
+    }
+
     const { passwordHash: _, ...result } = saved;
     return result;
   }
