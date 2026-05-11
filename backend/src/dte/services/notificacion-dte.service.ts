@@ -43,12 +43,26 @@ export class NotificacionDteService {
    */
   programar(params: NotificacionParams): void {
     const { dte, correo, nombre, empresa } = params;
-
-    if (!correo) return;
-
+    const empresaObj = empresa ?? dte.empresa ?? null;
     const tipoNombre = TIPOS[dte.tipoDte] ?? `Tipo ${dte.tipoDte}`;
 
-    this.ejecutarNotificaciones({ dte, correo, nombre, tipoNombre, empresa: empresa ?? dte.empresa ?? null });
+    if (correo) {
+      this.ejecutarNotificaciones({ dte, correo, nombre, tipoNombre, empresa: empresaObj });
+    }
+
+    // Copia a la empresa 15 segundos después
+    const correoEmpresa = empresaObj?.correo;
+    if (correoEmpresa && correoEmpresa !== correo) {
+      setTimeout(() => {
+        this.ejecutarNotificaciones({
+          dte,
+          correo:     correoEmpresa,
+          nombre:     empresaObj?.nombreComercial || empresaObj?.nombreLegal || 'Empresa',
+          tipoNombre,
+          empresa:    empresaObj,
+        });
+      }, 15_000);
+    }
   }
 
   private async ejecutarNotificaciones(p: {
