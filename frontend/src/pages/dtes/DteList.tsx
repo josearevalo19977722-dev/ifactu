@@ -23,7 +23,8 @@ const TIPO_LABELS: Record<string, string> = {
 };
 
 export function DteList() {
-  const { isSuperAdmin } = useAuth();
+  const { isSuperAdmin, usuario } = useAuth();
+  const esContador = usuario?.rol === 'CONTADOR';
   const [tipoDte, setTipoDte] = useState('');
   const [estado,  setEstado]  = useState('');
   const [busqueda, setBusqueda] = useState('');
@@ -126,8 +127,8 @@ export function DteList() {
         <span className="topbar-title">DTEs Emitidos</span>
         <div className="topbar-actions">
           <button className="btn btn-sm" onClick={exportarCsv}>↓ CSV</button>
-          <Link to="/cf/nuevo" className="btn btn-primary btn-sm">+ Factura CF</Link>
-          <Link to="/ccf/nuevo" className="btn btn-sm">+ Crédito Fiscal</Link>
+          {!esContador && <Link to="/cf/nuevo" className="btn btn-primary btn-sm">+ Factura CF</Link>}
+          {!esContador && <Link to="/ccf/nuevo" className="btn btn-sm">+ Crédito Fiscal</Link>}
         </div>
       </div>
 
@@ -291,10 +292,12 @@ export function DteList() {
                         title="Sin documentos con estos filtros"
                         description="Prueba limpiar la búsqueda o elegir otro tipo o estado."
                         actions={
-                          <>
-                            <Link to="/cf/nuevo" className="btn btn-primary btn-sm">+ Factura CF</Link>
-                            <Link to="/ccf/nuevo" className="btn btn-sm">Crédito fiscal</Link>
-                          </>
+                          esContador ? undefined : (
+                            <>
+                              <Link to="/cf/nuevo" className="btn btn-primary btn-sm">+ Factura CF</Link>
+                              <Link to="/ccf/nuevo" className="btn btn-sm">Crédito fiscal</Link>
+                            </>
+                          )
                         }
                       />
                     </td>

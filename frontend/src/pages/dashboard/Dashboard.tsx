@@ -310,33 +310,30 @@ export function Dashboard() {
             ) : (
               <>
                 <DashboardShortcut to="/dtes" icon="📋" title="DTEs emitidos" hint="Lista y detalle" />
-                {puede('01') && (
+                {/* Solo ADMIN/EMISOR pueden emitir */}
+                {usuario?.rol !== 'CONTADOR' && puede('01') && (
                   <DashboardShortcut to="/cf/nuevo" icon="🧾" title="Nueva factura CF" hint="Consumidor final" />
                 )}
-                {puede('03') && (
+                {usuario?.rol !== 'CONTADOR' && puede('03') && (
                   <DashboardShortcut to="/ccf/nuevo" icon="📄" title="Crédito fiscal" hint="CCF" />
                 )}
-                {puede('04') && (
+                {usuario?.rol !== 'CONTADOR' && puede('04') && (
                   <DashboardShortcut to="/nre/nuevo" icon="🚚" title="Nota de remisión" hint="NRE" />
                 )}
-                {puede('11') && (
+                {usuario?.rol !== 'CONTADOR' && puede('11') && (
                   <DashboardShortcut to="/fexe/nuevo" icon="🌍" title="Factura exportación" hint="FEXE" />
                 )}
-                {puede('07') && (
+                {usuario?.rol !== 'CONTADOR' && puede('07') && (
                   <DashboardShortcut to="/retencion/nuevo" icon="🏦" title="Retención" hint="Comprobante" />
                 )}
-                {puede('14') && (
+                {usuario?.rol !== 'CONTADOR' && puede('14') && (
                   <DashboardShortcut to="/fse/nuevo" icon="👤" title="Sujeto excluido" hint="FSE" />
                 )}
-                {puede('15') && (
+                {usuario?.rol !== 'CONTADOR' && puede('15') && (
                   <DashboardShortcut to="/donacion/nuevo" icon="🎁" title="Donación" hint="DTE 15" />
                 )}
-                {isContador && (
-                  <DashboardShortcut to="/compras" icon="🛒" title="Libro de compras" hint="IVA compras" />
-                )}
-                {isContador && (
-                  <DashboardShortcut to="/reportes" icon="📒" title="Libros y anexos" hint="Reportes" />
-                )}
+                <DashboardShortcut to="/compras" icon="🛒" title="Libro de compras" hint="IVA compras" />
+                <DashboardShortcut to="/reportes" icon="📒" title="Libros y anexos" hint="Reportes" />
                 <DashboardShortcut to="/contactos" icon="👥" title="Contactos" hint="Clientes y proveedores" />
                 {isAdmin && (
                   <DashboardShortcut to="/configuracion" icon="⚙️" title="Configuración" hint="Empresa y MH" />
