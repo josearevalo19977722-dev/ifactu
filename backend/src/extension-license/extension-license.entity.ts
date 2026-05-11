@@ -17,14 +17,14 @@ export class ExtensionLicense {
   @Column({ type: 'timestamptz', nullable: true })
   expiresAt: Date | null;
 
-  @Column({ nullable: true })
+  @Column({ type: 'varchar', nullable: true })
   nombre: string | null;
 
-  @Column({ nullable: true })
+  @Column({ type: 'varchar', nullable: true })
   email: string | null;
 
   /** ID del usuario iFactu (solo para origen=ifactu) */
-  @Column({ nullable: true })
+  @Column({ type: 'varchar', nullable: true })
   usuarioId: string | null;
 
   @CreateDateColumn()
