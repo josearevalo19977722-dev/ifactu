@@ -14,6 +14,11 @@ export interface UsuarioAuth {
   impersonando?: boolean;
 }
 
+export interface EmpresaOpcion {
+  id: string;
+  nombre: string;
+}
+
 interface AuthCtx {
   usuario: UsuarioAuth | null;
   token: string | null;
@@ -26,6 +31,13 @@ interface AuthCtx {
   empresaImpersonada: string | null;
   iniciarImpersonacion: (token: string, usuario: UsuarioAuth) => void;
   salirImpersonacion: () => void;
+  // Multi-empresa para CONTADOR
+  pendingEmpresas: EmpresaOpcion[] | null;
+  pendingSelectionToken: string | null;
+  selectEmpresa: (empresaId: string) => Promise<void>;
+  cancelarSeleccion: () => void;
+  misEmpresas: EmpresaOpcion[];
+  cambiarEmpresa: (empresaId: string) => Promise<void>;
 }
 
 const AuthContext = createContext<AuthCtx | null>(null);
@@ -47,6 +59,9 @@ function decodeJwtPayload(token: string): Record<string, unknown> | null {
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [usuario, setUsuario] = useState<UsuarioAuth | null>(null);
   const [token,   setToken]   = useState<string | null>(null);
+  const [pendingEmpresas, setPendingEmpresas] = useState<EmpresaOpcion[] | null>(null);
+  const [pendingSelectionToken, setPendingSelectionToken] = useState<string | null>(null);
+  const [misEmpresas, setMisEmpresas] = useState<EmpresaOpcion[]>([]);
 
   // Restaurar sesión del localStorage
   useEffect(() => {
@@ -65,15 +80,72 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   }, []);
 
+  // Cuando el usuario es CONTADOR, cargar lista de sus empresas
+  useEffect(() => {
+    if (usuario?.rol === 'CONTADOR' && token) {
+      axios.get(`${API}/auth/mis-empresas`, {
+        headers: { Authorization: `Bearer ${token}` },
+      }).then(r => setMisEmpresas(r.data)).catch(() => setMisEmpresas([]));
+    } else {
+      setMisEmpresas([]);
+    }
+  }, [usuario?.id, token]);
+
   const login = async (email: string, password: string) => {
     devLog(`Intentando login para: ${email} en ${API}/auth/login`);
     const { data } = await axios.post(`${API}/auth/login`, { email, password });
-    devLog('Login exitoso');
+    devLog('Login response', data);
+
+    // CONTADOR con múltiples empresas → requiere selección
+    if (data.requires_empresa_selection) {
+      setPendingEmpresas(data.empresas);
+      setPendingSelectionToken(data.selection_token);
+      return;
+    }
+
     setToken(data.access_token);
     setUsuario(data.usuario);
     localStorage.setItem('dte_token', data.access_token);
     localStorage.setItem('dte_usuario', JSON.stringify(data.usuario));
     axios.defaults.headers.common['Authorization'] = `Bearer ${data.access_token}`;
+  };
+
+  /** Contador selecciona su empresa después de ingresar credenciales */
+  const selectEmpresa = async (empresaId: string) => {
+    if (!pendingSelectionToken) return;
+    const { data } = await axios.post(`${API}/auth/select-empresa`, {
+      selection_token: pendingSelectionToken,
+      empresaId,
+    });
+    setPendingEmpresas(null);
+    setPendingSelectionToken(null);
+    setToken(data.access_token);
+    setUsuario(data.usuario);
+    localStorage.setItem('dte_token', data.access_token);
+    localStorage.setItem('dte_usuario', JSON.stringify(data.usuario));
+    axios.defaults.headers.common['Authorization'] = `Bearer ${data.access_token}`;
+  };
+
+  const cancelarSeleccion = () => {
+    setPendingEmpresas(null);
+    setPendingSelectionToken(null);
+  };
+
+  /** Contador cambia de empresa durante la sesión */
+  const cambiarEmpresa = async (empresaId: string) => {
+    if (!token) return;
+    const { data } = await axios.post(
+      `${API}/auth/cambiar-empresa`,
+      { empresaId },
+      { headers: { Authorization: `Bearer ${token}` } },
+    );
+    setToken(data.access_token);
+    setUsuario(data.usuario);
+    localStorage.setItem('dte_token', data.access_token);
+    localStorage.setItem('dte_usuario', JSON.stringify(data.usuario));
+    axios.defaults.headers.common['Authorization'] = `Bearer ${data.access_token}`;
+    // Recargar página para que React Query invalide todo el caché
+    window.location.href = '/';
   };
 
   const logout = () => {
@@ -130,6 +202,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       empresaImpersonada: isImpersonando ? (usuario?.empresaId ?? null) : null,
       iniciarImpersonacion,
       salirImpersonacion,
+      pendingEmpresas,
+      pendingSelectionToken,
+      selectEmpresa,
+      cancelarSeleccion,
+      misEmpresas,
+      cambiarEmpresa,
     }}>
       {children}
     </AuthContext.Provider>

@@ -56,30 +56,92 @@ export class AuthService implements OnModuleInit {
   }
 
   async login(email: string, password: string) {
-    const user = await this.usuarioRepo.findOne({ 
+    const user = await this.usuarioRepo.findOne({
       where: { email, activo: true },
-      relations: ['empresa']
+      relations: ['empresa', 'empresas']
     });
     if (!user) throw new UnauthorizedException('Credenciales inválidas');
 
     const ok = await bcrypt.compare(password, user.passwordHash);
     if (!ok) throw new UnauthorizedException('Credenciales inválidas');
 
-    const payload = { 
-      sub: user.id, 
-      email: user.email, 
-      nombre: user.nombre, 
+    // Contador con múltiples empresas → pedir selección antes de emitir JWT
+    if (user.rol === RolUsuario.CONTADOR && user.empresas?.length > 1) {
+      const selectionPayload = {
+        sub: user.id,
+        email: user.email,
+        nombre: user.nombre,
+        rol: user.rol,
+        requires_selection: true,
+      };
+      return {
+        requires_empresa_selection: true,
+        selection_token: this.jwtService.sign(selectionPayload, { expiresIn: '10m' }),
+        empresas: user.empresas.map(e => ({ id: e.id, nombre: e.nombreLegal || e.nombreComercial })),
+      };
+    }
+
+    // Si contador tiene exactamente 1 empresa en lista, usarla; de lo contrario usar empresa principal
+    const empresaId = (user.rol === RolUsuario.CONTADOR && user.empresas?.length === 1)
+      ? user.empresas[0].id
+      : (user.empresa?.id || null);
+
+    const payload = {
+      sub: user.id,
+      email: user.email,
+      nombre: user.nombre,
       rol: user.rol,
-      empresaId: user.empresa?.id || null 
+      empresaId,
     };
     return {
       access_token: this.jwtService.sign(payload),
-      usuario: { 
-        id: user.id, 
-        email: user.email, 
-        nombre: user.nombre, 
+      usuario: {
+        id: user.id,
+        email: user.email,
+        nombre: user.nombre,
         rol: user.rol,
-        empresaId: user.empresa?.id || null 
+        empresaId,
+      },
+    };
+  }
+
+  /** Contador selecciona empresa después del login → devuelve JWT real */
+  async seleccionarEmpresa(selectionToken: string, empresaId: string) {
+    let payload: any;
+    try {
+      payload = this.jwtService.verify(selectionToken);
+    } catch {
+      throw new UnauthorizedException('Token de selección inválido o expirado');
+    }
+    if (!payload.requires_selection) {
+      throw new UnauthorizedException('Token de selección inválido');
+    }
+
+    // Verificar que el usuario tiene acceso a esa empresa
+    const user = await this.usuarioRepo.findOne({
+      where: { id: payload.sub, activo: true },
+      relations: ['empresas'],
+    });
+    if (!user) throw new UnauthorizedException('Usuario no encontrado');
+
+    const tieneAcceso = user.empresas?.some(e => e.id === empresaId);
+    if (!tieneAcceso) throw new UnauthorizedException('No tienes acceso a esa empresa');
+
+    const jwtPayload = {
+      sub: user.id,
+      email: user.email,
+      nombre: user.nombre,
+      rol: user.rol,
+      empresaId,
+    };
+    return {
+      access_token: this.jwtService.sign(jwtPayload),
+      usuario: {
+        id: user.id,
+        email: user.email,
+        nombre: user.nombre,
+        rol: user.rol,
+        empresaId,
       },
     };
   }
@@ -220,6 +282,75 @@ export class AuthService implements OnModuleInit {
       access_token: this.jwtService.sign(payload, { expiresIn: '2h' }),
       usuario: { id: user.id, email: user.email, nombre: user.nombre, rol: user.rol, empresaId, impersonando: true },
     };
+  }
+
+  /** Contador cambia de empresa durante la sesión → devuelve nuevo JWT */
+  async cambiarEmpresa(usuarioId: string, empresaId: string) {
+    const user = await this.usuarioRepo.findOne({
+      where: { id: usuarioId, activo: true },
+      relations: ['empresas'],
+    });
+    if (!user) throw new UnauthorizedException('Usuario no encontrado');
+
+    const tieneAcceso = user.empresas?.some(e => e.id === empresaId);
+    if (!tieneAcceso) throw new UnauthorizedException('No tienes acceso a esa empresa');
+
+    const jwtPayload = {
+      sub: user.id,
+      email: user.email,
+      nombre: user.nombre,
+      rol: user.rol,
+      empresaId,
+    };
+    return {
+      access_token: this.jwtService.sign(jwtPayload),
+      usuario: {
+        id: user.id,
+        email: user.email,
+        nombre: user.nombre,
+        rol: user.rol,
+        empresaId,
+      },
+    };
+  }
+
+  /** Devuelve la lista de empresas a las que tiene acceso un contador */
+  async empresasDeContador(usuarioId: string) {
+    const user = await this.usuarioRepo.findOne({
+      where: { id: usuarioId },
+      relations: ['empresas'],
+    });
+    if (!user) throw new NotFoundException('Usuario no encontrado');
+    return (user.empresas ?? []).map(e => ({ id: e.id, nombre: e.nombreLegal || e.nombreComercial }));
+  }
+
+  /** Superadmin: asigna una empresa a un contador */
+  async asignarEmpresaContador(usuarioId: string, empresaId: string) {
+    const user = await this.usuarioRepo.findOne({
+      where: { id: usuarioId },
+      relations: ['empresas'],
+    });
+    if (!user) throw new NotFoundException('Usuario no encontrado');
+    const empresa = await this.empresaRepo.findOne({ where: { id: empresaId } });
+    if (!empresa) throw new NotFoundException('Empresa no encontrada');
+    const yaAsignada = user.empresas?.some(e => e.id === empresaId);
+    if (!yaAsignada) {
+      user.empresas = [...(user.empresas ?? []), empresa];
+      await this.usuarioRepo.save(user);
+    }
+    return { ok: true };
+  }
+
+  /** Superadmin: quita una empresa de un contador */
+  async quitarEmpresaContador(usuarioId: string, empresaId: string) {
+    const user = await this.usuarioRepo.findOne({
+      where: { id: usuarioId },
+      relations: ['empresas'],
+    });
+    if (!user) throw new NotFoundException('Usuario no encontrado');
+    user.empresas = (user.empresas ?? []).filter(e => e.id !== empresaId);
+    await this.usuarioRepo.save(user);
+    return { ok: true };
   }
 
   /** Crea o RE-SETEA el usuario superadmin maestro de la plataforma */

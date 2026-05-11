@@ -17,6 +17,26 @@ export class AuthController {
     return this.authService.login(body.email, body.password);
   }
 
+  /** Contador multi-empresa: seleccionar empresa después del login */
+  @Post('select-empresa')
+  selectEmpresa(@Body() body: { selection_token: string; empresaId: string }) {
+    return this.authService.seleccionarEmpresa(body.selection_token, body.empresaId);
+  }
+
+  /** Contador logueado: cambiar de empresa y obtener nuevo JWT */
+  @Post('cambiar-empresa')
+  @UseGuards(JwtAuthGuard)
+  cambiarEmpresa(@Request() req: any, @Body() body: { empresaId: string }) {
+    return this.authService.cambiarEmpresa(req.user.sub, body.empresaId);
+  }
+
+  /** Contador logueado: obtener lista de sus empresas */
+  @Get('mis-empresas')
+  @UseGuards(JwtAuthGuard)
+  misEmpresas(@Request() req: any) {
+    return this.authService.empresasDeContador(req.user.sub);
+  }
+
   /**
    * SOLO DESARROLLO — crea o resetea el superadmin maestro.
    * POST /api/auth/init-superadmin
@@ -121,5 +141,29 @@ export class AuthController {
   @Roles(RolUsuario.SUPERADMIN)
   impersonar(@Param('empresaId') empresaId: string, @Request() req: any) {
     return this.authService.impersonarEmpresa(empresaId, req.user.id);
+  }
+
+  /** Superadmin: lista las empresas asignadas a un contador */
+  @Get('superadmin/usuarios/:id/empresas')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(RolUsuario.SUPERADMIN)
+  listarEmpresasContador(@Param('id') id: string) {
+    return this.authService.empresasDeContador(id);
+  }
+
+  /** Superadmin: asigna una empresa a un contador */
+  @Post('superadmin/usuarios/:id/empresas/:empresaId')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(RolUsuario.SUPERADMIN)
+  asignarEmpresaContador(@Param('id') id: string, @Param('empresaId') empresaId: string) {
+    return this.authService.asignarEmpresaContador(id, empresaId);
+  }
+
+  /** Superadmin: quita una empresa de un contador */
+  @Post('superadmin/usuarios/:id/empresas/:empresaId/quitar')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(RolUsuario.SUPERADMIN)
+  quitarEmpresaContador(@Param('id') id: string, @Param('empresaId') empresaId: string) {
+    return this.authService.quitarEmpresaContador(id, empresaId);
   }
 }

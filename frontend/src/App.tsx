@@ -53,8 +53,9 @@ function RouteFallback() {
 }
 
 function AppLayout() {
-  const { usuario, logout, isAdmin, isSuperAdmin } = useAuth();
+  const { usuario, logout, isAdmin, isSuperAdmin, misEmpresas, cambiarEmpresa } = useAuth();
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [empresaMenuOpen, setEmpresaMenuOpen] = useState(false);
 
   // Cierra la sidebar al cambiar de ruta (clic en NavLink en móvil)
   const closeSidebar = () => setSidebarOpen(false);
@@ -243,6 +244,68 @@ function AppLayout() {
         </nav>
 
         <div className="sidebar-footer">
+          {/* ── Selector de empresa (solo CONTADOR con múltiples empresas) ── */}
+          {usuario.rol === 'CONTADOR' && misEmpresas.length > 1 && (
+            <div style={{ padding: '0 8px 6px', position: 'relative' }}>
+              <button
+                type="button"
+                onClick={() => setEmpresaMenuOpen(o => !o)}
+                style={{
+                  width: '100%',
+                  background: 'rgba(255,255,255,.06)',
+                  border: '1px solid rgba(255,255,255,.1)',
+                  borderRadius: 8,
+                  padding: '6px 10px',
+                  color: '#e2e8f0',
+                  fontSize: 12,
+                  cursor: 'pointer',
+                  display: 'flex',
+                  justifyContent: 'space-between',
+                  alignItems: 'center',
+                  gap: 6,
+                }}
+              >
+                <span>🏢 {empresaPerfil?.nombreLegal || 'Empresa actual'}</span>
+                <span style={{ fontSize: 10, opacity: 0.6 }}>{empresaMenuOpen ? '▲' : '▼'}</span>
+              </button>
+              {empresaMenuOpen && (
+                <div style={{
+                  position: 'absolute',
+                  bottom: '100%',
+                  left: 8,
+                  right: 8,
+                  background: '#1e293b',
+                  border: '1px solid rgba(255,255,255,.12)',
+                  borderRadius: 8,
+                  overflow: 'hidden',
+                  zIndex: 100,
+                  marginBottom: 4,
+                }}>
+                  {misEmpresas.map(emp => (
+                    <button
+                      key={emp.id}
+                      type="button"
+                      onClick={() => { setEmpresaMenuOpen(false); cambiarEmpresa(emp.id); }}
+                      style={{
+                        width: '100%',
+                        background: emp.id === usuario.empresaId ? 'rgba(99,102,241,.25)' : 'transparent',
+                        border: 'none',
+                        padding: '8px 12px',
+                        color: '#e2e8f0',
+                        fontSize: 12,
+                        cursor: 'pointer',
+                        textAlign: 'left',
+                        borderBottom: '1px solid rgba(255,255,255,.06)',
+                      }}
+                    >
+                      {emp.id === usuario.empresaId ? '✓ ' : '   '}{emp.nombre}
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
+
           <div style={{ padding: '0 8px 8px' }}>
             <div
               style={{
