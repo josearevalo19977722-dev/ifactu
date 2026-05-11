@@ -35,6 +35,7 @@ import {
   MiPlanPage,
   PagosAdmin,
   ContabilidadPage,
+  ExtensionLicenciaPage,
 } from './routes/lazyPages';
 import { ImpersonacionBanner } from './components/ImpersonacionBanner';
 import { DteLimiteProvider } from './components/DteLimiteProvider';
@@ -219,6 +220,16 @@ function AppLayout() {
                   <span className="nav-icon" aria-hidden>👥</span> Contactos
                 </NavLink>
               </div>
+              {/* Extensión Chrome — solo para CONTADOR */}
+              {usuario.rol === 'CONTADOR' && (
+                <div className="nav-group">
+                  <p className="nav-label">Extensión Chrome</p>
+                  <NavLink to="/extension/licencia">
+                    <span className="nav-icon" aria-hidden>🧩</span> Mi Licencia
+                  </NavLink>
+                </div>
+              )}
+
               <div className="nav-group">
                 <p className="nav-label">Herramientas</p>
                 <NavLink to="/contingencia">
@@ -372,6 +383,7 @@ function AppLayout() {
             {isSuperAdmin && <Route path="/admin/contingencia" element={<ContingenciaGlobal />} />}
             {isSuperAdmin && <Route path="/admin/salud" element={<SaludSistema />} />}
             {isSuperAdmin && <Route path="/admin/pagos" element={<PagosAdmin />} />}
+            <Route path="/extension/licencia" element={<ExtensionLicenciaPage />} />
           </Routes>
         </Suspense>
       </main>

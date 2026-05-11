@@ -84,3 +84,6 @@ export const PagosAdmin = lazy(() =>
 export const ContabilidadPage = lazy(() =>
   import('../pages/contabilidad/ContabilidadPage').then(m => ({ default: m.ContabilidadPage })),
 );
+export const ExtensionLicenciaPage = lazy(() =>
+  import('../pages/extension/ExtensionLicenciaPage').then(m => ({ default: m.ExtensionLicenciaPage })),
+);
