@@ -66,7 +66,7 @@ function fmtFechaHoy(): string {
 
 export function Dashboard() {
   const qc = useQueryClient();
-  const { usuario, isSuperAdmin, isAdmin, isContador } = useAuth();
+  const { usuario, isSuperAdmin, isAdmin } = useAuth();
 
   const {
     data: empresaPerfil,
