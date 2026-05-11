@@ -1,9 +1,10 @@
-import { Controller, Get, Param, NotFoundException, Res } from '@nestjs/common';
+import { Controller, Get, Post, Param, Body, NotFoundException, BadRequestException, Res } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import type { Response } from 'express';
 import { Dte } from '../entities/dte.entity';
 import { PdfService } from '../services/pdf.service';
+import { NotificacionDteService } from '../services/notificacion-dte.service';
 
 const TIPO_DTE_NOMBRES: Record<string, string> = {
   '01': 'Factura Consumidor Final',
@@ -25,6 +26,7 @@ export class PublicDteController {
     @InjectRepository(Dte)
     private readonly dteRepo: Repository<Dte>,
     private readonly pdfService: PdfService,
+    private readonly notificacion: NotificacionDteService,
   ) {}
 
   /** GET /api/public/dte/:codigoGeneracion — no auth required */
@@ -62,6 +64,30 @@ export class PublicDteController {
         nit: receptor.nit || receptor.numDocumento || null,
       },
     };
+  }
+
+  /** POST /api/public/dte/:codigoGeneracion/enviar-correo — envía el DTE al correo indicado */
+  @Post(':codigoGeneracion/enviar-correo')
+  async enviarCorreo(
+    @Param('codigoGeneracion') codigoGeneracion: string,
+    @Body() body: { correo?: string },
+  ) {
+    const correo = body.correo?.trim() ?? '';
+    if (!correo || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(correo)) {
+      throw new BadRequestException('Correo electrónico inválido');
+    }
+
+    const dte = await this.dteRepo.findOne({
+      where: { codigoGeneracion },
+      relations: ['empresa'],
+    });
+    if (!dte) throw new NotFoundException('DTE no encontrado');
+
+    const json = dte.jsonDte as any;
+    const nombre: string = json?.receptor?.nombre || dte.receptorNombre || 'Cliente';
+
+    await this.notificacion.enviarACorreo(dte, correo, nombre);
+    return { ok: true };
   }
 
   /** GET /api/public/dte/:id/pdf — legacy route kept for backward compat */

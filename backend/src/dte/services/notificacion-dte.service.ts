@@ -65,6 +65,13 @@ export class NotificacionDteService {
     }
   }
 
+  /** Envía el DTE a un correo externo (p.ej. desde la página pública de verificación). */
+  async enviarACorreo(dte: Dte, correo: string, nombre: string): Promise<void> {
+    const empresa = dte.empresa ?? null;
+    const tipoNombre = TIPOS[dte.tipoDte] ?? `Tipo ${dte.tipoDte}`;
+    await this.ejecutarNotificaciones({ dte, correo, nombre, tipoNombre, empresa });
+  }
+
   private async ejecutarNotificaciones(p: {
     dte:        Dte;
     correo:     string;

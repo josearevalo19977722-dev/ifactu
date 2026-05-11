@@ -1,5 +1,6 @@
 import { useParams } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
+import { useState } from 'react';
 import axios from 'axios';
 import { API_BASE } from '../../api/apiClient';
 
@@ -27,6 +28,25 @@ const fmtFecha = (f: string) => {
 
 export function VerificarDte() {
   const { codigoGeneracion } = useParams<{ codigoGeneracion: string }>();
+  const [correoEnvio, setCorreoEnvio] = useState('');
+  const [enviando, setEnviando] = useState(false);
+  const [enviado, setEnviado] = useState(false);
+  const [errorEnvio, setErrorEnvio] = useState<string | null>(null);
+
+  const handleEnviarCorreo = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setErrorEnvio(null);
+    setEnviando(true);
+    try {
+      await axios.post(`${API_BASE}/public/dte/${codigoGeneracion}/enviar-correo`, { correo: correoEnvio });
+      setEnviado(true);
+      setCorreoEnvio('');
+    } catch (err: any) {
+      setErrorEnvio(err?.response?.data?.message ?? 'No se pudo enviar. Intenta de nuevo.');
+    } finally {
+      setEnviando(false);
+    }
+  };
 
   const copiarYAbrir = (e: React.MouseEvent<HTMLAnchorElement>, url: string, codigo: string) => {
     e.preventDefault();
@@ -180,6 +200,67 @@ export function VerificarDte() {
                 <div style={{ fontSize: 11, color: '#94a3b8', marginTop: 5 }}>
                   📋 Al hacer clic se copia el código de generación al portapapeles para pegarlo en el portal.
                 </div>
+              </div>
+
+              {/* Enviar por correo */}
+              <div style={{ padding: '18px 24px', borderTop: '1px solid #f1f5f9' }}>
+                <div style={{ fontSize: 13, fontWeight: 700, color: '#1e293b', marginBottom: 10 }}>
+                  📧 Enviar documento a un correo electrónico
+                </div>
+                {enviado ? (
+                  <div style={{ background: '#f0fdf4', border: '1px solid #bbf7d0', borderRadius: 10, padding: '12px 16px', fontSize: 13, color: '#15803d', display: 'flex', alignItems: 'center', gap: 8 }}>
+                    ✅ ¡Correo enviado con éxito! El documento fue enviado con PDF adjunto.
+                    <button
+                      onClick={() => setEnviado(false)}
+                      style={{ marginLeft: 'auto', background: 'none', border: 'none', color: '#15803d', cursor: 'pointer', fontSize: 12, textDecoration: 'underline' }}
+                    >
+                      Enviar a otro
+                    </button>
+                  </div>
+                ) : (
+                  <form onSubmit={handleEnviarCorreo} style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+                    <input
+                      type="email"
+                      placeholder="correo@ejemplo.com"
+                      value={correoEnvio}
+                      onChange={e => { setCorreoEnvio(e.target.value); setErrorEnvio(null); }}
+                      required
+                      style={{
+                        flex: 1,
+                        minWidth: 200,
+                        padding: '9px 14px',
+                        fontSize: 13,
+                        border: `1px solid ${errorEnvio ? '#fca5a5' : '#e2e8f0'}`,
+                        borderRadius: 8,
+                        outline: 'none',
+                        color: '#0f172a',
+                        background: errorEnvio ? '#fef2f2' : '#fff',
+                      }}
+                    />
+                    <button
+                      type="submit"
+                      disabled={enviando}
+                      style={{
+                        padding: '9px 20px',
+                        fontSize: 13,
+                        fontWeight: 700,
+                        background: enviando ? '#93c5fd' : '#2563eb',
+                        color: '#fff',
+                        border: 'none',
+                        borderRadius: 8,
+                        cursor: enviando ? 'not-allowed' : 'pointer',
+                        whiteSpace: 'nowrap',
+                      }}
+                    >
+                      {enviando ? 'Enviando…' : 'Enviar'}
+                    </button>
+                    {errorEnvio && (
+                      <div style={{ width: '100%', fontSize: 12, color: '#dc2626', marginTop: 2 }}>
+                        ⚠️ {errorEnvio}
+                      </div>
+                    )}
+                  </form>
+                )}
               </div>
             </div>
 
