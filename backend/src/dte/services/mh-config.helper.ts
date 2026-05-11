@@ -14,6 +14,38 @@ export function getAmbiente(
 }
 
 /**
+ * URLs del MH según el ambiente de la empresa.
+ * Si la empresa tiene mhAmbiente='01' usa producción, de lo contrario pruebas.
+ * Esto permite que distintos tenants apunten a ambientes distintos.
+ */
+export interface MhUrls {
+  auth: string;
+  recepcion: string;
+  consulta: string;
+  lote: string;
+  loteConsulta: string;
+  anular: string;
+}
+
+export function getMhUrls(
+  empresa: { mhAmbiente?: string } | null | undefined,
+  config: ConfigService,
+): MhUrls {
+  const ambiente = getAmbiente(empresa, config);
+  const base = ambiente === '01'
+    ? 'https://api.dtes.mh.gob.sv'
+    : 'https://apitest.dtes.mh.gob.sv';
+  return {
+    auth:         `${base}/seguridad/auth`,
+    recepcion:    `${base}/fesv/recepciondte`,
+    consulta:     `${base}/fesv/recepcion/consultadte`,
+    lote:         `${base}/fesv/recepcionlote`,
+    loteConsulta: `${base}/fesv/recepcion/consultalote`,
+    anular:       `${base}/fesv/anulardte`,
+  };
+}
+
+/**
  * Detecta si MODO_DEMO está activo de forma case-insensitive.
  * Acepta: 'true', 'True', 'TRUE', '1', 'yes', 'YES'.
  */

@@ -3,6 +3,7 @@ import { HttpService } from '@nestjs/axios';
 import { ConfigService } from '@nestjs/config';
 import { firstValueFrom } from 'rxjs';
 import { Empresa } from '../empresa/entities/empresa.entity';
+import { getMhUrls } from '../dte/services/mh-config.helper';
 
 @Injectable()
 export class AuthMhService {
@@ -34,7 +35,7 @@ export class AuthMhService {
   }
 
   private async authenticate(empresa: Empresa): Promise<string> {
-    const url = this.config.get<string>('MH_AUTH_URL', '');
+    const url = getMhUrls(empresa, this.config).auth;
     const nit = empresa.nit.replace(/-/g, '');
     const pwd = empresa.mhApiKey;
 

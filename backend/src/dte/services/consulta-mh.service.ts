@@ -6,7 +6,7 @@ import { Repository } from 'typeorm';
 import { firstValueFrom } from 'rxjs';
 import { Dte, EstadoDte } from '../entities/dte.entity';
 import { AuthMhService } from '../../auth-mh/auth-mh.service';
-import { getAmbiente, getNitEmisor } from './mh-config.helper';
+import { getAmbiente, getMhUrls, getNitEmisor } from './mh-config.helper';
 
 export interface ConsultaMhResult {
   codigoGeneracion: string;
@@ -33,7 +33,7 @@ export class ConsultaMhService {
   async consultar(id: string): Promise<Dte> {
     const dte = await this.dteRepo.findOneOrFail({ where: { id }, relations: ['empresa'] });
 
-    const url      = this.config.get<string>('MH_CONSULTA_URL', '');
+    const url      = getMhUrls(dte.empresa, this.config).consulta;
     const nit      = getNitEmisor(dte.empresa);
     const token    = await this.authMh.getToken(dte.empresa);
     const ambiente = getAmbiente(dte.empresa, this.config);
@@ -92,7 +92,7 @@ export class ConsultaMhService {
       descripcionMsg?: string;
     }>;
   }> {
-    const url = this.config.get<string>('MH_LOTE_CONSULTA_URL', '');
+    const url = getMhUrls(empresa, this.config).loteConsulta;
     const nit = getNitEmisor(empresa);
     const token = await this.authMh.getToken(empresa);
 

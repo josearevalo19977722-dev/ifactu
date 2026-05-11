@@ -11,7 +11,7 @@ import { InvalidarDteDto } from '../dto/invalidar-dte.dto';
 import { SignerService } from './signer.service';
 import { svDateTime } from '../../utils/sv-datetime';
 import { AuthMhService } from '../../auth-mh/auth-mh.service';
-import { getAmbiente, getNitEmisor } from './mh-config.helper';
+import { getAmbiente, getMhUrls, getNitEmisor } from './mh-config.helper';
 import { EmpresaService } from '../../empresa/services/empresa.service';
 import { NotificacionDteService } from './notificacion-dte.service';
 
@@ -138,7 +138,7 @@ export class InvalidacionService {
       jwsToken = JSON.stringify(jsonFirmado);
     }
 
-    const url    = this.config.get<string>('MH_ANULAR_URL', '');
+    const url    = getMhUrls(empresa, this.config).anular;
     const nit    = getNitEmisor(empresa);
     const token  = await this.authMh.getToken(empresa);
     // Mismo formato que /recepciondte: JWS directo, sin re-codificar en Base64

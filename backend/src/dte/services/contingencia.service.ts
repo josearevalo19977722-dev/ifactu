@@ -12,7 +12,7 @@ import { TransmitterService } from './transmitter.service';
 import { SignerService } from './signer.service';
 import { ConsultaMhService } from './consulta-mh.service';
 import { EmpresaService } from '../../empresa/services/empresa.service';
-import { getAmbiente, isModoDemo, getNitEmisor } from './mh-config.helper';
+import { getAmbiente, getMhUrls, isModoDemo, getNitEmisor } from './mh-config.helper';
 
 export interface EventoContingencia {
   codigoEvento: string;
@@ -347,7 +347,7 @@ export class ContingenciaService {
     motivoContingencia: string,
     empresa: Empresa,
   ): Promise<string> {
-    const url      = this.config.get<string>('MH_LOTE_URL', '');
+    const url      = getMhUrls(empresa, this.config).lote;
     const nit      = getNitEmisor(empresa);
     const token    = await this.authMh.getToken(empresa);
     const ambiente = getAmbiente(empresa, this.config);

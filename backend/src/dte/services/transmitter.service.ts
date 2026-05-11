@@ -7,7 +7,7 @@ import * as fs from 'fs';
 import * as path from 'path';
 import { AuthMhService } from '../../auth-mh/auth-mh.service';
 import { Empresa } from '../../empresa/entities/empresa.entity';
-import { getAmbiente, isModoDemo, getNitEmisor } from './mh-config.helper';
+import { getAmbiente, getMhUrls, isModoDemo, getNitEmisor } from './mh-config.helper';
 
 export interface RespuestaMh {
   estado: 'RECIBIDO' | 'RECHAZADO';
@@ -64,7 +64,8 @@ export class TransmitterService {
       };
     }
 
-    const url      = this.config.get<string>('MH_API_URL', '');
+    const mhUrls   = getMhUrls(empresa, this.config);
+    const url      = mhUrls.recepcion;
     const ambiente = getAmbiente(empresa, this.config);
     const nit      = getNitEmisor(empresa);
 
@@ -186,6 +187,7 @@ RESPONSE: ${JSON.stringify(mhErrorBody)}
             nit,
             token,
             ambiente,
+            mhUrls.consulta,
           );
           if (yaRecibido) {
             this.logger.log(
@@ -215,8 +217,8 @@ RESPONSE: ${JSON.stringify(mhErrorBody)}
     nit: string,
     token: string,
     ambiente: string,
+    consultaUrl: string,
   ): Promise<RespuestaMh | null> {
-    const consultaUrl = this.config.get<string>('MH_CONSULTA_URL', '');
     if (!consultaUrl) return null;
 
     try {
