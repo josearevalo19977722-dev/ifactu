@@ -26,10 +26,18 @@ export function GestionCorrelativos() {
     anio: new Date().getFullYear(),
   });
 
+  const { data: empresa } = useQuery({
+    queryKey: ['empresa'],
+    queryFn: () => apiClient.get('/empresa').then(r => r.data),
+  });
+
   const { data: correlativos = [], isLoading } = useQuery({
     queryKey: ['correlativos'],
     queryFn: () => apiClient.get('/correlativos').then(r => r.data),
   });
+
+  const ambienteActual = empresa?.mhAmbiente ?? '00';
+  const correlativosFiltrados = correlativos.filter((c: any) => c.ambiente === ambienteActual);
 
   const mutation = useMutation({
     mutationFn: (data: any) => apiClient.post('/correlativos/inicializar', data),
@@ -67,17 +75,16 @@ export function GestionCorrelativos() {
                 <th>Año</th>
                 <th>Sucursal/POS</th>
                 <th>Último Número</th>
-                <th>Ambiente</th>
                 <th>Siguiente Sugerido</th>
               </tr>
             </thead>
             <tbody>
               {isLoading ? (
-                <tr><td colSpan={6} style={{ textAlign: 'center', padding: 40 }}>Cargando...</td></tr>
-              ) : correlativos.length === 0 ? (
-                <tr><td colSpan={6} style={{ textAlign: 'center', padding: 40 }}>No hay secuencias registradas aún.</td></tr>
+                <tr><td colSpan={5} style={{ textAlign: 'center', padding: 40 }}>Cargando...</td></tr>
+              ) : correlativosFiltrados.length === 0 ? (
+                <tr><td colSpan={5} style={{ textAlign: 'center', padding: 40 }}>No hay secuencias registradas aún.</td></tr>
               ) : (
-                correlativos.map((c: any) => (
+                correlativosFiltrados.map((c: any) => (
                   <tr key={c.id}>
                     <td>
                       <div style={{ fontWeight: 600 }}>{TIPOS_DTE.find(t => t.codigo === c.tipoDte)?.nombre || c.tipoDte}</div>
@@ -86,7 +93,6 @@ export function GestionCorrelativos() {
                     <td><span className="badge">{c.anio}</span></td>
                     <td>{c.sucursal} / {c.pos}</td>
                     <td style={{ fontWeight: 700, fontSize: 16 }}>{c.ultimoNumero}</td>
-                    <td>{c.ambiente === '00' ? 'Pruebas' : 'Producción'}</td>
                     <td style={{ color: 'var(--success)', fontWeight: 600 }}>{Number(c.ultimoNumero) + 1}</td>
                   </tr>
                 ))
