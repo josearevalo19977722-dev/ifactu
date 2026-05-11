@@ -59,6 +59,9 @@ export class WhatsappService implements OnModuleInit, OnModuleDestroy {
           '--disable-setuid-sandbox',
           '--disable-dev-shm-usage',
           '--disable-gpu',
+          '--no-zygote',
+          '--single-process',
+          '--disable-features=VizDisplayCompositor',
         ],
       },
     });
@@ -90,16 +93,26 @@ export class WhatsappService implements OnModuleInit, OnModuleDestroy {
       this.estado = 'DESCONECTADO';
     });
 
-    this.client.initialize().catch((err: Error) => {
-      this.logger.error(`Error al inicializar WA: ${err.message}`);
-      this.estado = 'DESCONECTADO';
-
-      // Si el error es "browser already running" limpiar locks y reintentar
-      if (err.message?.includes('already running') || err.message?.includes('SingletonLock')) {
-        this.logger.warn('Detectado Chrome huérfano — limpiando locks y reintentando en 5 s…');
+    // Watchdog: si en 2 min no hay QR ni CONECTADO, reinicializar
+    const watchdog = setTimeout(() => {
+      if (this.estado === 'CONECTANDO') {
+        this.logger.warn('WhatsApp watchdog: sin respuesta en 2 min — limpiando y reintentando…');
+        this.client?.destroy().catch(() => null);
         this.limpiarChromeLocks();
         setTimeout(() => this.inicializar(), 5_000);
       }
+    }, 120_000);
+
+    this.client.on('qr',   () => clearTimeout(watchdog));
+    this.client.on('ready', () => clearTimeout(watchdog));
+
+    this.client.initialize().catch((err: Error) => {
+      clearTimeout(watchdog);
+      this.logger.error(`Error al inicializar WA: ${err.message}`);
+      this.estado = 'DESCONECTADO';
+
+      this.limpiarChromeLocks();
+      setTimeout(() => this.inicializar(), 5_000);
     });
   }
 
