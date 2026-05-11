@@ -85,6 +85,7 @@ export class CfService {
       numeroControl,
       codigoGeneracion,
       jsonDte,
+      ambiente: getAmbiente(empresa, this.config),
       fechaEmision: fecEmi,
       totalPagar: this.calcularTotal(dto),
       receptorNombre: (dto.receptor?.nombre || 'CONSUMIDOR FINAL').trim().toUpperCase(),

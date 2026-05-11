@@ -59,6 +59,7 @@ export class RetencionService {
     const dte = this.dteRepo.create({
       tipoDte: TIPO, numeroControl, codigoGeneracion, jsonDte,
       firmado: JSON.stringify(jsonFirmado), fechaEmision: fecEmi,
+      ambiente: getAmbiente(empresa, this.config),
       totalPagar: Math.round(totalRetenido * 100) / 100,
       receptorNombre: dto.receptor.nombre, estado: EstadoDte.PENDIENTE,
       empresa,

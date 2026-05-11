@@ -87,6 +87,7 @@ export class CcfService {
       codigoGeneracion,
       jsonDte,
       firmado,
+      ambiente: getAmbiente(empresa, this.config),
       fechaEmision: fecEmi,
       totalPagar: await this.calcularTotal(dto, empresa),
       receptorNombre: dto.receptor.nombre,

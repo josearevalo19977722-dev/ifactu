@@ -72,6 +72,10 @@ export class Dte {
   @Column({ name: 'fh_procesamiento', nullable: true, type: 'varchar', length: 30 })
   fhProcesamiento: string | null;
 
+  // '00' = Pruebas, '01' = Producción — ambiente en el que fue emitido
+  @Column({ length: 2, default: '00' })
+  ambiente: string;
+
   @Column({ type: 'date' })
   fechaEmision: string;
 

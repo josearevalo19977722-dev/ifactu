@@ -97,6 +97,7 @@ export class NotaService {
       codigoGeneracion,
       jsonDte,
       firmado,
+      ambiente: getAmbiente(empresa, this.config),
       fechaEmision: fecEmi,
       totalPagar: Math.round(totalPagar * 100) / 100,
       receptorNombre: jsonRef?.receptor?.nombre ?? null,

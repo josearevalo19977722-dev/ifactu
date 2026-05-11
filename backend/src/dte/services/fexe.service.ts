@@ -67,6 +67,7 @@ export class FexeService {
       codigoGeneracion,
       jsonDte,
       firmado,
+      ambiente:        getAmbiente(empresa, this.config),
       fechaEmision:    fecEmi,
       totalPagar,
       receptorNombre:  dto.receptor.nombre,

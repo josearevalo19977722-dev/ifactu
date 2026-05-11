@@ -12,6 +12,7 @@ import {
 } from '@nestjs/common';
 import type { Request, Response } from 'express';
 import { JwtAuthGuard } from '../../auth/jwt-auth.guard';
+import { EmpresaService } from '../../empresa/services/empresa.service';
 import { LimiteDtesGuard } from '../guards/limite-dtes.guard';
 import { InjectRepository } from '@nestjs/typeorm';
 import { ConfigService } from '@nestjs/config';
@@ -61,6 +62,7 @@ export class DteController {
     @InjectRepository(Dte)
     private readonly dteRepo: Repository<Dte>,
     private readonly configService: ConfigService,
+    private readonly empresaService: EmpresaService,
   ) {}
 
   @Post('cf')
@@ -123,23 +125,33 @@ export class DteController {
   async dashboardStats(@Req() req: any) {
     const { empresaId, rol } = req.user;
     const isSuper = rol === RolUsuario.SUPERADMIN;
-    const filter = isSuper ? {} : { empresa: { id: empresaId } };
+
+    // Para tenants normales filtramos por ambiente actual de la empresa
+    let ambiente = '00';
+    if (!isSuper && empresaId) {
+      const emp = await this.empresaService.findById(empresaId);
+      ambiente = emp?.mhAmbiente ?? '00';
+    }
+
+    const whereBase = isSuper ? '1=1' : 'dte.empresaId = :empresaId AND dte.ambiente = :ambiente';
+    const whereParams = isSuper ? {} : { empresaId, ambiente };
+    const countFilter = isSuper ? {} : { empresa: { id: empresaId }, ambiente };
 
     const [total, porEstado, porTipo, ultimosMeses] = await Promise.all([
-      this.dteRepo.count({ where: filter }),
+      this.dteRepo.count({ where: countFilter }),
       this.dteRepo
         .createQueryBuilder('dte')
         .select('dte.estado', 'estado')
         .addSelect('COUNT(*)', 'cantidad')
         .addSelect('SUM(dte.totalPagar)', 'monto')
-        .where(isSuper ? '1=1' : 'dte.empresaId = :empresaId', { empresaId })
+        .where(whereBase, whereParams)
         .groupBy('dte.estado')
         .getRawMany(),
       this.dteRepo
         .createQueryBuilder('dte')
         .select('dte.tipoDte', 'tipoDte')
         .addSelect('COUNT(*)', 'cantidad')
-        .where(isSuper ? '1=1' : 'dte.empresaId = :empresaId', { empresaId })
+        .where(whereBase, whereParams)
         .groupBy('dte.tipoDte')
         .getRawMany(),
       this.dteRepo
@@ -147,10 +159,11 @@ export class DteController {
         .select("TO_CHAR(dte.\"fechaEmision\", 'YYYY-MM')", 'mes')
         .addSelect('COUNT(*)', 'cantidad')
         .addSelect('SUM(dte."totalPagar")', 'monto')
-        .where(isSuper 
-          ? "dte.\"fechaEmision\" >= NOW() - INTERVAL '6 months'"
-          : "dte.empresaId = :empresaId AND dte.\"fechaEmision\" >= NOW() - INTERVAL '6 months'", 
-          isSuper ? {} : { empresaId }
+        .where(
+          isSuper
+            ? "dte.\"fechaEmision\" >= NOW() - INTERVAL '6 months'"
+            : "dte.empresaId = :empresaId AND dte.ambiente = :ambiente AND dte.\"fechaEmision\" >= NOW() - INTERVAL '6 months'",
+          whereParams,
         )
         .groupBy("TO_CHAR(dte.\"fechaEmision\", 'YYYY-MM')")
         .orderBy("TO_CHAR(dte.\"fechaEmision\", 'YYYY-MM')", 'ASC')
@@ -261,7 +274,7 @@ export class DteController {
   }
 
   @Get()
-  listar(
+  async listar(
     @Req() req: any,
     @Query('tipoDte') tipoDte?: string,
     @Query('estado') estado?: string,
@@ -277,9 +290,12 @@ export class DteController {
       .leftJoinAndSelect('dte.empresa', 'empresa');
 
     if (!isSuper) {
-      qb.andWhere('dte.empresaId = :empresaId', { empresaId });
+      // Filtramos por empresa Y por el ambiente actual del tenant
+      const emp = await this.empresaService.findById(empresaId);
+      const ambiente = emp?.mhAmbiente ?? '00';
+      qb.andWhere('dte.empresaId = :empresaId AND dte.ambiente = :ambiente', { empresaId, ambiente });
     } else if (filterEmpresaId) {
-      // Superadmin filtrando por empresa específica
+      // Superadmin filtrando por empresa específica (ve todos los ambientes)
       qb.andWhere('dte.empresaId = :filterEmpresaId', { filterEmpresaId });
     }
 
