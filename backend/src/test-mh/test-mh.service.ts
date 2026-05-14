@@ -184,7 +184,7 @@ export class TestMhService {
   }
 
   private dtoCcf(empresa: Empresa, o?: Record<string, any>) {
-    const nit = o?.nit?.replace(/-/g, '') ?? '06140101011034';
+    const nit = o?.nit?.replace(/-/g, '') ?? '12171108580023';
     const nrc = o?.nrc?.replace(/-/g, '') ?? '771120';
     return {
       condicionOperacion: 1,
@@ -245,7 +245,7 @@ export class TestMhService {
   }
 
   private dtoRetencion(empresa: Empresa, o?: Record<string, any>) {
-    const nit = o?.nit?.replace(/-/g, '') ?? '06140101011034';
+    const nit = o?.nit?.replace(/-/g, '') ?? '12171108580023';
     const nrc = o?.nrc?.replace(/-/g, '') ?? '771120';
     const hoy = new Date();
     return {
@@ -271,7 +271,7 @@ export class TestMhService {
       condicionOperacion: 1,
       donatario: {
         tipoDocumento: o?.tipoDocumento ?? '36',
-        numDocumento: o?.numDocumento ?? '06140101011034',
+        numDocumento: o?.numDocumento ?? '12171108580023',
         nombre: o?.nombre ?? 'DONATARIO DE PRUEBA S.A.',
         tipoEstablecimiento: '01',
         direccionDepartamento: '06',
