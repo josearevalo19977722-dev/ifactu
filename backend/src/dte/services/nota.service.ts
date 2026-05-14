@@ -168,12 +168,14 @@ export class NotaService {
     let totalDescu = 0;
     let ivaTotal = 0;
 
+    const signo = tipoDte === '05' ? -1 : 1;
+
     const cuerpoDocumentoNum = dto.items.map((item, index) => {
       const cantidad = item.cantidad || 1;
       const precioUnitario = r2(item.precioUni || 0);
-      const ventaGravada = r2(precioUnitario * cantidad);
-      const ivaItem = r2(ventaGravada * 0.13);
-      
+      const ventaGravada = r2(precioUnitario * cantidad * signo);
+      const ivaItem = r2(Math.abs(ventaGravada) * 0.13 * signo);
+
       totalGravada += ventaGravada;
       ivaTotal += ivaItem;
 
@@ -191,7 +193,7 @@ export class NotaService {
         ventaNoSuj: 0,
         ventaExenta: 0,
         ventaGravada: ventaGravada,
-        tributos: ventaGravada > 0 ? ['20'] : null,
+        tributos: ventaGravada !== 0 ? ['20'] : null,
       };
     });
 
@@ -266,14 +268,15 @@ export class NotaService {
         descuExenta:         0,
         descuGravada:        totalDescu,
         totalDescu,
-        tributos: totalGravada > 0 ? [{ codigo: '20', descripcion: 'IVA 13%', valor: ivaTotal }] : null,
+        tributos: totalGravada !== 0 ? [{ codigo: '20', descripcion: 'IVA 13%', valor: ivaTotal }] : null,
         subTotal,
-        ivaPerci1:           0,
-        ivaRete1:            0,
-        reteRenta:           0,
-        montoTotalOperacion: r2(totalPagar),
-        totalLetras:         montoALetras(totalPagar),
-        condicionOperacion:  1,
+        ivaPerci1:            0,
+        ivaRete1:             0,
+        reteRenta:            0,
+        montoTotalOperacion:  r2(totalPagar),
+        totalLetras:          montoALetras(Math.abs(totalPagar)),
+        condicionOperacion:   1,
+        numPagoElectronico:   null,
       },
       extension: null,
       apendice: null,
