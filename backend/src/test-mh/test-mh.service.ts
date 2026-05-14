@@ -90,26 +90,26 @@ export class TestMhService {
 
   async probarDte(empresaId: string, tipoDte: string, receptorOverride?: Record<string, any>, invalidar = false): Promise<TestDteResult> {
     const empresa = await this.getEmpresaPruebas(empresaId);
-    const resultado = await this.emitirDtePrueba(empresa, tipoDte, receptorOverride);
-    if (invalidar && resultado.exitoso && resultado._dteId) {
+    const raw = await this.emitirDtePrueba(empresa, tipoDte, receptorOverride) as TestDteResult & { _dteId?: string };
+    if (invalidar && raw.exitoso && raw._dteId) {
       try {
         await this.invalidacionService.anular({
-          dteId: resultado._dteId,
+          dteId: raw._dteId,
           tipoAnulacion: 1,
           motivoAnulacion: 'Prueba de evento de invalidación iFactu',
           nombreResponsable: 'RESPONSABLE PRUEBA IFACTU',
           tipDocResponsable: '13',
           numDocResponsable: '00000000-0',
         }, empresaId);
-        resultado.invalidado = true;
-        resultado.detalleInvalidacion = 'DTE invalidado correctamente';
+        raw.invalidado = true;
+        raw.detalleInvalidacion = 'DTE invalidado correctamente';
       } catch (err: any) {
-        resultado.invalidado = false;
-        resultado.detalleInvalidacion = err.message ?? 'Error al invalidar';
+        raw.invalidado = false;
+        raw.detalleInvalidacion = err.message ?? 'Error al invalidar';
       }
-      delete (resultado as any)._dteId;
+      delete raw._dteId;
     }
-    return resultado;
+    return raw;
   }
 
   // ── Lote ─────────────────────────────────────────────────────────────────
