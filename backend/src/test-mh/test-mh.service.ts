@@ -10,6 +10,7 @@ import { FseService } from '../dte/services/fse.service';
 import { FexeService } from '../dte/services/fexe.service';
 import { RetencionService } from '../dte/services/retencion.service';
 import { DonacionService } from '../dte/services/donacion.service';
+import { NotaService } from '../dte/services/nota.service';
 import { ConfigService } from '@nestjs/config';
 import { getAmbiente } from '../dte/services/mh-config.helper';
 
@@ -59,6 +60,7 @@ export class TestMhService {
     private readonly fexeService: FexeService,
     private readonly retencionService: RetencionService,
     private readonly donacionService: DonacionService,
+    private readonly notaService: NotaService,
     private readonly config: ConfigService,
   ) {}
 
@@ -118,6 +120,8 @@ export class TestMhService {
       switch (tipoDte) {
         case '01': resultado = await this.cfService.emitir(this.dtoCf(),                              empresa.id); break;
         case '03': resultado = await this.ccfService.emitir(this.dtoCcf(empresa, receptorOverride),   empresa.id); break;
+        case '05':
+        case '06': resultado = await this.emitirNotaPrueba(empresa, tipoDte, receptorOverride); break;
         case '14': resultado = await this.fseService.emitir(this.dtoFse(receptorOverride),            empresa.id); break;
         case '11': resultado = await this.fexeService.emitir(this.dtoFexe(receptorOverride),          empresa.id); break;
         case '07': resultado = await this.retencionService.emitir(this.dtoRetencion(empresa, receptorOverride), empresa.id); break;
@@ -137,6 +141,22 @@ export class TestMhService {
     } catch (err: any) {
       return { exitoso: false, tipoDte, error: err.message ?? 'Error desconocido', tiempoMs: Date.now() - inicio };
     }
+  }
+
+  // ── NC/ND: requieren un CCF de referencia — emitimos uno primero ─────────
+
+  private async emitirNotaPrueba(empresa: Empresa, tipoDte: '05' | '06', o?: Record<string, any>): Promise<any> {
+    const ccf = await this.ccfService.emitir(this.dtoCcf(empresa, o), empresa.id);
+    if (ccf.estado !== 'RECIBIDO') throw new Error(`CCF de referencia rechazado: ${Array.isArray(ccf.observaciones) ? ccf.observaciones.join(', ') : ccf.observaciones ?? ''}`);
+    const dto = {
+      dteReferenciadoId: ccf.id,
+      tipoAjuste: 1,
+      motivoAjuste: tipoDte === '05' ? 'Descuento de prueba iFactu' : 'Cargo adicional de prueba iFactu',
+      items: [{ numItem: 1, tipoItem: 2, cantidad: 1, codigo: 'TEST-001', uniMedida: 59, descripcion: 'Ajuste de prueba iFactu', precioUni: 1.00, montoDescu: 0, ventaNoSuj: 0, ventaExenta: 0, ventaGravada: 1.00 }],
+    };
+    return tipoDte === '05'
+      ? this.notaService.emitirNc(dto, empresa.id)
+      : this.notaService.emitirNd(dto, empresa.id);
   }
 
   // ── DTOs mínimos de prueba ────────────────────────────────────────────────
