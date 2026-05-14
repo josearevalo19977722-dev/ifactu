@@ -107,7 +107,7 @@ export class InvalidacionService {
         numeroControl:    dte.numeroControl,
         fecEmi:           String(dte.fechaEmision).substring(0, 10),
         montoIva:          this.calcularIva(dte),
-        codigoGeneracionR: codigoGeneracion,
+        codigoGeneracionR: dto.codigoGeneracionR ?? null,
         // Campos del receptor requeridos por schema v2
         tipoDocumento: receptorTipoDoc,
         numDocumento:  receptorNumDoc,

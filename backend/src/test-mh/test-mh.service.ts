@@ -93,6 +93,8 @@ export class TestMhService {
     const raw = await this.emitirDtePrueba(empresa, tipoDte, receptorOverride) as TestDteResult & { _dteId?: string };
     if (invalidar && raw.exitoso && raw._dteId) {
       try {
+        // Emitir CF de reemplazo (Hacienda requiere codigoGeneracionR cuando tipoAnulacion=1)
+        const cfReemplazo = await this.cfService.emitir(this.dtoCf(), empresaId);
         await this.invalidacionService.anular({
           dteId: raw._dteId,
           tipoAnulacion: 1,
@@ -100,6 +102,7 @@ export class TestMhService {
           nombreResponsable: 'RESPONSABLE PRUEBA IFACTU',
           tipDocResponsable: '13',
           numDocResponsable: '00000000-0',
+          codigoGeneracionR: cfReemplazo.estado === EstadoDte.RECIBIDO ? cfReemplazo.codigoGeneracion : undefined,
         }, empresaId);
         raw.invalidado = true;
         raw.detalleInvalidacion = 'DTE invalidado correctamente';
@@ -318,22 +321,27 @@ export class TestMhService {
     const empresa = await this.getEmpresaPruebas(empresaId);
     const inicio = Date.now();
     try {
-      // 1. Emitir un CF de prueba
-      const cf = await this.cfService.emitir(this.dtoCf(), empresa.id);
-      if (cf.estado !== EstadoDte.RECIBIDO) {
-        const detalle = cf.descripcionMsg ?? cf.observaciones ?? 'sin detalles';
-        throw new Error(`CF para invalidar rechazado: ${detalle}`);
+      // 1. Emitir CF a invalidar
+      const cf1 = await this.cfService.emitir(this.dtoCf(), empresa.id);
+      if (cf1.estado !== EstadoDte.RECIBIDO) {
+        throw new Error(`CF a invalidar rechazado: ${cf1.descripcionMsg ?? cf1.observaciones ?? 'sin detalles'}`);
       }
-      // 2. Invalidarlo inmediatamente
+      // 2. Emitir CF de reemplazo (codigoGeneracionR requerido por Hacienda cuando tipoAnulacion=1)
+      const cf2 = await this.cfService.emitir(this.dtoCf(), empresa.id);
+      if (cf2.estado !== EstadoDte.RECIBIDO) {
+        throw new Error(`CF de reemplazo rechazado: ${cf2.descripcionMsg ?? cf2.observaciones ?? 'sin detalles'}`);
+      }
+      // 3. Invalidar CF #1 apuntando a CF #2 como reemplazo
       await this.invalidacionService.anular({
-        dteId: cf.id,
+        dteId: cf1.id,
         tipoAnulacion: 1,
         motivoAnulacion: 'Prueba de evento de invalidación iFactu',
         nombreResponsable: 'RESPONSABLE PRUEBA IFACTU',
         tipDocResponsable: '13',
         numDocResponsable: '00000000-0',
+        codigoGeneracionR: cf2.codigoGeneracion,
       }, empresa.id);
-      return { exitoso: true, detalle: `CF ${cf.codigoGeneracion} emitido e invalidado correctamente`, tiempoMs: Date.now() - inicio };
+      return { exitoso: true, detalle: `CF ${cf1.codigoGeneracion} invalidado, reemplazado por ${cf2.codigoGeneracion}`, tiempoMs: Date.now() - inicio };
     } catch (err: any) {
       return { exitoso: false, detalle: err.message ?? 'Error desconocido', tiempoMs: Date.now() - inicio };
     }

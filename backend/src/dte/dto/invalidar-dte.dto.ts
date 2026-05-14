@@ -50,4 +50,9 @@ export class InvalidarDteDto {
   @IsOptional()
   @IsString()
   numDocSolicita?: string;
+
+  /** UUID (codigoGeneracion) del DTE que reemplaza al anulado. Requerido por Hacienda cuando tipoAnulacion=1. */
+  @IsOptional()
+  @IsString()
+  codigoGeneracionR?: string;
 }
