@@ -158,7 +158,8 @@ export class TestMhService {
       throw new Error(`No se pudo emitir CCF de referencia: ${err.message ?? err}`);
     }
     if (ccf.estado !== EstadoDte.RECIBIDO) {
-      const detalle = ccf.descripcionMsg ?? ccf.observaciones ?? 'sin detalles';
+      this.logger.warn(`CCF ref rechazado: descripcionMsg=${ccf.descripcionMsg} | observaciones=${ccf.observaciones}`);
+      const detalle = [ccf.descripcionMsg, ccf.observaciones].filter(Boolean).join(' | ') || 'sin detalles';
       throw new Error(`CCF de referencia rechazado: ${detalle}`);
     }
     const dto = {
