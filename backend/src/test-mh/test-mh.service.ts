@@ -14,8 +14,11 @@ import { DonacionService } from '../dte/services/donacion.service';
 import { NotaService } from '../dte/services/nota.service';
 import { InvalidacionService } from '../dte/services/invalidacion.service';
 import { ContingenciaService } from '../dte/services/contingencia.service';
+import { CorrelativesService } from '../correlatives/correlatives.service';
 import { ConfigService } from '@nestjs/config';
-import { getAmbiente } from '../dte/services/mh-config.helper';
+import { getAmbiente, getNitEmisor } from '../dte/services/mh-config.helper';
+import { svDateTime } from '../utils/sv-datetime';
+import { montoALetras } from '../utils/numero-letras';
 
 export interface TestConexionResult {
   exitoso: boolean;
@@ -70,6 +73,7 @@ export class TestMhService {
     private readonly notaService: NotaService,
     private readonly invalidacionService: InvalidacionService,
     private readonly contingenciaService: ContingenciaService,
+    private readonly correlatives: CorrelativesService,
     private readonly config: ConfigService,
   ) {}
 
@@ -355,14 +359,80 @@ export class TestMhService {
     const empresa = await this.getEmpresaPruebas(empresaId);
     const inicio = Date.now();
     try {
-      // 1. Emitir CF de prueba normalmente para obtener un DTE firmado válido
-      const cf = await this.cfService.emitir(this.dtoCf(), empresa.id);
-      if (!cf.id) throw new Error('No se pudo crear el CF de prueba');
+      // Crear el CF directamente en estado CONTINGENCIA sin transmitir a Hacienda.
+      // Así procesarCola lo envía por PRIMERA VEZ como lote de contingencia (tipoOperacion=2),
+      // evitando el rechazo de duplicado que ocurría al re-enviar un CF ya RECIBIDO.
+      const { fecEmi, horEmi } = svDateTime();
+      const codigoGeneracion = uuidv4().toUpperCase();
+      const ambiente = getAmbiente(empresa, this.config);
+      const codEstable    = (empresa.codEstableMh    || '0001').toString().padStart(4, '0');
+      const codPuntoVenta = (empresa.codPuntoVentaMh || 'P001').toString();
+      const numeroControl = await this.correlatives.siguiente('01', empresa, codEstable, codPuntoVenta);
 
-      // 2. Marcar como CONTINGENCIA en BD (simula fallo de conexión durante emisión)
-      await this.dteRepo.update(cf.id, { estado: EstadoDte.CONTINGENCIA });
+      const jsonDte = {
+        identificacion: {
+          version: 1, ambiente, tipoDte: '01', numeroControl, codigoGeneracion,
+          tipoModelo: 1, tipoOperacion: 1, tipoContingencia: null, motivoContin: null,
+          fecEmi, horEmi, tipoMoneda: 'USD',
+        },
+        documentoRelacionado: null,
+        emisor: {
+          nit: getNitEmisor(empresa),
+          nrc: (empresa.nrc || '').replace(/-/g, ''),
+          nombre: empresa.nombreLegal,
+          codActividad: empresa.codActividad,
+          descActividad: empresa.descActividad,
+          nombreComercial: empresa.nombreComercial || null,
+          tipoEstablecimiento: empresa.tipoEstablecimiento,
+          direccion: { departamento: empresa.departamento, municipio: empresa.municipio, complemento: empresa.complemento },
+          telefono: empresa.telefono,
+          correo: empresa.correo,
+          codEstableMH: codEstable, codEstable,
+          codPuntoVentaMH: codPuntoVenta, codPuntoVenta,
+        },
+        receptor: null,
+        otrosDocumentos: null,
+        ventaTercero: null,
+        cuerpoDocumento: [{
+          numItem: 1, tipoItem: 2, numeroDocumento: null, cantidad: 1,
+          codigo: 'TEST-001', codTributo: null, uniMedida: 59,
+          descripcion: 'Servicio de prueba contingencia iFactu',
+          precioUni: 1.13, montoDescu: 0, ventaNoSuj: 0, ventaExenta: 0,
+          ventaGravada: 1.13, tributos: null, psv: 0, noGravado: 0, ivaItem: 0.13,
+        }],
+        resumen: {
+          totalNoSuj: 0, totalExenta: 0, totalGravada: 1.13,
+          subTotalVentas: 1.13, descuNoSuj: 0, descuExenta: 0,
+          descuGravada: 0, porcentajeDescuento: 0, totalDescu: 0,
+          tributos: null, subTotal: 1.13, ivaRete1: 0, reteRenta: 0,
+          totalIva: 0.13, montoTotalOperacion: 1.13, totalNoGravado: 0,
+          totalPagar: 1.13, totalLetras: montoALetras(1.13),
+          saldoFavor: 0, condicionOperacion: 1,
+          pagos: [{ codigo: '01', montoPago: 1.13, referencia: null, plazo: null, periodo: null }],
+          numPagoElectronico: null,
+        },
+        extension: null,
+        apendice: null,
+      };
 
-      // 3. Procesar la cola de contingencia — esto registra el evento en MH y envía el lote
+      // Descartar DTEs de prueba anteriores que quedaron atascados en CONTINGENCIA
+      // (ya fueron recibidos por Hacienda y causarían rechazo de duplicado en el lote)
+      await this.dteRepo
+        .createQueryBuilder()
+        .update(Dte)
+        .set({ estado: EstadoDte.RECHAZADO, observaciones: 'Descartado por prueba de contingencia posterior' })
+        .where('estado = :estado AND empresa.id = :id', { estado: EstadoDte.CONTINGENCIA, id: empresa.id })
+        .execute();
+
+      const dte = this.dteRepo.create({
+        tipoDte: '01', numeroControl, codigoGeneracion, jsonDte,
+        ambiente, fechaEmision: fecEmi, totalPagar: 1.13,
+        receptorNombre: 'CONSUMIDOR FINAL',
+        estado: EstadoDte.CONTINGENCIA,
+        empresa,
+      });
+      await this.dteRepo.save(dte);
+
       const resultado = await this.contingenciaService.procesarCola(
         1,
         'Prueba de evento de contingencia iFactu',
