@@ -185,7 +185,7 @@ export class TestMhService {
 
   private dtoCcf(empresa: Empresa, o?: Record<string, any>) {
     const nit = o?.nit?.replace(/-/g, '') ?? '06140101011034';
-    const nrc = o?.nrc?.replace(/-/g, '') ?? '2';
+    const nrc = o?.nrc?.replace(/-/g, '') ?? '771120';
     return {
       condicionOperacion: 1,
       receptor: {
@@ -246,7 +246,7 @@ export class TestMhService {
 
   private dtoRetencion(empresa: Empresa, o?: Record<string, any>) {
     const nit = o?.nit?.replace(/-/g, '') ?? '06140101011034';
-    const nrc = o?.nrc?.replace(/-/g, '') ?? '2';
+    const nrc = o?.nrc?.replace(/-/g, '') ?? '771120';
     const hoy = new Date();
     return {
       periodo: hoy.getMonth() + 1,
