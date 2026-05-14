@@ -16,8 +16,8 @@ export class TestMhController {
   }
 
   @Post(':empresaId/dte')
-  probarDte(@Param('empresaId') id: string, @Body() body: { tipoDte: string; receptorOverride?: Record<string, any> }) {
-    return this.svc.probarDte(id, body.tipoDte, body.receptorOverride);
+  probarDte(@Param('empresaId') id: string, @Body() body: { tipoDte: string; receptorOverride?: Record<string, any>; invalidar?: boolean }) {
+    return this.svc.probarDte(id, body.tipoDte, body.receptorOverride, body.invalidar ?? false);
   }
 
   @Post(':empresaId/lote')

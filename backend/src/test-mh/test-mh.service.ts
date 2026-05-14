@@ -33,6 +33,8 @@ export interface TestDteResult {
   descripcionMsg?: string;
   error?: string;
   tiempoMs: number;
+  invalidado?: boolean;
+  detalleInvalidacion?: string;
 }
 
 export interface LoteJob {
@@ -86,9 +88,28 @@ export class TestMhService {
 
   // ── DTE individual ────────────────────────────────────────────────────────
 
-  async probarDte(empresaId: string, tipoDte: string, receptorOverride?: Record<string, any>): Promise<TestDteResult> {
+  async probarDte(empresaId: string, tipoDte: string, receptorOverride?: Record<string, any>, invalidar = false): Promise<TestDteResult> {
     const empresa = await this.getEmpresaPruebas(empresaId);
-    return this.emitirDtePrueba(empresa, tipoDte, receptorOverride);
+    const resultado = await this.emitirDtePrueba(empresa, tipoDte, receptorOverride);
+    if (invalidar && resultado.exitoso && resultado._dteId) {
+      try {
+        await this.invalidacionService.anular({
+          dteId: resultado._dteId,
+          tipoAnulacion: 1,
+          motivoAnulacion: 'Prueba de evento de invalidación iFactu',
+          nombreResponsable: 'RESPONSABLE PRUEBA IFACTU',
+          tipDocResponsable: '13',
+          numDocResponsable: '00000000-0',
+        }, empresaId);
+        resultado.invalidado = true;
+        resultado.detalleInvalidacion = 'DTE invalidado correctamente';
+      } catch (err: any) {
+        resultado.invalidado = false;
+        resultado.detalleInvalidacion = err.message ?? 'Error al invalidar';
+      }
+      delete (resultado as any)._dteId;
+    }
+    return resultado;
   }
 
   // ── Lote ─────────────────────────────────────────────────────────────────
@@ -142,7 +163,8 @@ export class TestMhService {
         observaciones: resultado.observaciones,
         descripcionMsg: resultado.descripcionMsg,
         tiempoMs: Date.now() - inicio,
-      };
+        _dteId: resultado.id,
+      } as any;
     } catch (err: any) {
       return { exitoso: false, tipoDte, error: err.message ?? 'Error desconocido', tiempoMs: Date.now() - inicio };
     }
