@@ -417,12 +417,14 @@ export class TestMhService {
 
       // Descartar DTEs de prueba anteriores que quedaron atascados en CONTINGENCIA
       // (ya fueron recibidos por Hacienda y causarían rechazo de duplicado en el lote)
-      await this.dteRepo
-        .createQueryBuilder()
-        .update(Dte)
-        .set({ estado: EstadoDte.RECHAZADO, observaciones: 'Descartado por prueba de contingencia posterior' })
-        .where('estado = :estado AND empresa.id = :id', { estado: EstadoDte.CONTINGENCIA, id: empresa.id })
-        .execute();
+      const viejos = await this.dteRepo.find({
+        where: { estado: EstadoDte.CONTINGENCIA, empresa: { id: empresa.id } },
+      });
+      if (viejos.length > 0) {
+        await this.dteRepo.save(
+          viejos.map(d => ({ ...d, estado: EstadoDte.RECHAZADO, observaciones: 'Descartado por prueba de contingencia posterior' })),
+        );
+      }
 
       const dte = this.dteRepo.create({
         tipoDte: '01', numeroControl, codigoGeneracion, jsonDte,
@@ -440,7 +442,11 @@ export class TestMhService {
       );
 
       const exitoso = resultado.enviados > 0 && resultado.fallidos === 0;
-      const detalle = `Enviados: ${resultado.enviados}, Fallidos: ${resultado.fallidos}, Lotes: ${resultado.codigosLote.join(', ')}`;
+      let detalle = `Enviados: ${resultado.enviados}, Fallidos: ${resultado.fallidos}, Lotes: ${resultado.codigosLote.join(', ')}`;
+      if (!exitoso) {
+        const dteActualizado = await this.dteRepo.findOne({ where: { codigoGeneracion: dte.codigoGeneracion } });
+        if (dteActualizado?.observaciones) detalle += ` | Error: ${dteActualizado.observaciones}`;
+      }
       return { exitoso, detalle, tiempoMs: Date.now() - inicio };
     } catch (err: any) {
       return { exitoso: false, detalle: err.message ?? 'Error desconocido', tiempoMs: Date.now() - inicio };
