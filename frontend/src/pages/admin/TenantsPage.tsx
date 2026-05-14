@@ -1168,7 +1168,10 @@ export function TenantsPage() {
                     )}
                     {testDte.resultado.observaciones?.length > 0 && (
                       <ul style={{ fontSize: '.78rem', marginTop: 6, color: '#b45309', paddingLeft: 18 }}>
-                        {testDte.resultado.observaciones.map((o: string, i: number) => <li key={i}>{o}</li>)}
+                        {(Array.isArray(testDte.resultado.observaciones)
+                          ? testDte.resultado.observaciones
+                          : String(testDte.resultado.observaciones).split(', ')
+                        ).map((o: string, i: number) => <li key={i}>{o}</li>)}
                       </ul>
                     )}
                     <div style={{ fontSize: '.78rem', marginTop: 4, color: '#94a3b8' }}>Tiempo: {testDte.resultado.tiempoMs} ms</div>
