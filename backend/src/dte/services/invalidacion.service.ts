@@ -95,8 +95,8 @@ export class InvalidacionService {
         nombre: empresa.nombreLegal,
         telefono: empresa.telefono,
         correo: empresa.correo,
-        codEstable:    (empresa.codEstableMh  || '0').toString().padStart(4, '0'),
-        codPuntoVenta: (empresa.codPuntoVentaMh || '0').toString().padStart(4, '0'),
+        codEstable:    (empresa.codEstableMh  || '0').toString().replace(/\D/g, '').padStart(4, '0') || '0001',
+        codPuntoVenta: (empresa.codPuntoVentaMh || '0').toString().replace(/\D/g, '').padStart(4, '0') || '0001',
         tipoEstablecimiento: empresa.tipoEstablecimiento || '02',
         nomEstablecimiento: empresa.nombreComercial || empresa.nombreLegal,
       },
@@ -203,10 +203,9 @@ export class InvalidacionService {
       const responseData = err.response?.data;
       if (responseData) {
         this.logger.error(`MH 400 response: ${JSON.stringify(responseData)}`);
-        const mhMsg = responseData.descripcionMsg
-          ?? responseData.mensaje
-          ?? responseData.message
-          ?? JSON.stringify(responseData);
+        const desc = responseData.descripcionMsg ?? responseData.mensaje ?? responseData.message ?? '';
+        const obs  = Array.isArray(responseData.observaciones) ? responseData.observaciones.join(', ') : (responseData.observaciones ?? '');
+        const mhMsg = [desc, obs].filter(Boolean).join(' | ') || JSON.stringify(responseData);
         throw new BadRequestException(`MH rechazó: ${mhMsg}`);
       }
       throw new BadRequestException(
