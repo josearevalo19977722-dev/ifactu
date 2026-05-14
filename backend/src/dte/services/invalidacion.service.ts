@@ -106,14 +106,15 @@ export class InvalidacionService {
         selloRecibido:    dte.selloRecepcion,
         numeroControl:    dte.numeroControl,
         fecEmi:           String(dte.fechaEmision).substring(0, 10),
-        montoIva:         this.calcularIva(dte),
+        montoIva:          this.calcularIva(dte),
+        codigoGeneracionR: codigoGeneracion,
         // Campos del receptor requeridos por schema v2
         tipoDocumento: receptorTipoDoc,
         numDocumento:  receptorNumDoc,
         nombre:        receptorNombre,
       },
       motivo: {
-        tipoAnulacion: String(dto.tipoAnulacion),
+        tipoAnulacion: dto.tipoAnulacion,
         motivoAnulacion: (dto.motivoAnulacion || '').substring(0, 250), // Límite esquema v2
         nombreResponsable: dto.nombreResponsable,
         tipDocResponsable: dto.tipDocResponsable ?? '13',
