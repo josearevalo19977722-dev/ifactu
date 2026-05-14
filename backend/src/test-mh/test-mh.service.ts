@@ -178,15 +178,15 @@ export class TestMhService {
   }
 
   private dtoCcf(empresa: Empresa, o?: Record<string, any>) {
-    const nit = (o?.nit ?? empresa.nit)?.replace(/-/g, '') ?? '06140101011034';
-    const nrc = (o?.nrc ?? empresa.nrc)?.replace(/-/g, '') ?? '000000';
+    const nit = o?.nit?.replace(/-/g, '') ?? '06140101011034';
+    const nrc = o?.nrc?.replace(/-/g, '') ?? '2';
     return {
       condicionOperacion: 1,
       receptor: {
         nit, nrc,
         nombre: o?.nombre ?? 'RECEPTOR DE PRUEBA S.A. DE C.V.',
-        correo: o?.correo ?? empresa.correo,
-        telefono: o?.telefono ?? empresa.telefono ?? '00000000',
+        correo: o?.correo ?? 'receptor.prueba@test.com',
+        telefono: o?.telefono ?? '22000000',
         codActividad: empresa.codActividad ?? '00000',
         descActividad: empresa.descActividad ?? 'Actividad de prueba',
         direccionDepartamento: empresa.departamento ?? '06',
@@ -239,8 +239,8 @@ export class TestMhService {
   }
 
   private dtoRetencion(empresa: Empresa, o?: Record<string, any>) {
-    const nit = (o?.nit ?? empresa.nit)?.replace(/-/g, '') ?? '06140101011034';
-    const nrc = (o?.nrc ?? empresa.nrc)?.replace(/-/g, '') ?? '000000';
+    const nit = o?.nit?.replace(/-/g, '') ?? '06140101011034';
+    const nrc = o?.nrc?.replace(/-/g, '') ?? '2';
     const hoy = new Date();
     return {
       periodo: hoy.getMonth() + 1,
@@ -248,8 +248,8 @@ export class TestMhService {
       receptor: {
         nit, nrc,
         nombre: o?.nombre ?? 'RETENIDO DE PRUEBA S.A.',
-        correo: o?.correo ?? empresa.correo,
-        telefono: o?.telefono ?? empresa.telefono ?? '00000000',
+        correo: o?.correo ?? 'retenido.prueba@test.com',
+        telefono: o?.telefono ?? '22000000',
         codActividad: empresa.codActividad ?? '00000',
         descActividad: empresa.descActividad ?? 'Actividad de prueba',
         direccionDepartamento: empresa.departamento ?? '06',
