@@ -1503,15 +1503,18 @@ textarea.form-control {
 }
 .tenant-card__actions {
   display: flex;
-  gap: 10px;
+  flex-wrap: wrap;
+  gap: 8px;
   padding: 0 18px 18px;
 }
 .tenant-card__actions .btn {
-  flex: 1;
+  flex: 1 1 auto;
+  min-width: 100px;
   justify-content: center;
-  min-height: 40px;
+  min-height: 38px;
   font-weight: 600;
   border-radius: 8px;
+  font-size: .82rem;
 }
 .tenant-card__actions .btn-ghost {
   border-color: color-mix(in srgb, var(--color-brand) 28%, var(--border));
