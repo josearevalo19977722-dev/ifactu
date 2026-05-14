@@ -151,7 +151,7 @@ export class TestMhService {
   private async emitirNotaPrueba(empresa: Empresa, tipoDte: '05' | '06', o?: Record<string, any>): Promise<any> {
     // Buscar CCF existente recibido para no emitir uno extra innecesariamente
     let ccf = await this.dteRepo.findOne({
-      where: { empresaId: empresa.id, tipoDte: '03', estado: EstadoDte.RECIBIDO },
+      where: { empresa: { id: empresa.id }, tipoDte: '03', estado: EstadoDte.RECIBIDO },
       order: { createdAt: 'DESC' },
     });
     if (!ccf) {
