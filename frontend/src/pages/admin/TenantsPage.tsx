@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import apiClient from '../../api/apiClient';
@@ -82,6 +82,73 @@ export function TenantsPage() {
   const [nuevoUsuario, setNuevoUsuario] = useState({ email: '', nombre: '', password: '', rol: 'ADMIN' });
   const [nuevoUsuarioMsg, setNuevoUsuarioMsg] = useState<{ ok: boolean; texto: string } | null>(null);
   const [creandoUsuario, setCreandoUsuario] = useState(false);
+
+  // ── Estado pruebas MH ─────────────────────────────────────────────────────
+  const [testTenant,   setTestTenant]   = useState<any | null>(null);
+  const [testConexion, setTestConexion] = useState<{ loading: boolean; resultado: any | null }>({ loading: false, resultado: null });
+  const [testDteTipo,  setTestDteTipo]  = useState('01');
+  const [testDte,      setTestDte]      = useState<{ loading: boolean; resultado: any | null }>({ loading: false, resultado: null });
+  const [lote, setLote] = useState<{ cantidad: number; jobId: string | null; job: any | null; polling: boolean }>({ cantidad: 5, jobId: null, job: null, polling: false });
+  const loteIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
+
+  function abrirTestModal(t: any) {
+    setTestTenant(t);
+    setTestConexion({ loading: false, resultado: null });
+    setTestDte({ loading: false, resultado: null });
+    setTestDteTipo(t.tiposDteHabilitados?.[0] ?? '01');
+    setLote({ cantidad: 5, jobId: null, job: null, polling: false });
+  }
+
+  function cerrarTestModal() {
+    if (loteIntervalRef.current) { clearInterval(loteIntervalRef.current); loteIntervalRef.current = null; }
+    setTestTenant(null);
+  }
+
+  async function handleTestConexion() {
+    setTestConexion({ loading: true, resultado: null });
+    try {
+      const { data } = await apiClient.post(`/admin/test-mh/${testTenant.id}/conexion`);
+      setTestConexion({ loading: false, resultado: data });
+    } catch (err: any) {
+      setTestConexion({ loading: false, resultado: { exitoso: false, mensaje: err?.response?.data?.message ?? err.message } });
+    }
+  }
+
+  async function handleTestDte() {
+    setTestDte({ loading: true, resultado: null });
+    setLote({ cantidad: lote.cantidad, jobId: null, job: null, polling: false });
+    try {
+      const { data } = await apiClient.post(`/admin/test-mh/${testTenant.id}/dte`, { tipoDte: testDteTipo });
+      setTestDte({ loading: false, resultado: data });
+    } catch (err: any) {
+      setTestDte({ loading: false, resultado: { exitoso: false, error: err?.response?.data?.message ?? err.message } });
+    }
+  }
+
+  async function handleIniciarLote() {
+    setLote(l => ({ ...l, jobId: null, job: null, polling: true }));
+    try {
+      const { data } = await apiClient.post(`/admin/test-mh/${testTenant.id}/lote`, { tipoDte: testDteTipo, cantidad: lote.cantidad });
+      const jobId = data.jobId;
+      setLote(l => ({ ...l, jobId }));
+      loteIntervalRef.current = setInterval(async () => {
+        try {
+          const { data: jobData } = await apiClient.get(`/admin/test-mh/${testTenant.id}/lote/${jobId}`);
+          setLote(l => ({ ...l, job: jobData }));
+          if (jobData.terminado) {
+            clearInterval(loteIntervalRef.current!);
+            loteIntervalRef.current = null;
+            setLote(l => ({ ...l, polling: false }));
+          }
+        } catch { /* silencioso */ }
+      }, 2000);
+    } catch (err: any) {
+      setLote(l => ({ ...l, polling: false }));
+      alert(err?.response?.data?.message ?? 'Error al iniciar lote');
+    }
+  }
+
+  useEffect(() => () => { if (loteIntervalRef.current) clearInterval(loteIntervalRef.current); }, []);
 
   // ── Queries ───────────────────────────────────────────────────────────────
   const { data: tenants = [], isLoading } = useQuery({
@@ -351,6 +418,17 @@ export function TenantsPage() {
                   >
                     {impersonandoId === t.id ? '...' : '👁 Entrar como'}
                   </button>
+                  {t.mhAmbiente !== '01' && (
+                    <button
+                      type="button"
+                      className="btn btn-sm"
+                      style={{ background: '#0f766e', color: '#fff', border: 'none' }}
+                      onClick={() => abrirTestModal(t)}
+                      title="Panel de pruebas con el Ministerio de Hacienda"
+                    >
+                      🧪 Pruebas MH
+                    </button>
+                  )}
                 </div>
               </article>
             );
@@ -905,6 +983,206 @@ export function TenantsPage() {
             </div>
             <div className="modal-footer">
               <button type="button" className="btn btn-primary" onClick={() => setStatsTenant(null)}>Cerrar</button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ── MODAL PRUEBAS MH ── */}
+      {testTenant && (
+        <div className="modal-overlay" onClick={cerrarTestModal}>
+          <div className="modal" style={{ maxWidth: 680, maxHeight: '90vh', overflowY: 'auto' }} onClick={e => e.stopPropagation()}>
+            <div className="modal-header" style={{ background: '#0f766e', color: '#fff' }}>
+              <h2 style={{ margin: 0, fontSize: '1rem' }}>🧪 Pruebas MH — {testTenant.nombreLegal}</h2>
+              <button type="button" className="btn btn-ghost btn-sm" onClick={cerrarTestModal} style={{ color: '#fff' }} aria-label="Cerrar">✕</button>
+            </div>
+            <div className="modal-body" style={{ display: 'flex', flexDirection: 'column', gap: 24 }}>
+
+              {/* ── Ambiente badge ── */}
+              <div style={{ background: '#f0fdf4', border: '1px solid #86efac', borderRadius: 8, padding: '8px 14px', fontSize: 13, color: '#15803d', display: 'flex', alignItems: 'center', gap: 8 }}>
+                <span>🔬</span>
+                <span>Ambiente: <strong>Pruebas (apitest.dtes.mh.gob.sv)</strong> — Los DTEs emitidos aquí <strong>no tienen validez fiscal</strong>.</span>
+              </div>
+
+              {/* ── 1. Probar conexión ── */}
+              <section>
+                <h3 style={{ fontSize: '.9rem', fontWeight: 700, marginBottom: 10 }}>1. Probar conexión con Hacienda</h3>
+                <button
+                  type="button" className="btn btn-primary"
+                  style={{ background: '#0f766e', minWidth: 180 }}
+                  disabled={testConexion.loading}
+                  onClick={handleTestConexion}
+                >
+                  {testConexion.loading ? '⏳ Conectando...' : '🔌 Probar conexión'}
+                </button>
+                {testConexion.resultado && (
+                  <div style={{ marginTop: 12, padding: '12px 16px', borderRadius: 8, background: testConexion.resultado.exitoso ? '#f0fdf4' : '#fef2f2', border: `1px solid ${testConexion.resultado.exitoso ? '#86efac' : '#fca5a5'}` }}>
+                    <div style={{ fontWeight: 700, fontSize: '.88rem', color: testConexion.resultado.exitoso ? '#15803d' : '#dc2626' }}>
+                      {testConexion.resultado.exitoso ? '✅ Conexión exitosa' : '❌ Error de conexión'}
+                    </div>
+                    <div style={{ fontSize: '.82rem', marginTop: 4, color: '#64748b' }}>{testConexion.resultado.mensaje}</div>
+                    {testConexion.resultado.tiempoMs && (
+                      <div style={{ fontSize: '.78rem', marginTop: 2, color: '#94a3b8' }}>Tiempo de respuesta: {testConexion.resultado.tiempoMs} ms</div>
+                    )}
+                  </div>
+                )}
+              </section>
+
+              {/* ── 2. Emitir DTE de prueba ── */}
+              <section>
+                <h3 style={{ fontSize: '.9rem', fontWeight: 700, marginBottom: 10 }}>2. Emitir DTE de prueba</h3>
+                <div style={{ display: 'flex', gap: 10, alignItems: 'center', flexWrap: 'wrap' }}>
+                  <select
+                    value={testDteTipo}
+                    onChange={e => { setTestDteTipo(e.target.value); setTestDte({ loading: false, resultado: null }); }}
+                    style={{ padding: '7px 12px', borderRadius: 6, border: '1px solid var(--border)', fontSize: '.85rem', background: 'var(--white)', color: 'var(--text)' }}
+                  >
+                    {(testTenant.tiposDteHabilitados?.length > 0 ? testTenant.tiposDteHabilitados : ['01','03','11','14','07','15']).map((cod: string) => (
+                      <option key={cod} value={cod}>{cod} — {OPCION_LABEL[cod] ?? cod}</option>
+                    ))}
+                  </select>
+                  <button
+                    type="button" className="btn btn-primary"
+                    style={{ minWidth: 160 }}
+                    disabled={testDte.loading}
+                    onClick={handleTestDte}
+                  >
+                    {testDte.loading ? '⏳ Emitiendo (~15s)...' : '📤 Emitir 1 DTE de prueba'}
+                  </button>
+                </div>
+
+                {testDte.loading && (
+                  <div style={{ marginTop: 10, padding: '10px 14px', background: '#eff6ff', borderRadius: 8, fontSize: '.82rem', color: '#1d4ed8' }}>
+                    ⏳ Firmando y transmitiendo al MH... esto puede tardar hasta 20 segundos.
+                  </div>
+                )}
+
+                {testDte.resultado && (
+                  <div style={{ marginTop: 12, padding: '12px 16px', borderRadius: 8, background: testDte.resultado.exitoso ? '#f0fdf4' : '#fef2f2', border: `1px solid ${testDte.resultado.exitoso ? '#86efac' : '#fca5a5'}` }}>
+                    <div style={{ fontWeight: 700, fontSize: '.88rem', color: testDte.resultado.exitoso ? '#15803d' : '#dc2626' }}>
+                      {testDte.resultado.exitoso ? '✅ DTE recibido por Hacienda' : '❌ DTE rechazado o error'}
+                    </div>
+                    {testDte.resultado.selloRecepcion && (
+                      <div style={{ fontSize: '.78rem', marginTop: 4, color: '#15803d', wordBreak: 'break-all' }}>
+                        Sello: <code style={{ background: '#dcfce7', padding: '2px 4px', borderRadius: 3 }}>{testDte.resultado.selloRecepcion}</code>
+                      </div>
+                    )}
+                    {testDte.resultado.codigoGeneracion && (
+                      <div style={{ fontSize: '.78rem', marginTop: 2, color: '#64748b', wordBreak: 'break-all' }}>
+                        Código: {testDte.resultado.codigoGeneracion}
+                      </div>
+                    )}
+                    {testDte.resultado.error && (
+                      <div style={{ fontSize: '.82rem', marginTop: 4, color: '#dc2626' }}>{testDte.resultado.error}</div>
+                    )}
+                    {testDte.resultado.observaciones?.length > 0 && (
+                      <ul style={{ fontSize: '.78rem', marginTop: 6, color: '#b45309', paddingLeft: 18 }}>
+                        {testDte.resultado.observaciones.map((o: string, i: number) => <li key={i}>{o}</li>)}
+                      </ul>
+                    )}
+                    <div style={{ fontSize: '.78rem', marginTop: 4, color: '#94a3b8' }}>Tiempo: {testDte.resultado.tiempoMs} ms</div>
+                  </div>
+                )}
+              </section>
+
+              {/* ── 3. Lote ── solo si el último DTE fue exitoso ── */}
+              {testDte.resultado?.exitoso && (
+                <section style={{ borderTop: '1px solid var(--border)', paddingTop: 18 }}>
+                  <h3 style={{ fontSize: '.9rem', fontWeight: 700, marginBottom: 10 }}>3. Enviar lote de prueba</h3>
+                  <p style={{ fontSize: '.82rem', color: 'var(--text-muted)', marginBottom: 12 }}>
+                    La conexión y firma funcionan correctamente. Puedes enviar un lote de DTEs para validar el flujo completo.
+                    Cada DTE tarda ~15 segundos.
+                  </p>
+                  <div style={{ display: 'flex', gap: 10, alignItems: 'center', flexWrap: 'wrap' }}>
+                    <label style={{ fontSize: '.85rem', fontWeight: 600 }}>Cantidad:</label>
+                    <select
+                      value={lote.cantidad}
+                      onChange={e => setLote(l => ({ ...l, cantidad: Number(e.target.value) }))}
+                      disabled={lote.polling}
+                      style={{ padding: '7px 12px', borderRadius: 6, border: '1px solid var(--border)', fontSize: '.85rem', background: 'var(--white)', color: 'var(--text)' }}
+                    >
+                      {[1, 3, 5, 10, 20].map(n => (
+                        <option key={n} value={n}>{n} DTEs (~{Math.round(n * 15 / 60 * 10) / 10} min)</option>
+                      ))}
+                    </select>
+                    <button
+                      type="button" className="btn btn-primary"
+                      style={{ background: '#0f766e', minWidth: 150 }}
+                      disabled={lote.polling}
+                      onClick={handleIniciarLote}
+                    >
+                      {lote.polling ? '⏳ Enviando...' : '🚀 Iniciar lote'}
+                    </button>
+                  </div>
+
+                  {/* Progress bar */}
+                  {(lote.polling || lote.job) && (
+                    <div style={{ marginTop: 16 }}>
+                      {lote.job && (
+                        <>
+                          <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '.82rem', marginBottom: 6 }}>
+                            <span style={{ color: 'var(--text)' }}>
+                              <strong>{lote.job.completados}</strong> / {lote.job.total} enviados
+                            </span>
+                            <span>
+                              <span style={{ color: '#16a34a', fontWeight: 700 }}>✓ {lote.job.exitosos}</span>
+                              {lote.job.fallidos > 0 && <span style={{ color: '#dc2626', fontWeight: 700, marginLeft: 10 }}>✗ {lote.job.fallidos}</span>}
+                            </span>
+                          </div>
+                          <div style={{ background: '#e2e8f0', borderRadius: 999, height: 8, overflow: 'hidden' }}>
+                            <div style={{
+                              height: '100%', borderRadius: 999, transition: 'width .4s ease',
+                              width: `${lote.job.total > 0 ? (lote.job.completados / lote.job.total) * 100 : 0}%`,
+                              background: lote.job.terminado ? (lote.job.fallidos === 0 ? '#16a34a' : '#f59e0b') : '#0f766e',
+                            }} />
+                          </div>
+                          {lote.job.terminado && (
+                            <div style={{ marginTop: 8, fontSize: '.82rem', fontWeight: 700, color: lote.job.fallidos === 0 ? '#16a34a' : '#b45309' }}>
+                              {lote.job.fallidos === 0 ? `✅ Lote completado — ${lote.job.exitosos} DTEs enviados exitosamente` : `⚠️ ${lote.job.exitosos} exitosos, ${lote.job.fallidos} fallidos`}
+                            </div>
+                          )}
+                        </>
+                      )}
+                      {lote.polling && !lote.job && (
+                        <div style={{ fontSize: '.82rem', color: '#64748b' }}>⏳ Iniciando lote...</div>
+                      )}
+
+                      {/* Lista de resultados */}
+                      {lote.job?.resultados?.length > 0 && (
+                        <div style={{ marginTop: 12, maxHeight: 200, overflowY: 'auto', border: '1px solid var(--border)', borderRadius: 8 }}>
+                          <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '.78rem' }}>
+                            <thead>
+                              <tr style={{ background: 'var(--bg)', borderBottom: '1px solid var(--border)' }}>
+                                <th style={{ padding: '6px 10px', textAlign: 'left' }}>#</th>
+                                <th style={{ padding: '6px 10px', textAlign: 'left' }}>Estado</th>
+                                <th style={{ padding: '6px 10px', textAlign: 'left' }}>Código</th>
+                                <th style={{ padding: '6px 10px', textAlign: 'right' }}>ms</th>
+                              </tr>
+                            </thead>
+                            <tbody>
+                              {lote.job.resultados.map((r: any, i: number) => (
+                                <tr key={i} style={{ borderBottom: '1px solid var(--border)' }}>
+                                  <td style={{ padding: '5px 10px', color: '#64748b' }}>{i + 1}</td>
+                                  <td style={{ padding: '5px 10px', color: r.exitoso ? '#16a34a' : '#dc2626', fontWeight: 600 }}>
+                                    {r.exitoso ? '✓ RECIBIDO' : '✗ ERROR'}
+                                  </td>
+                                  <td style={{ padding: '5px 10px', color: '#64748b', fontSize: '.72rem', maxWidth: 180, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                                    {r.codigoGeneracion?.slice(0, 12)}...
+                                  </td>
+                                  <td style={{ padding: '5px 10px', textAlign: 'right', color: '#94a3b8' }}>{r.tiempoMs}</td>
+                                </tr>
+                              ))}
+                            </tbody>
+                          </table>
+                        </div>
+                      )}
+                    </div>
+                  )}
+                </section>
+              )}
+            </div>
+            <div className="modal-footer">
+              <button type="button" className="btn btn-primary" style={{ background: '#0f766e' }} onClick={cerrarTestModal}>Cerrar</button>
             </div>
           </div>
         </div>
