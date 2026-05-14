@@ -340,7 +340,11 @@ export class ContingenciaService {
       }),
     );
 
-    return data.codigoEvento ?? data.codEvento ?? '';
+    this.logger.log(`registrarEvento respuesta: ${JSON.stringify(data)}`);
+    // Hacienda puede devolver el código en data.body o directamente en data
+    const codigo = data.body?.codigoEvento ?? data.codigoEvento ?? data.body?.codEvento ?? data.codEvento ?? '';
+    if (!codigo) this.logger.warn(`registrarEvento: respuesta sin codigoEvento — ${JSON.stringify(data)}`);
+    return codigo;
   }
 
   private async enviarLote(
@@ -407,20 +411,31 @@ export class ContingenciaService {
       }),
     );
 
-    let data: any;
-    try {
-      ({ data } = await enviar());
-    } catch (err) {
-      if (err.response?.status === 401) {
-        this.logger.warn('Lote — 401 recibido, reautenticando...');
-        this.authMh.invalidarToken(empresa.id);
-        token = await this.authMh.getToken(empresa);
-        ({ data } = await enviar());
-      } else {
-        const detail = err.response?.data?.descripcionMsg ?? err.response?.data?.mensaje ?? err.message;
-        throw new Error(detail);
+    const ejecutar = async () => {
+      try {
+        return (await enviar()).data;
+      } catch (err) {
+        const status = err.response?.status;
+        const body   = err.response?.data;
+        this.logger.error(`enviarLote HTTP ${status}: ${JSON.stringify(body ?? err.message)}`);
+        if (status === 401) {
+          this.logger.warn('Lote — 401, reautenticando...');
+          this.authMh.invalidarToken(empresa.id);
+          token = await this.authMh.getToken(empresa);
+          try {
+            return (await enviar()).data;
+          } catch (err2) {
+            const b = err2.response?.data;
+            this.logger.error(`enviarLote retry HTTP ${err2.response?.status}: ${JSON.stringify(b ?? err2.message)}`);
+            const msg = b?.descripcionMsg ?? b?.mensaje ?? b?.message ?? err2.message;
+            throw new Error(msg);
+          }
+        }
+        const msg = body?.descripcionMsg ?? body?.mensaje ?? body?.message ?? err.message;
+        throw new Error(msg);
       }
-    }
+    };
+    let data: any = await ejecutar();
 
     // Manual MH sección 3.2.1: la respuesta contiene codigoLote para consulta posterior
     return data.codigoLote ?? data.idEnvio ?? 'desconocido';
