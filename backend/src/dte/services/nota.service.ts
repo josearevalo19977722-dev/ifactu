@@ -219,7 +219,7 @@ export class NotaService {
           tipoDocumento: '03',
           tipoGeneracion: 2,
           numeroDocumento: dteRef.codigoGeneracion,
-          fechaEmision: dteRef.fechaEmision,
+          fechaEmision: String(dteRef.fechaEmision).substring(0, 10),
         },
       ],
       emisor: {
@@ -268,7 +268,6 @@ export class NotaService {
         reteRenta:           0,
         montoTotalOperacion: r2(totalPagar),
         totalLetras:         montoALetras(totalPagar),
-        condicionOperacion:  1,
       },
       extension: null,
       apendice: null,
