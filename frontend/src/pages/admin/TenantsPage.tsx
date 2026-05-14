@@ -1163,8 +1163,8 @@ export function TenantsPage() {
                         Código: {testDte.resultado.codigoGeneracion}
                       </div>
                     )}
-                    {testDte.resultado.error && (
-                      <div style={{ fontSize: '.82rem', marginTop: 4, color: '#dc2626' }}>{testDte.resultado.error}</div>
+                    {(testDte.resultado.error || testDte.resultado.descripcionMsg) && (
+                      <div style={{ fontSize: '.82rem', marginTop: 4, color: '#dc2626' }}>{testDte.resultado.error || testDte.resultado.descripcionMsg}</div>
                     )}
                     {testDte.resultado.observaciones?.length > 0 && (
                       <ul style={{ fontSize: '.78rem', marginTop: 6, color: '#b45309', paddingLeft: 18 }}>
