@@ -35,4 +35,9 @@ export class TestMhController {
     if (!job) return { error: 'Job no encontrado' };
     return job;
   }
+
+  @Post(':empresaId/invalidacion')
+  probarInvalidacion(@Param('empresaId') id: string) {
+    return this.svc.probarInvalidacion(id);
+  }
 }

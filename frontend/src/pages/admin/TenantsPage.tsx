@@ -89,6 +89,7 @@ export function TenantsPage() {
   const [testDteTipo,  setTestDteTipo]  = useState('01');
   const [testDte,      setTestDte]      = useState<{ loading: boolean; resultado: any | null }>({ loading: false, resultado: null });
   const [lote, setLote] = useState<{ cantidad: number; jobId: string | null; job: any | null; polling: boolean }>({ cantidad: 5, jobId: null, job: null, polling: false });
+  const [testInvalidacion, setTestInvalidacion] = useState<{ loading: boolean; resultado: any | null }>({ loading: false, resultado: null });
   const loteIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const RECEPTOR_EMPTY = { nombre: '', nit: '', nrc: '', tipoDocumento: '13', numDocumento: '', correo: '', telefono: '', codPais: 'US', nombrePais: 'Estados Unidos' };
   const [testReceptor, setTestReceptor] = useState({ ...RECEPTOR_EMPTY });
@@ -102,6 +103,7 @@ export function TenantsPage() {
     setLote({ cantidad: 5, jobId: null, job: null, polling: false });
     setTestReceptor({ ...RECEPTOR_EMPTY });
     setShowReceptorForm(false);
+    setTestInvalidacion({ loading: false, resultado: null });
   }
 
   function cerrarTestModal() {
@@ -133,6 +135,16 @@ export function TenantsPage() {
       setTestDte({ loading: false, resultado: data });
     } catch (err: any) {
       setTestDte({ loading: false, resultado: { exitoso: false, error: err?.response?.data?.message ?? err.message } });
+    }
+  }
+
+  async function handleTestInvalidacion() {
+    setTestInvalidacion({ loading: true, resultado: null });
+    try {
+      const { data } = await apiClient.post(`/admin/test-mh/${testTenant.id}/invalidacion`);
+      setTestInvalidacion({ loading: false, resultado: data });
+    } catch (err: any) {
+      setTestInvalidacion({ loading: false, resultado: { exitoso: false, detalle: err?.response?.data?.message ?? err.message } });
     }
   }
 
@@ -1275,6 +1287,28 @@ export function TenantsPage() {
                 </section>
               )}
             </div>
+            {/* ── 4. Evento de Invalidación ── */}
+            <div style={{ padding: '0 24px 20px' }}>
+              <section style={{ background: 'var(--bg-subtle)', borderRadius: 8, padding: '16px 20px' }}>
+                <h3 style={{ fontSize: '.9rem', fontWeight: 700, marginBottom: 10 }}>4. Evento de Invalidación</h3>
+                <p style={{ fontSize: '.82rem', color: '#64748b', marginBottom: 12 }}>
+                  Emite un CF de prueba y lo invalida inmediatamente. Requerido por Hacienda para solicitar autorización.
+                </p>
+                <button className="btn btn-sm" onClick={handleTestInvalidacion} disabled={testInvalidacion.loading} style={{ marginBottom: 10 }}>
+                  {testInvalidacion.loading ? '⏳ Procesando...' : '🗑️ Probar invalidación'}
+                </button>
+                {testInvalidacion.resultado && (
+                  <div style={{ padding: '12px 16px', borderRadius: 8, background: testInvalidacion.resultado.exitoso ? '#f0fdf4' : '#fef2f2', border: `1px solid ${testInvalidacion.resultado.exitoso ? '#86efac' : '#fca5a5'}` }}>
+                    <div style={{ fontWeight: 700, fontSize: '.88rem', color: testInvalidacion.resultado.exitoso ? '#15803d' : '#dc2626' }}>
+                      {testInvalidacion.resultado.exitoso ? '✅ Invalidación exitosa' : '❌ Error en invalidación'}
+                    </div>
+                    <div style={{ fontSize: '.82rem', marginTop: 4, color: '#374151' }}>{testInvalidacion.resultado.detalle}</div>
+                    <div style={{ fontSize: '.78rem', marginTop: 2, color: '#94a3b8' }}>Tiempo: {testInvalidacion.resultado.tiempoMs} ms</div>
+                  </div>
+                )}
+              </section>
+            </div>
+
             <div className="modal-footer">
               <button type="button" className="btn btn-primary" style={{ background: '#0f766e' }} onClick={cerrarTestModal}>Cerrar</button>
             </div>

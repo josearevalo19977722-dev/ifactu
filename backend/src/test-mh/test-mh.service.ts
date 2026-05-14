@@ -12,6 +12,7 @@ import { FexeService } from '../dte/services/fexe.service';
 import { RetencionService } from '../dte/services/retencion.service';
 import { DonacionService } from '../dte/services/donacion.service';
 import { NotaService } from '../dte/services/nota.service';
+import { InvalidacionService } from '../dte/services/invalidacion.service';
 import { ConfigService } from '@nestjs/config';
 import { getAmbiente } from '../dte/services/mh-config.helper';
 
@@ -64,6 +65,7 @@ export class TestMhService {
     private readonly retencionService: RetencionService,
     private readonly donacionService: DonacionService,
     private readonly notaService: NotaService,
+    private readonly invalidacionService: InvalidacionService,
     private readonly config: ConfigService,
   ) {}
 
@@ -285,6 +287,33 @@ export class TestMhService {
       receptor: { nombre: o?.nombre ?? 'RECEPTOR DONACIÓN PRUEBA', correo: o?.correo ?? 'donacion@test.com', telefono: o?.telefono ?? '00000000' },
       items: [{ numItem: 1, tipoDonacion: 1, cantidad: 1, codigo: 'DON-001', uniMedida: 59, descripcion: 'Donación de prueba iFactu', valorUni: 1.00, montoDescu: 0, depreciacion: 0, valor: 1.00 }],
     };
+  }
+
+  // ── Invalidación ─────────────────────────────────────────────────────────
+
+  async probarInvalidacion(empresaId: string): Promise<{ exitoso: boolean; detalle: string; tiempoMs: number }> {
+    const empresa = await this.getEmpresaPruebas(empresaId);
+    const inicio = Date.now();
+    try {
+      // 1. Emitir un CF de prueba
+      const cf = await this.cfService.emitir(this.dtoCf(), empresa.id);
+      if (cf.estado !== EstadoDte.RECIBIDO) {
+        const detalle = cf.descripcionMsg ?? cf.observaciones ?? 'sin detalles';
+        throw new Error(`CF para invalidar rechazado: ${detalle}`);
+      }
+      // 2. Invalidarlo inmediatamente
+      await this.invalidacionService.anular({
+        dteId: cf.id,
+        tipoAnulacion: 1,
+        motivoAnulacion: 'Prueba de evento de invalidación iFactu',
+        nombreResponsable: 'RESPONSABLE PRUEBA IFACTU',
+        tipDocResponsable: '13',
+        numDocResponsable: '00000000-0',
+      }, empresa.id);
+      return { exitoso: true, detalle: `CF ${cf.codigoGeneracion} emitido e invalidado correctamente`, tiempoMs: Date.now() - inicio };
+    } catch (err: any) {
+      return { exitoso: false, detalle: err.message ?? 'Error desconocido', tiempoMs: Date.now() - inicio };
+    }
   }
 
   // ── Helper ────────────────────────────────────────────────────────────────
