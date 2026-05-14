@@ -268,6 +268,7 @@ export class NotaService {
         reteRenta:           0,
         montoTotalOperacion: r2(totalPagar),
         totalLetras:         montoALetras(totalPagar),
+        condicionOperacion:  1,
       },
       extension: null,
       apendice: null,
