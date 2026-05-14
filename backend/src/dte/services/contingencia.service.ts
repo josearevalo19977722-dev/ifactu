@@ -104,6 +104,9 @@ export class ContingenciaService {
         this.logger.log(`Evento de contingencia registrado: ${codigoEvento}`);
       } catch (err) {
         this.logger.warn(`No se pudo registrar evento de contingencia: ${err.message}`);
+      } finally {
+        // El endpoint /contingencia consume el token; invalidar para que enviarLote obtenga uno fresco
+        this.authMh.invalidarToken(empresa.id);
       }
     } else {
       this.logger.warn('[MODO DEMO] Registro de evento de contingencia omitido');
@@ -349,7 +352,7 @@ export class ContingenciaService {
   ): Promise<string> {
     const url      = getMhUrls(empresa, this.config).lote;
     const nit      = getNitEmisor(empresa);
-    const token    = await this.authMh.getToken(empresa);
+    let   token    = await this.authMh.getToken(empresa);
     const ambiente = getAmbiente(empresa, this.config);
 
     // Punto 8: validar horario de recepción para lotes normales.
@@ -392,10 +395,10 @@ export class ContingenciaService {
       payload.codigoEvento = codigoEvento;
     }
 
-    const { data } = await firstValueFrom(
+    const enviar = () => firstValueFrom(
       this.http.post(url, payload, {
         headers: {
-          Authorization: token,
+          Authorization: token.trim(),
           'Content-Type': 'application/json',
           nitEmisor: nit,
           'User-Agent': 'facturacion-dte/1.0',
@@ -403,6 +406,21 @@ export class ContingenciaService {
         timeout: 30000,
       }),
     );
+
+    let data: any;
+    try {
+      ({ data } = await enviar());
+    } catch (err) {
+      if (err.response?.status === 401) {
+        this.logger.warn('Lote — 401 recibido, reautenticando...');
+        this.authMh.invalidarToken(empresa.id);
+        token = await this.authMh.getToken(empresa);
+        ({ data } = await enviar());
+      } else {
+        const detail = err.response?.data?.descripcionMsg ?? err.response?.data?.mensaje ?? err.message;
+        throw new Error(detail);
+      }
+    }
 
     // Manual MH sección 3.2.1: la respuesta contiene codigoLote para consulta posterior
     return data.codigoLote ?? data.idEnvio ?? 'desconocido';
