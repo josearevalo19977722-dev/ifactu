@@ -1185,7 +1185,11 @@ export function TenantsPage() {
                         <strong style={{ color: testDte.resultado.invalidado ? '#15803d' : '#dc2626' }}>
                           {testDte.resultado.invalidado ? '✅ Invalidado' : '❌ Error al invalidar'}
                         </strong>
-                        {' — '}{testDte.resultado.detalleInvalidacion}
+                        {testDte.resultado.detalleInvalidacion && (
+                          <div style={{ color: testDte.resultado.invalidado ? '#166534' : '#991b1b', marginTop: 4 }}>
+                            {testDte.resultado.detalleInvalidacion}
+                          </div>
+                        )}
                       </div>
                     )}
                     <div style={{ fontSize: '.78rem', marginTop: 4, color: '#94a3b8' }}>Tiempo: {testDte.resultado.tiempoMs} ms</div>

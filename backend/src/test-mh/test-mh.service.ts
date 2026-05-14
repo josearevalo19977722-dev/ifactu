@@ -104,8 +104,9 @@ export class TestMhService {
         raw.invalidado = true;
         raw.detalleInvalidacion = 'DTE invalidado correctamente';
       } catch (err: any) {
+        this.logger.warn(`Error al invalidar DTE de prueba: ${err.message}`);
         raw.invalidado = false;
-        raw.detalleInvalidacion = err.message ?? 'Error al invalidar';
+        raw.detalleInvalidacion = err.message || err?.response?.message || 'Error desconocido al invalidar';
       }
       delete raw._dteId;
     }
