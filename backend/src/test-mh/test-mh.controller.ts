@@ -16,16 +16,16 @@ export class TestMhController {
   }
 
   @Post(':empresaId/dte')
-  probarDte(@Param('empresaId') id: string, @Body() body: { tipoDte: string }) {
-    return this.svc.probarDte(id, body.tipoDte);
+  probarDte(@Param('empresaId') id: string, @Body() body: { tipoDte: string; receptorOverride?: Record<string, any> }) {
+    return this.svc.probarDte(id, body.tipoDte, body.receptorOverride);
   }
 
   @Post(':empresaId/lote')
   async iniciarLote(
     @Param('empresaId') id: string,
-    @Body() body: { tipoDte: string; cantidad: number },
+    @Body() body: { tipoDte: string; cantidad: number; receptorOverride?: Record<string, any> },
   ) {
-    const jobId = await this.svc.iniciarLote(id, body.tipoDte, body.cantidad);
+    const jobId = await this.svc.iniciarLote(id, body.tipoDte, body.cantidad, body.receptorOverride);
     return { jobId };
   }
 

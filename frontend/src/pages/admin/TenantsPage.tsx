@@ -90,6 +90,9 @@ export function TenantsPage() {
   const [testDte,      setTestDte]      = useState<{ loading: boolean; resultado: any | null }>({ loading: false, resultado: null });
   const [lote, setLote] = useState<{ cantidad: number; jobId: string | null; job: any | null; polling: boolean }>({ cantidad: 5, jobId: null, job: null, polling: false });
   const loteIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const RECEPTOR_EMPTY = { nombre: '', nit: '', nrc: '', tipoDocumento: '13', numDocumento: '', correo: '', telefono: '', codPais: 'US', nombrePais: 'Estados Unidos' };
+  const [testReceptor, setTestReceptor] = useState({ ...RECEPTOR_EMPTY });
+  const [showReceptorForm, setShowReceptorForm] = useState(false);
 
   function abrirTestModal(t: any) {
     setTestTenant(t);
@@ -97,6 +100,8 @@ export function TenantsPage() {
     setTestDte({ loading: false, resultado: null });
     setTestDteTipo(t.tiposDteHabilitados?.[0] ?? '01');
     setLote({ cantidad: 5, jobId: null, job: null, polling: false });
+    setTestReceptor({ ...RECEPTOR_EMPTY });
+    setShowReceptorForm(false);
   }
 
   function cerrarTestModal() {
@@ -114,11 +119,17 @@ export function TenantsPage() {
     }
   }
 
+  function buildReceptorOverride() {
+    const o: Record<string, string> = {};
+    for (const [k, v] of Object.entries(testReceptor)) { if (v && v.trim() !== '') o[k] = v.trim(); }
+    return Object.keys(o).length > 0 ? o : undefined;
+  }
+
   async function handleTestDte() {
     setTestDte({ loading: true, resultado: null });
     setLote({ cantidad: lote.cantidad, jobId: null, job: null, polling: false });
     try {
-      const { data } = await apiClient.post(`/admin/test-mh/${testTenant.id}/dte`, { tipoDte: testDteTipo });
+      const { data } = await apiClient.post(`/admin/test-mh/${testTenant.id}/dte`, { tipoDte: testDteTipo, receptorOverride: buildReceptorOverride() });
       setTestDte({ loading: false, resultado: data });
     } catch (err: any) {
       setTestDte({ loading: false, resultado: { exitoso: false, error: err?.response?.data?.message ?? err.message } });
@@ -128,7 +139,7 @@ export function TenantsPage() {
   async function handleIniciarLote() {
     setLote(l => ({ ...l, jobId: null, job: null, polling: true }));
     try {
-      const { data } = await apiClient.post(`/admin/test-mh/${testTenant.id}/lote`, { tipoDte: testDteTipo, cantidad: lote.cantidad });
+      const { data } = await apiClient.post(`/admin/test-mh/${testTenant.id}/lote`, { tipoDte: testDteTipo, cantidad: lote.cantidad, receptorOverride: buildReceptorOverride() });
       const jobId = data.jobId;
       setLote(l => ({ ...l, jobId }));
       loteIntervalRef.current = setInterval(async () => {
@@ -1050,6 +1061,86 @@ export function TenantsPage() {
                     {testDte.loading ? '⏳ Emitiendo (~15s)...' : '📤 Emitir 1 DTE de prueba'}
                   </button>
                 </div>
+
+                {/* ── Datos del receptor de prueba (colapsable) ── */}
+                {testDteTipo !== '01' && (
+                  <div style={{ marginTop: 12, border: '1px solid var(--border)', borderRadius: 8, overflow: 'hidden' }}>
+                    <button
+                      type="button"
+                      onClick={() => setShowReceptorForm(v => !v)}
+                      style={{ width: '100%', padding: '8px 14px', background: showReceptorForm ? '#f1f5f9' : 'var(--bg)', border: 'none', cursor: 'pointer', display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: '.83rem', fontWeight: 600, color: 'var(--text)' }}
+                    >
+                      <span>✏️ Datos del cliente de prueba (opcional)</span>
+                      <span style={{ fontSize: '.75rem', color: 'var(--text-muted)' }}>{showReceptorForm ? '▲ ocultar' : '▼ editar'}</span>
+                    </button>
+                    {showReceptorForm && (
+                      <div style={{ padding: '14px 16px', display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px 14px', background: 'var(--white)' }}>
+                        {/* Nombre — todos los tipos */}
+                        <div style={{ gridColumn: '1 / -1' }}>
+                          <label style={{ fontSize: '.78rem', fontWeight: 600, display: 'block', marginBottom: 3 }}>Nombre / Razón social</label>
+                          <input value={testReceptor.nombre} onChange={e => setTestReceptor(r => ({ ...r, nombre: e.target.value }))}
+                            placeholder="RECEPTOR DE PRUEBA S.A. DE C.V." style={{ width: '100%', padding: '6px 10px', borderRadius: 6, border: '1px solid var(--border)', fontSize: '.83rem', background: 'var(--bg)', color: 'var(--text)', boxSizing: 'border-box' }} />
+                        </div>
+                        {/* NIT + NRC para CCF y Retención */}
+                        {(testDteTipo === '03' || testDteTipo === '07') && (<>
+                          <div>
+                            <label style={{ fontSize: '.78rem', fontWeight: 600, display: 'block', marginBottom: 3 }}>NIT (sin guiones)</label>
+                            <input value={testReceptor.nit} onChange={e => setTestReceptor(r => ({ ...r, nit: e.target.value }))}
+                              placeholder="06140101011034" maxLength={14} style={{ width: '100%', padding: '6px 10px', borderRadius: 6, border: '1px solid var(--border)', fontSize: '.83rem', background: 'var(--bg)', color: 'var(--text)', boxSizing: 'border-box' }} />
+                          </div>
+                          <div>
+                            <label style={{ fontSize: '.78rem', fontWeight: 600, display: 'block', marginBottom: 3 }}>NRC (sin guiones)</label>
+                            <input value={testReceptor.nrc} onChange={e => setTestReceptor(r => ({ ...r, nrc: e.target.value }))}
+                              placeholder="123456" maxLength={8} style={{ width: '100%', padding: '6px 10px', borderRadius: 6, border: '1px solid var(--border)', fontSize: '.83rem', background: 'var(--bg)', color: 'var(--text)', boxSizing: 'border-box' }} />
+                          </div>
+                        </>)}
+                        {/* Tipo + Num documento para FSE, FEXE, Donación */}
+                        {(testDteTipo === '14' || testDteTipo === '11' || testDteTipo === '15') && (<>
+                          <div>
+                            <label style={{ fontSize: '.78rem', fontWeight: 600, display: 'block', marginBottom: 3 }}>Tipo documento</label>
+                            <select value={testReceptor.tipoDocumento} onChange={e => setTestReceptor(r => ({ ...r, tipoDocumento: e.target.value }))}
+                              style={{ width: '100%', padding: '6px 10px', borderRadius: 6, border: '1px solid var(--border)', fontSize: '.83rem', background: 'var(--bg)', color: 'var(--text)' }}>
+                              {testDteTipo === '14' && <><option value="13">13 — DUI</option><option value="36">36 — NIT</option><option value="03">03 — Pasaporte</option></>}
+                              {testDteTipo === '11' && <><option value="37">37 — Otro</option><option value="03">03 — Pasaporte</option><option value="02">02 — Carné residente</option></>}
+                              {testDteTipo === '15' && <><option value="36">36 — NIT</option><option value="13">13 — DUI</option></>}
+                            </select>
+                          </div>
+                          <div>
+                            <label style={{ fontSize: '.78rem', fontWeight: 600, display: 'block', marginBottom: 3 }}>Número de documento</label>
+                            <input value={testReceptor.numDocumento} onChange={e => setTestReceptor(r => ({ ...r, numDocumento: e.target.value }))}
+                              placeholder={testDteTipo === '14' ? '00000000-0' : '000000000'} style={{ width: '100%', padding: '6px 10px', borderRadius: 6, border: '1px solid var(--border)', fontSize: '.83rem', background: 'var(--bg)', color: 'var(--text)', boxSizing: 'border-box' }} />
+                          </div>
+                        </>)}
+                        {/* País para FEXE */}
+                        {testDteTipo === '11' && (
+                          <div style={{ gridColumn: '1 / -1' }}>
+                            <label style={{ fontSize: '.78rem', fontWeight: 600, display: 'block', marginBottom: 3 }}>País (código ISO)</label>
+                            <input value={testReceptor.codPais} onChange={e => setTestReceptor(r => ({ ...r, codPais: e.target.value }))}
+                              placeholder="US" maxLength={3} style={{ width: 80, padding: '6px 10px', borderRadius: 6, border: '1px solid var(--border)', fontSize: '.83rem', background: 'var(--bg)', color: 'var(--text)' }} />
+                          </div>
+                        )}
+                        {/* Correo + Teléfono — todos excepto 15 */}
+                        {testDteTipo !== '15' && (<>
+                          <div>
+                            <label style={{ fontSize: '.78rem', fontWeight: 600, display: 'block', marginBottom: 3 }}>Correo electrónico</label>
+                            <input type="email" value={testReceptor.correo} onChange={e => setTestReceptor(r => ({ ...r, correo: e.target.value }))}
+                              placeholder="receptor@empresa.com" style={{ width: '100%', padding: '6px 10px', borderRadius: 6, border: '1px solid var(--border)', fontSize: '.83rem', background: 'var(--bg)', color: 'var(--text)', boxSizing: 'border-box' }} />
+                          </div>
+                          <div>
+                            <label style={{ fontSize: '.78rem', fontWeight: 600, display: 'block', marginBottom: 3 }}>Teléfono</label>
+                            <input value={testReceptor.telefono} onChange={e => setTestReceptor(r => ({ ...r, telefono: e.target.value }))}
+                              placeholder="22000000" maxLength={9} style={{ width: '100%', padding: '6px 10px', borderRadius: 6, border: '1px solid var(--border)', fontSize: '.83rem', background: 'var(--bg)', color: 'var(--text)', boxSizing: 'border-box' }} />
+                          </div>
+                        </>)}
+                        <div style={{ gridColumn: '1 / -1' }}>
+                          <p style={{ fontSize: '.75rem', color: 'var(--text-muted)', margin: 0 }}>
+                            Los campos vacíos usan datos de prueba predeterminados. Los valores aquí se aplican también al lote.
+                          </p>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                )}
 
                 {testDte.loading && (
                   <div style={{ marginTop: 10, padding: '10px 14px', background: '#eff6ff', borderRadius: 8, fontSize: '.82rem', color: '#1d4ed8' }}>
