@@ -146,8 +146,16 @@ export class TestMhService {
   // ── NC/ND: requieren un CCF de referencia — emitimos uno primero ─────────
 
   private async emitirNotaPrueba(empresa: Empresa, tipoDte: '05' | '06', o?: Record<string, any>): Promise<any> {
-    const ccf = await this.ccfService.emitir(this.dtoCcf(empresa, o), empresa.id);
-    if (ccf.estado !== 'RECIBIDO') throw new Error(`CCF de referencia rechazado: ${Array.isArray(ccf.observaciones) ? ccf.observaciones.join(', ') : ccf.observaciones ?? ''}`);
+    let ccf: any;
+    try {
+      ccf = await this.ccfService.emitir(this.dtoCcf(empresa, o), empresa.id);
+    } catch (err: any) {
+      throw new Error(`No se pudo emitir el CCF de referencia: ${err.message ?? err}`);
+    }
+    if (ccf.estado !== 'RECIBIDO') {
+      const detalle = ccf.descripcionMsg ?? ccf.observaciones ?? 'sin detalles de Hacienda';
+      throw new Error(`CCF de referencia rechazado por Hacienda: ${detalle}`);
+    }
     const dto = {
       dteReferenciadoId: ccf.id,
       tipoAjuste: 1,
