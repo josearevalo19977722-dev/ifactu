@@ -149,22 +149,16 @@ export class TestMhService {
   // ── NC/ND: requieren un CCF de referencia — emitimos uno primero ─────────
 
   private async emitirNotaPrueba(empresa: Empresa, tipoDte: '05' | '06', o?: Record<string, any>): Promise<any> {
-    // Buscar CCF existente recibido para no emitir uno extra innecesariamente
-    let ccf = await this.dteRepo.findOne({
-      where: { empresa: { id: empresa.id }, tipoDte: '03', estado: EstadoDte.RECIBIDO },
-      order: { createdAt: 'DESC' },
-    });
-    if (!ccf) {
-      // No hay CCF previo — intentar emitir uno de referencia
-      try {
-        ccf = await this.ccfService.emitir(this.dtoCcf(empresa, o), empresa.id);
-      } catch (err: any) {
-        throw new Error(`No se pudo emitir CCF de referencia: ${err.message ?? err}`);
-      }
-      if (ccf.estado !== EstadoDte.RECIBIDO) {
-        const detalle = ccf.descripcionMsg ?? ccf.observaciones ?? 'sin detalles';
-        throw new Error(`CCF de referencia rechazado: ${detalle}. Configure la empresa con codActividad, NRC y tipoEstablecimiento válidos.`);
-      }
+    // Siempre emitir un CCF nuevo para que tenga saldo completo disponible
+    let ccf: any;
+    try {
+      ccf = await this.ccfService.emitir(this.dtoCcf(empresa, o), empresa.id);
+    } catch (err: any) {
+      throw new Error(`No se pudo emitir CCF de referencia: ${err.message ?? err}`);
+    }
+    if (ccf.estado !== EstadoDte.RECIBIDO) {
+      const detalle = ccf.descripcionMsg ?? ccf.observaciones ?? 'sin detalles';
+      throw new Error(`CCF de referencia rechazado: ${detalle}`);
     }
     const dto = {
       dteReferenciadoId: ccf.id,
