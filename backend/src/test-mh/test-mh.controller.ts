@@ -40,4 +40,9 @@ export class TestMhController {
   probarInvalidacion(@Param('empresaId') id: string) {
     return this.svc.probarInvalidacion(id);
   }
+
+  @Post(':empresaId/contingencia')
+  probarContingencia(@Param('empresaId') id: string) {
+    return this.svc.probarContingencia(id);
+  }
 }

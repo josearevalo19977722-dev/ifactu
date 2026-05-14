@@ -90,6 +90,7 @@ export function TenantsPage() {
   const [testDte,      setTestDte]      = useState<{ loading: boolean; resultado: any | null }>({ loading: false, resultado: null });
   const [lote, setLote] = useState<{ cantidad: number; jobId: string | null; job: any | null; polling: boolean }>({ cantidad: 5, jobId: null, job: null, polling: false });
   const [invalidarDespues, setInvalidarDespues] = useState(false);
+  const [testContingencia, setTestContingencia] = useState<{ loading: boolean; resultado: any | null }>({ loading: false, resultado: null });
   const loteIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const RECEPTOR_EMPTY = { nombre: '', nit: '', nrc: '', tipoDocumento: '13', numDocumento: '', correo: '', telefono: '', codPais: 'US', nombrePais: 'Estados Unidos' };
   const [testReceptor, setTestReceptor] = useState({ ...RECEPTOR_EMPTY });
@@ -104,6 +105,7 @@ export function TenantsPage() {
     setTestReceptor({ ...RECEPTOR_EMPTY });
     setShowReceptorForm(false);
     setInvalidarDespues(false);
+    setTestContingencia({ loading: false, resultado: null });
   }
 
   function cerrarTestModal() {
@@ -135,6 +137,16 @@ export function TenantsPage() {
       setTestDte({ loading: false, resultado: data });
     } catch (err: any) {
       setTestDte({ loading: false, resultado: { exitoso: false, error: err?.response?.data?.message ?? err.message } });
+    }
+  }
+
+  async function handleTestContingencia() {
+    setTestContingencia({ loading: true, resultado: null });
+    try {
+      const { data } = await apiClient.post(`/admin/test-mh/${testTenant.id}/contingencia`);
+      setTestContingencia({ loading: false, resultado: data });
+    } catch (err: any) {
+      setTestContingencia({ loading: false, resultado: { exitoso: false, detalle: err?.response?.data?.message ?? err.message } });
     }
   }
 
@@ -1066,6 +1078,9 @@ export function TenantsPage() {
                     <input type="checkbox" checked={invalidarDespues} onChange={e => setInvalidarDespues(e.target.checked)} />
                     Invalidar después de emitir
                   </label>
+                  <button className="btn btn-sm" onClick={handleTestContingencia} disabled={testContingencia.loading} style={{ marginLeft: 8 }}>
+                    {testContingencia.loading ? '⏳ Procesando...' : '⚡ Probar contingencia'}
+                  </button>
                 </div>
 
                 {/* ── Datos del receptor de prueba (colapsable) ── */}
@@ -1145,6 +1160,18 @@ export function TenantsPage() {
                         </div>
                       </div>
                     )}
+                  </div>
+                )}
+
+                {testContingencia.resultado && (
+                  <div style={{ marginTop: 10, padding: '12px 16px', borderRadius: 8, background: testContingencia.resultado.exitoso ? '#f0fdf4' : '#fef2f2', border: `1px solid ${testContingencia.resultado.exitoso ? '#86efac' : '#fca5a5'}` }}>
+                    <div style={{ fontWeight: 700, fontSize: '.88rem', color: testContingencia.resultado.exitoso ? '#15803d' : '#dc2626' }}>
+                      {testContingencia.resultado.exitoso ? '✅ Contingencia exitosa' : '❌ Error en contingencia'}
+                    </div>
+                    {testContingencia.resultado.detalle && (
+                      <div style={{ fontSize: '.82rem', marginTop: 4, color: '#374151' }}>{testContingencia.resultado.detalle}</div>
+                    )}
+                    <div style={{ fontSize: '.78rem', marginTop: 2, color: '#94a3b8' }}>Tiempo: {testContingencia.resultado.tiempoMs} ms</div>
                   </div>
                 )}
 

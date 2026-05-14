@@ -13,6 +13,7 @@ import { RetencionService } from '../dte/services/retencion.service';
 import { DonacionService } from '../dte/services/donacion.service';
 import { NotaService } from '../dte/services/nota.service';
 import { InvalidacionService } from '../dte/services/invalidacion.service';
+import { ContingenciaService } from '../dte/services/contingencia.service';
 import { ConfigService } from '@nestjs/config';
 import { getAmbiente } from '../dte/services/mh-config.helper';
 
@@ -68,6 +69,7 @@ export class TestMhService {
     private readonly donacionService: DonacionService,
     private readonly notaService: NotaService,
     private readonly invalidacionService: InvalidacionService,
+    private readonly contingenciaService: ContingenciaService,
     private readonly config: ConfigService,
   ) {}
 
@@ -342,6 +344,34 @@ export class TestMhService {
         codigoGeneracionR: cf2.codigoGeneracion,
       }, empresa.id);
       return { exitoso: true, detalle: `CF ${cf1.codigoGeneracion} invalidado, reemplazado por ${cf2.codigoGeneracion}`, tiempoMs: Date.now() - inicio };
+    } catch (err: any) {
+      return { exitoso: false, detalle: err.message ?? 'Error desconocido', tiempoMs: Date.now() - inicio };
+    }
+  }
+
+  // ── Contingencia ─────────────────────────────────────────────────────────
+
+  async probarContingencia(empresaId: string): Promise<{ exitoso: boolean; detalle: string; tiempoMs: number }> {
+    const empresa = await this.getEmpresaPruebas(empresaId);
+    const inicio = Date.now();
+    try {
+      // 1. Emitir CF de prueba normalmente para obtener un DTE firmado válido
+      const cf = await this.cfService.emitir(this.dtoCf(), empresa.id);
+      if (!cf.id) throw new Error('No se pudo crear el CF de prueba');
+
+      // 2. Marcar como CONTINGENCIA en BD (simula fallo de conexión durante emisión)
+      await this.dteRepo.update(cf.id, { estado: EstadoDte.CONTINGENCIA });
+
+      // 3. Procesar la cola de contingencia — esto registra el evento en MH y envía el lote
+      const resultado = await this.contingenciaService.procesarCola(
+        1,
+        'Prueba de evento de contingencia iFactu',
+        empresa.id,
+      );
+
+      const exitoso = resultado.enviados > 0 && resultado.fallidos === 0;
+      const detalle = `Enviados: ${resultado.enviados}, Fallidos: ${resultado.fallidos}, Lotes: ${resultado.codigosLote.join(', ')}`;
+      return { exitoso, detalle, tiempoMs: Date.now() - inicio };
     } catch (err: any) {
       return { exitoso: false, detalle: err.message ?? 'Error desconocido', tiempoMs: Date.now() - inicio };
     }
