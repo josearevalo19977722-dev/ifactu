@@ -149,7 +149,9 @@ export class TestMhService {
   // ── NC/ND: requieren un CCF de referencia — emitimos uno primero ─────────
 
   private async emitirNotaPrueba(empresa: Empresa, tipoDte: '05' | '06', o?: Record<string, any>): Promise<any> {
-    // Siempre emitir un CCF nuevo para que tenga saldo completo disponible
+    this.logger.debug(`Empresa para CCF ref: nrc=${empresa.nrc}, codActividad=${empresa.codActividad}, tipoEstablecimiento=${empresa.tipoEstablecimiento}, departamento=${empresa.departamento}, municipio=${empresa.municipio}`);
+    const faltantes = ['nrc','codActividad','tipoEstablecimiento','departamento','municipio','complemento'].filter(k => !(empresa as any)[k]);
+    if (faltantes.length) throw new Error(`Empresa incompleta para CCF: faltan ${faltantes.join(', ')}. Configúrelos en la empresa antes de probar NC/ND.`);
     let ccf: any;
     try {
       ccf = await this.ccfService.emitir(this.dtoCcf(empresa, o), empresa.id);
