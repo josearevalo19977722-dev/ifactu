@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 
-import apiClient, { API_BASE } from '../../api/apiClient';
+import apiClient from '../../api/apiClient';
 import { EmptyState } from '../../components/EmptyState';
 const api = apiClient;
 
@@ -26,12 +26,11 @@ interface Resumen {
 
 function fmt(n: number) { return n ? `$${Number(n).toFixed(2)}` : '—'; }
 
-function descargar(url: string) { window.location.href = url; }
-
-async function descargarCsv(path: string, filename: string) {
+async function descargarArchivo(path: string, filename: string) {
   try {
     const resp = await apiClient.get(path, { responseType: 'blob' });
-    const blob = new Blob([resp.data], { type: 'text/csv;charset=utf-8;' });
+    const mime = resp.headers['content-type'] ?? 'application/octet-stream';
+    const blob = new Blob([resp.data], { type: mime });
     const href = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = href;
@@ -42,6 +41,7 @@ async function descargarCsv(path: string, filename: string) {
     alert('Error al descargar: ' + (e.message ?? 'Error desconocido'));
   }
 }
+
 
 export function Reportes() {
   const ahora = new Date();
@@ -97,7 +97,7 @@ export function Reportes() {
               Facturas consumidor final (tipo 01)<br/>Columnas: fecha, N° control, receptor, exentas, gravadas, IVA
             </div>
             <button className="btn btn-sm" style={{ width: '100%' }}
-              onClick={() => descargar(`${API_BASE}/reportes/libro-ventas-cf?${params}`)}>
+              onClick={() => descargarArchivo(`/reportes/libro-ventas-cf?${params}`, `LibroVentasCF-${anio}-${String(mes).padStart(2,'0')}.xlsx`)}>
               ↓ Descargar Excel
             </button>
           </div>
@@ -109,7 +109,7 @@ export function Reportes() {
               Crédito fiscal + NC + ND (tipos 03/05/06)<br/>Columnas: tipo, fecha, NIT, nombre, gravadas, IVA
             </div>
             <button className="btn btn-sm" style={{ width: '100%' }}
-              onClick={() => descargar(`${API_BASE}/reportes/libro-ventas-ccf?${params}`)}>
+              onClick={() => descargarArchivo(`/reportes/libro-ventas-ccf?${params}`, `LibroVentasCCF-${anio}-${String(mes).padStart(2,'0')}.xlsx`)}>
               ↓ Descargar Excel
             </button>
           </div>
@@ -121,7 +121,7 @@ export function Reportes() {
               Declaración mensual IVA<br/>4 hojas: Resumen · CF · CCF · Retenciones
             </div>
             <button className="btn btn-primary btn-sm" style={{ width: '100%' }}
-              onClick={() => descargar(`${API_BASE}/reportes/anexo-f07?${params}`)}>
+              onClick={() => descargarArchivo(`/reportes/anexo-f07?${params}`, `AnexoF07-${anio}-${String(mes).padStart(2,'0')}.xlsx`)}>
               ↓ Descargar Anexo F-07
             </button>
           </div>
@@ -142,7 +142,7 @@ export function Reportes() {
                 CCF, Notas de Crédito y Débito (tipos 03/05/06)<br/>20 columnas · 1 fila por DTE
               </div>
               <button className="btn btn-sm" style={{ width: '100%' }}
-                onClick={() => descargarCsv(
+                onClick={() => descargarArchivo(
                   `/reportes/csv-anexo1?${params}`,
                   `Anexo1-VentasContribuyentes-${anio}-${String(mes).padStart(2,'0')}.csv`
                 )}>
@@ -155,7 +155,7 @@ export function Reportes() {
                 Facturas CF (tipo 01)<br/>23 columnas · 1 fila por día
               </div>
               <button className="btn btn-sm" style={{ width: '100%' }}
-                onClick={() => descargarCsv(
+                onClick={() => descargarArchivo(
                   `/reportes/csv-anexo2?${params}`,
                   `Anexo2-VentasConsumidorFinal-${anio}-${String(mes).padStart(2,'0')}.csv`
                 )}>
@@ -168,7 +168,7 @@ export function Reportes() {
                 Todas las compras registradas<br/>21 columnas · 1 fila por compra
               </div>
               <button className="btn btn-sm" style={{ width: '100%' }}
-                onClick={() => descargarCsv(
+                onClick={() => descargarArchivo(
                   `/reportes/csv-anexo3?${params}`,
                   `Anexo3-Compras-${anio}-${String(mes).padStart(2,'0')}.csv`
                 )}>
