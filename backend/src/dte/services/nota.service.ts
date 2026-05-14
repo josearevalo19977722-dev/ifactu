@@ -1,4 +1,4 @@
-import { Injectable, NotFoundException, BadRequestException } from '@nestjs/common';
+import { Injectable, Logger, NotFoundException, BadRequestException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { Empresa } from '../../empresa/entities/empresa.entity';
@@ -21,6 +21,7 @@ const TIPO_ND = '06';
 
 @Injectable()
 export class NotaService {
+  private readonly logger = new Logger(NotaService.name);
   constructor(
     @InjectRepository(Dte)
     private readonly dteRepo: Repository<Dte>,
@@ -109,6 +110,10 @@ export class NotaService {
 
     try {
       const respuesta = await this.transmitter.transmitir(tipoDte, codigoGeneracion, jsonFirmado, empresa);
+      if (respuesta.estado !== 'RECIBIDO') {
+        this.logger.warn(`NC/ND rechazado [${codigoGeneracion}]: ${JSON.stringify(respuesta)}`);
+        this.logger.warn(`JSON enviado: ${JSON.stringify(jsonDte)}`);
+      }
       dte.estado = respuesta.estado === 'RECIBIDO' ? EstadoDte.RECIBIDO : EstadoDte.RECHAZADO;
       dte.selloRecepcion = respuesta.selloRecepcion ?? null;
       dte.observaciones  = respuesta.observaciones?.join(', ') ?? null;
