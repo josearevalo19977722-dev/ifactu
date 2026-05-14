@@ -44,14 +44,11 @@ export interface LoteJob {
   iniciadoEn: Date;
 }
 
-// Contador para generar correlativos de prueba únicos sin tocar la BD.
-// El segmento de 8 chars debe ser codEstableMH(4) + codPuntoVentaMH(4) del emisor.
-// Usamos '00010001' que coincide con los valores fijos del emisor de prueba.
 let _testCounter = 0;
-function nextTestControl(tipoDte: string): string {
+function nextTestControl(tipoDte: string, codEstable: string, codPv: string): string {
   _testCounter = (_testCounter + 1) % 999999999999999;
   const seq = String(_testCounter).padStart(15, '0');
-  return `DTE-${tipoDte}-00010001-${seq}`;
+  return `DTE-${tipoDte}-${codEstable}${codPv}-${seq}`;
 }
 
 @Injectable()
@@ -192,7 +189,10 @@ export class TestMhService {
     const horEmi = hoy.toTimeString().split(' ')[0];
     const ambiente = getAmbiente(empresa, this.config);
     const nit = getNitEmisor(empresa);
-    const numeroControl = nextTestControl(tipoDte);
+
+    const codEstable = (empresa.codEstableMh ?? 'M001').padStart(4, '0');
+    const codPv      = (empresa.codPuntoVentaMh ?? 'P001');
+    const numeroControl = nextTestControl(tipoDte, codEstable, codPv);
 
     const emisor = {
       nit,
@@ -209,10 +209,10 @@ export class TestMhService {
       },
       telefono: empresa.telefono ?? '00000000',
       correo: empresa.correo ?? 'prueba@test.com',
-      codEstableMH: '0001',
-      codEstable: '0001',
-      codPuntoVentaMH: '0001',
-      codPuntoVenta: '0001',
+      codEstableMH: codEstable,
+      codEstable:   codEstable,
+      codPuntoVentaMH: codPv,
+      codPuntoVenta:   codPv,
     };
 
     switch (tipoDte) {
@@ -222,7 +222,7 @@ export class TestMhService {
       case '11': return this.buildFexe(ambiente, tipoDte, numeroControl, codigoGeneracion, fecEmi, horEmi, emisor, nit);
       case '07': return this.buildRetencion(ambiente, tipoDte, numeroControl, codigoGeneracion, fecEmi, horEmi, emisor, nit);
       case '15': return this.buildDonacion(ambiente, tipoDte, numeroControl, codigoGeneracion, fecEmi, horEmi, emisor);
-      default:   return this.buildCf(ambiente, '01', nextTestControl('01'), codigoGeneracion, fecEmi, horEmi, emisor);
+      default:   return this.buildCf(ambiente, '01', nextTestControl('01', codEstable, codPv), codigoGeneracion, fecEmi, horEmi, emisor);
     }
   }
 
