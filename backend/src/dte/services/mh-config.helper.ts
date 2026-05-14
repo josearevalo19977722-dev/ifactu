@@ -25,6 +25,7 @@ export interface MhUrls {
   lote: string;
   loteConsulta: string;
   anular: string;
+  contingencia: string;
 }
 
 export function getMhUrls(
@@ -42,6 +43,7 @@ export function getMhUrls(
     lote:         `${base}/fesv/recepcionlote`,
     loteConsulta: `${base}/fesv/recepcion/consultalote`,
     anular:       `${base}/fesv/anulardte`,
+    contingencia: `${base}/fesv/contingencia`,
   };
 }
 

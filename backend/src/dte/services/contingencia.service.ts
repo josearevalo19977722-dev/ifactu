@@ -300,7 +300,7 @@ export class ContingenciaService {
     motivoContingencia: string,
     empresa: Empresa,
   ): Promise<string> {
-    const url      = this.config.get<string>('MH_CONTINGENCIA_URL', '');
+    const url      = getMhUrls(empresa, this.config).contingencia;
     const nit      = getNitEmisor(empresa);
     const token    = await this.authMh.getToken(empresa);
     const ambiente = getAmbiente(empresa, this.config);
@@ -428,7 +428,9 @@ export class ContingenciaService {
             const b = err2.response?.data;
             this.logger.error(`enviarLote retry HTTP ${err2.response?.status}: ${JSON.stringify(b ?? err2.message)}`);
             const msg = b?.descripcionMsg ?? b?.mensaje ?? b?.message ?? err2.message;
-            throw new Error(msg);
+            // 401 sin body = API rechaza fuera del horario permitido (08:00–17:00 pruebas / 22:00–05:00 prod)
+            const extra = (!b || b === '') ? ' — El endpoint /recepcionlote de pruebas solo acepta envíos entre 08:00 y 17:00 CST' : '';
+            throw new Error(msg + extra);
           }
         }
         const msg = body?.descripcionMsg ?? body?.mensaje ?? body?.message ?? err.message;
