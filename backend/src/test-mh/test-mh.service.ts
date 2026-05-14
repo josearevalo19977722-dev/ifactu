@@ -4,24 +4,26 @@ import { Repository } from 'typeorm';
 import { v4 as uuidv4 } from 'uuid';
 import { Empresa } from '../empresa/entities/empresa.entity';
 import { AuthMhService } from '../auth-mh/auth-mh.service';
-import { SignerService } from '../dte/services/signer.service';
-import { TransmitterService } from '../dte/services/transmitter.service';
-import { montoALetras } from '../utils/numero-letras';
-import { getAmbiente, getNitEmisor } from '../dte/services/mh-config.helper';
+import { CfService } from '../dte/services/cf.service';
+import { CcfService } from '../dte/services/ccf.service';
+import { FseService } from '../dte/services/fse.service';
+import { FexeService } from '../dte/services/fexe.service';
+import { RetencionService } from '../dte/services/retencion.service';
+import { DonacionService } from '../dte/services/donacion.service';
 import { ConfigService } from '@nestjs/config';
+import { getAmbiente } from '../dte/services/mh-config.helper';
 
 export interface TestConexionResult {
   exitoso: boolean;
   mensaje: string;
   tiempoMs: number;
   ambiente: string;
-  tokenObtenido?: boolean;
 }
 
 export interface TestDteResult {
   exitoso: boolean;
   tipoDte: string;
-  codigoGeneracion: string;
+  codigoGeneracion?: string;
   estado?: string;
   selloRecepcion?: string;
   observaciones?: string[];
@@ -32,7 +34,6 @@ export interface TestDteResult {
 
 export interface LoteJob {
   jobId: string;
-  empresaId: string;
   tipoDte: string;
   total: number;
   completados: number;
@@ -41,14 +42,6 @@ export interface LoteJob {
   resultados: TestDteResult[];
   terminado: boolean;
   error?: string;
-  iniciadoEn: Date;
-}
-
-let _testCounter = 0;
-function nextTestControl(tipoDte: string, codEstable: string, codPv: string): string {
-  _testCounter = (_testCounter + 1) % 999999999999999;
-  const seq = String(_testCounter).padStart(15, '0');
-  return `DTE-${tipoDte}-${codEstable}${codPv}-${seq}`;
 }
 
 @Injectable()
@@ -60,8 +53,12 @@ export class TestMhService {
     @InjectRepository(Empresa)
     private readonly empresaRepo: Repository<Empresa>,
     private readonly authMh: AuthMhService,
-    private readonly signer: SignerService,
-    private readonly transmitter: TransmitterService,
+    private readonly cfService: CfService,
+    private readonly ccfService: CcfService,
+    private readonly fseService: FseService,
+    private readonly fexeService: FexeService,
+    private readonly retencionService: RetencionService,
+    private readonly donacionService: DonacionService,
     private readonly config: ConfigService,
   ) {}
 
@@ -71,25 +68,12 @@ export class TestMhService {
     const empresa = await this.getEmpresaPruebas(empresaId);
     const ambiente = getAmbiente(empresa, this.config);
     const inicio = Date.now();
-
     try {
       this.authMh.invalidarToken(empresaId);
-      const token = await this.authMh.getToken(empresa);
-      const tiempoMs = Date.now() - inicio;
-      return {
-        exitoso: true,
-        mensaje: `Conexión exitosa con el Ministerio de Hacienda (${ambiente === '00' ? 'pruebas' : 'producción'})`,
-        tiempoMs,
-        ambiente,
-        tokenObtenido: !!token,
-      };
+      await this.authMh.getToken(empresa);
+      return { exitoso: true, mensaje: `Conexión exitosa con el Ministerio de Hacienda (pruebas)`, tiempoMs: Date.now() - inicio, ambiente };
     } catch (err: any) {
-      return {
-        exitoso: false,
-        mensaje: err.message ?? 'Error desconocido',
-        tiempoMs: Date.now() - inicio,
-        ambiente,
-      };
+      return { exitoso: false, mensaje: err.message ?? 'Error desconocido', tiempoMs: Date.now() - inicio, ambiente };
     }
   }
 
@@ -105,26 +89,9 @@ export class TestMhService {
   async iniciarLote(empresaId: string, tipoDte: string, cantidad: number): Promise<string> {
     const empresa = await this.getEmpresaPruebas(empresaId);
     const jobId = uuidv4();
-    const job: LoteJob = {
-      jobId,
-      empresaId,
-      tipoDte,
-      total: cantidad,
-      completados: 0,
-      exitosos: 0,
-      fallidos: 0,
-      resultados: [],
-      terminado: false,
-      iniciadoEn: new Date(),
-    };
+    const job: LoteJob = { jobId, tipoDte, total: cantidad, completados: 0, exitosos: 0, fallidos: 0, resultados: [], terminado: false };
     this.jobs.set(jobId, job);
-
-    // Proceso async sin bloquear
-    this.procesarLote(empresa, tipoDte, cantidad, job).catch(err => {
-      job.terminado = true;
-      job.error = err.message;
-    });
-
+    this.procesarLote(empresa, tipoDte, cantidad, job).catch(err => { job.terminado = true; job.error = err.message; });
     return jobId;
   }
 
@@ -132,38 +99,35 @@ export class TestMhService {
     return this.jobs.get(jobId) ?? null;
   }
 
-  private async procesarLote(
-    empresa: Empresa,
-    tipoDte: string,
-    cantidad: number,
-    job: LoteJob,
-  ): Promise<void> {
+  private async procesarLote(empresa: Empresa, tipoDte: string, cantidad: number, job: LoteJob): Promise<void> {
     for (let i = 0; i < cantidad; i++) {
-      const resultado = await this.emitirDtePrueba(empresa, tipoDte);
-      job.resultados.push(resultado);
+      const r = await this.emitirDtePrueba(empresa, tipoDte);
+      job.resultados.push(r);
       job.completados++;
-      if (resultado.exitoso) job.exitosos++;
-      else job.fallidos++;
+      if (r.exitoso) job.exitosos++; else job.fallidos++;
     }
     job.terminado = true;
-    this.logger.log(`Lote ${job.jobId} terminado: ${job.exitosos}/${job.total} exitosos`);
   }
 
-  // ── Core: emitir un DTE de prueba ─────────────────────────────────────────
+  // ── Core: usa los servicios reales de producción ──────────────────────────
 
   private async emitirDtePrueba(empresa: Empresa, tipoDte: string): Promise<TestDteResult> {
     const inicio = Date.now();
-    const codigoGeneracion = uuidv4().toUpperCase();
-
     try {
-      const json = this.buildTestDte(empresa, tipoDte, codigoGeneracion);
-      const firmado = await this.signer.firmar(json, empresa);
-      const resultado = await this.transmitter.transmitir(tipoDte, codigoGeneracion, firmado, empresa);
-
+      let resultado: any;
+      switch (tipoDte) {
+        case '01': resultado = await this.cfService.emitir(this.dtoCf(),      empresa.id); break;
+        case '03': resultado = await this.ccfService.emitir(this.dtoCcf(empresa), empresa.id); break;
+        case '14': resultado = await this.fseService.emitir(this.dtoFse(),    empresa.id); break;
+        case '11': resultado = await this.fexeService.emitir(this.dtoFexe(),  empresa.id); break;
+        case '07': resultado = await this.retencionService.emitir(this.dtoRetencion(empresa), empresa.id); break;
+        case '15': resultado = await this.donacionService.emitir(this.dtoDonacion(empresa), empresa.id); break;
+        default:   resultado = await this.cfService.emitir(this.dtoCf(),      empresa.id);
+      }
       return {
         exitoso: resultado.estado === 'RECIBIDO',
         tipoDte,
-        codigoGeneracion,
+        codigoGeneracion: resultado.codigoGeneracion,
         estado: resultado.estado,
         selloRecepcion: resultado.selloRecepcion,
         observaciones: resultado.observaciones,
@@ -171,228 +135,103 @@ export class TestMhService {
         tiempoMs: Date.now() - inicio,
       };
     } catch (err: any) {
-      return {
-        exitoso: false,
-        tipoDte,
-        codigoGeneracion,
-        error: err.message ?? 'Error desconocido',
-        tiempoMs: Date.now() - inicio,
-      };
+      return { exitoso: false, tipoDte, error: err.message ?? 'Error desconocido', tiempoMs: Date.now() - inicio };
     }
   }
 
-  // ── Constructor de JSON de prueba por tipo ────────────────────────────────
+  // ── DTOs mínimos de prueba ────────────────────────────────────────────────
 
-  private buildTestDte(empresa: Empresa, tipoDte: string, codigoGeneracion: string): object {
+  private dtoCf() {
+    return {
+      condicionOperacion: 1,
+      items: [{ numItem: 1, tipoItem: 2, cantidad: 1, codigo: 'TEST-001', uniMedida: 59, descripcion: 'Servicio de prueba iFactu', precioUni: 1.13, montoDescu: 0, ventaNoSuj: 0, ventaExenta: 0, ventaGravada: 1.13 }],
+      pagos: [{ codigo: '01' as any, montoPago: 1.13 }],
+    };
+  }
+
+  private dtoCcf(empresa: Empresa) {
+    const nit = empresa.nit?.replace(/-/g, '') ?? '06140101011034';
+    const nrc = empresa.nrc?.replace(/-/g, '') ?? '000000';
+    return {
+      condicionOperacion: 1,
+      receptor: {
+        nit, nrc, nombre: 'RECEPTOR DE PRUEBA S.A. DE C.V.',
+        correo: empresa.correo, telefono: empresa.telefono ?? '00000000',
+        codActividad: empresa.codActividad ?? '00000',
+        descActividad: empresa.descActividad ?? 'Actividad de prueba',
+        direccionDepartamento: empresa.departamento ?? '06',
+        direccionMunicipio: empresa.municipio ?? '14',
+        direccionComplemento: empresa.complemento ?? 'Dirección de prueba',
+      },
+      items: [{ numItem: 1, tipoItem: 2, cantidad: 1, codigo: 'TEST-001', uniMedida: 59, descripcion: 'Servicio de prueba iFactu', precioUni: 1.00, montoDescu: 0, ventaNoSuj: 0, ventaExenta: 0, ventaGravada: 1.00 }],
+      pagos: [{ codigo: '01' as any, montoPago: 1.13 }],
+    };
+  }
+
+  private dtoFse(empresa?: Empresa) {
+    return {
+      condicionOperacion: 1,
+      receptor: {
+        tipoDocumento: '13', numDocumento: '00000000-0',
+        nombre: 'SUJETO EXCLUIDO DE PRUEBA',
+        codActividad: '46900',
+        direccionDepartamento: '06',
+        direccionMunicipio: '14',
+        direccionComplemento: 'Dirección de prueba',
+        correo: 'prueba@test.com', telefono: '00000000',
+      },
+      items: [{ numItem: 1, tipoItem: 2, cantidad: 1, codigo: 'TEST-001', uniMedida: 59, descripcion: 'Servicio de prueba iFactu', precioUni: 1.00, montoDescu: 0, compra: 1.00 }],
+      pagos: [{ codigo: '01' as any, montoPago: 1.00 }],
+    };
+  }
+
+  private dtoFexe() {
+    return {
+      condicionOperacion: 1,
+      tipoExportacion: 1,
+      receptor: { tipoPersona: 1, nombre: 'TEST FOREIGN BUYER', codPais: 'US', nombrePais: 'Estados Unidos', tipoDocumento: '37', numDocumento: '000000000', complemento: '123 Test St', correo: 'buyer@test.com', telefono: '00000000' },
+      items: [{ numItem: 1, tipoItem: 2, cantidad: 1, codigo: 'TEST-001', uniMedida: 59, descripcion: 'Exported service iFactu test', precioUni: 1.00, montoDescu: 0, ventaNoSuj: 0, ventaExenta: 0, ventaGravada: 1.00, noGravado: 0 }],
+      pagos: [{ codigo: '01' as any, montoPago: 1.00 }],
+      codIncoterms: 'EXW', descIncoterms: 'En fábrica', flete: 0, seguro: 0,
+    };
+  }
+
+  private dtoRetencion(empresa: Empresa) {
+    const nit = empresa.nit?.replace(/-/g, '') ?? '06140101011034';
+    const nrc = empresa.nrc?.replace(/-/g, '') ?? '000000';
     const hoy = new Date();
-    const fecEmi = hoy.toISOString().split('T')[0];
-    const horEmi = hoy.toTimeString().split(' ')[0];
-    const ambiente = getAmbiente(empresa, this.config);
-    const nit = getNitEmisor(empresa);
-
-    const codEstable = (empresa.codEstableMh ?? 'M001').padStart(4, '0');
-    const codPv      = (empresa.codPuntoVentaMh ?? 'P001');
-    const numeroControl = nextTestControl(tipoDte, codEstable, codPv);
-
-    const emisor = {
-      nit,
-      nrc: empresa.nrc?.replace(/-/g, '') ?? '0',
-      nombre: empresa.nombreLegal,
-      codActividad: empresa.codActividad ?? '00000',
-      descActividad: empresa.descActividad ?? 'Actividad de prueba',
-      nombreComercial: empresa.nombreComercial ?? null,
-      tipoEstablecimiento: empresa.tipoEstablecimiento ?? '01',
-      direccion: {
-        departamento: empresa.departamento ?? '06',
-        municipio: empresa.municipio ?? '14',
-        complemento: empresa.complemento ?? 'Dirección de prueba',
-      },
-      telefono: empresa.telefono ?? '00000000',
-      correo: empresa.correo ?? 'prueba@test.com',
-      codEstableMH: codEstable,
-      codEstable:   codEstable,
-      codPuntoVentaMH: codPv,
-      codPuntoVenta:   codPv,
-    };
-
-    switch (tipoDte) {
-      case '01': return this.buildCf(ambiente, tipoDte, numeroControl, codigoGeneracion, fecEmi, horEmi, emisor);
-      case '03': return this.buildCcf(ambiente, tipoDte, numeroControl, codigoGeneracion, fecEmi, horEmi, emisor, nit);
-      case '14': return this.buildFse(ambiente, tipoDte, numeroControl, codigoGeneracion, fecEmi, horEmi, emisor);
-      case '11': return this.buildFexe(ambiente, tipoDte, numeroControl, codigoGeneracion, fecEmi, horEmi, emisor, nit);
-      case '07': return this.buildRetencion(ambiente, tipoDte, numeroControl, codigoGeneracion, fecEmi, horEmi, emisor, nit);
-      case '15': return this.buildDonacion(ambiente, tipoDte, numeroControl, codigoGeneracion, fecEmi, horEmi, emisor);
-      default:   return this.buildCf(ambiente, '01', nextTestControl('01', codEstable, codPv), codigoGeneracion, fecEmi, horEmi, emisor);
-    }
-  }
-
-  // CF — Factura Consumidor Final (01)
-  private buildCf(amb: string, tipoDte: string, numCtrl: string, codGen: string, fec: string, hor: string, emisor: any) {
-    const gravada = 1.13;
-    const iva = 0.13;
     return {
-      identificacion: { version: 1, ambiente: amb, tipoDte, numeroControl: numCtrl, codigoGeneracion: codGen, tipoModelo: 1, tipoOperacion: 1, tipoContingencia: null, motivoContin: null, fecEmi: fec, horEmi: hor, tipoMoneda: 'USD' },
-      documentoRelacionado: null,
-      emisor,
-      receptor: null,
-      otrosDocumentos: null,
-      ventaTercero: null,
-      cuerpoDocumento: [{
-        numItem: 1, tipoItem: 2, numeroDocumento: null, cantidad: 1, codigo: 'TEST-001',
-        codTributo: null, uniMedida: 59, descripcion: 'Producto de prueba iFactu',
-        precioUni: gravada, montoDescu: 0, ventaNoSuj: 0, ventaExenta: 0,
-        ventaGravada: gravada, tributos: null, psv: 0, noGravado: 0, ivaItem: iva,
-      }],
-      resumen: {
-        totalNoSuj: 0, totalExenta: 0, totalGravada: gravada, subTotalVentas: gravada,
-        descuNoSuj: 0, descuExenta: 0, descuGravada: 0, porcentajeDescuento: 0, totalDescu: 0,
-        tributos: null, subTotal: gravada, ivaRete1: 0, reteRenta: 0, totalIva: iva,
-        montoTotalOperacion: gravada, totalNoGravado: 0, totalPagar: gravada,
-        totalLetras: montoALetras(gravada), saldoFavor: 0, condicionOperacion: 1,
-        pagos: [{ codigo: '01', montoPago: gravada, referencia: null, plazo: null, periodo: null }],
-        numPagoElectronico: null,
-      },
-      extension: null, apendice: null,
-    };
-  }
-
-  // CCF — Crédito Fiscal (03)
-  private buildCcf(amb: string, tipoDte: string, numCtrl: string, codGen: string, fec: string, hor: string, emisor: any, nitEmisor: string) {
-    const gravada = 1.00;
-    const iva = 0.13;
-    const total = 1.13;
-    return {
-      identificacion: { version: 3, ambiente: amb, tipoDte, numeroControl: numCtrl, codigoGeneracion: codGen, tipoModelo: 1, tipoOperacion: 1, tipoContingencia: null, motivoContin: null, fecEmi: fec, horEmi: hor, tipoMoneda: 'USD' },
-      documentoRelacionado: null,
-      emisor,
+      periodo: hoy.getMonth() + 1,
+      anio: hoy.getFullYear(),
       receptor: {
-        nit: nitEmisor, nrc: emisor.nrc, nombre: 'RECEPTOR DE PRUEBA S.A. DE C.V.',
-        codActividad: emisor.codActividad, descActividad: emisor.descActividad,
-        nombreComercial: null, direccion: emisor.direccion, telefono: emisor.telefono, correo: emisor.correo,
+        nit, nrc, nombre: 'RETENIDO DE PRUEBA S.A.',
+        correo: empresa.correo, telefono: empresa.telefono ?? '00000000',
+        codActividad: empresa.codActividad ?? '00000',
+        descActividad: empresa.descActividad ?? 'Actividad de prueba',
+        direccionDepartamento: empresa.departamento ?? '06',
+        direccionMunicipio: empresa.municipio ?? '14',
+        direccionComplemento: empresa.complemento ?? 'Dirección de prueba',
       },
-      otrosDocumentos: null, ventaTercero: null,
-      cuerpoDocumento: [{
-        numItem: 1, tipoItem: 2, numeroDocumento: null, cantidad: 1, codigo: 'TEST-001',
-        codTributo: null, uniMedida: 59, descripcion: 'Servicio de prueba iFactu',
-        precioUni: gravada, montoDescu: 0, ventaNoSuj: 0, ventaExenta: 0,
-        ventaGravada: gravada, tributos: ['20'], psv: 0, noGravado: 0,
-      }],
-      resumen: {
-        totalNoSuj: 0, totalExenta: 0, totalGravada: gravada, subTotalVentas: gravada,
-        descuNoSuj: 0, descuExenta: 0, descuGravada: 0, porcentajeDescuento: 0, totalDescu: 0,
-        tributos: [{ codigo: '20', descripcion: 'Impuesto al Valor Agregado 13%', valor: iva }],
-        subTotal: gravada, ivaPerci1: 0, ivaRete1: 0, reteRenta: 0,
-        montoTotalOperacion: total, totalNoGravado: 0, totalPagar: total,
-        totalLetras: montoALetras(total), saldoFavor: 0, condicionOperacion: 1,
-        pagos: [{ codigo: '01', montoPago: total, referencia: null, plazo: null, periodo: null }],
-        numPagoElectronico: null,
-      },
-      extension: null, apendice: null,
+      items: [{ numItem: 1, tipoDteRelacionado: '01', tipo: 1, numDocumento: uuidv4().toUpperCase(), fechaDocumento: hoy.toISOString().split('T')[0], montoSujetoGrav: 1.13, compraNoSujetaIVA: 0, compraExentaIVA: 0, compraAfectaIVA: 1.13, porcentajeRenta: 10, ivaRetenido: 0.13, descripcion: 'Retención de prueba iFactu' }],
     };
   }
 
-  // FSE — Factura Sujeto Excluido (14)
-  private buildFse(amb: string, tipoDte: string, numCtrl: string, codGen: string, fec: string, hor: string, emisor: any) {
-    const total = 1.00;
+  private dtoDonacion(empresa: Empresa) {
     return {
-      identificacion: { version: 1, ambiente: amb, tipoDte, numeroControl: numCtrl, codigoGeneracion: codGen, tipoModelo: 1, tipoOperacion: 1, tipoContingencia: null, motivoContin: null, fecEmi: fec, horEmi: hor, tipoMoneda: 'USD' },
-      emisor,
-      sujetoExcluido: {
-        tipoDocumento: '13', numDocumento: '00000000-0', nombre: 'SUJETO EXCLUIDO DE PRUEBA',
-        codActividad: '00000', descActividad: 'Actividad de prueba',
-        direccion: emisor.direccion, telefono: emisor.telefono, correo: emisor.correo,
+      condicionOperacion: 1,
+      donatario: {
+        tipoDocumento: '36', numDocumento: '06140101011034',
+        nombre: 'DONATARIO DE PRUEBA S.A.',
+        tipoEstablecimiento: '01',
+        direccionDepartamento: '06',
+        direccionMunicipio: '14',
+        direccionComplemento: 'Dirección de prueba',
+        telefono: '00000000', correo: 'donatario@test.com',
+        codEstableMH: empresa.codEstableMh ?? 'M001',
+        codPuntoVentaMH: empresa.codPuntoVentaMh ?? 'P001',
       },
-      cuerpoDocumento: [{
-        numItem: 1, tipoItem: 2, cantidad: 1, codigo: 'TEST-001', uniMedida: 59,
-        descripcion: 'Servicio de prueba iFactu', precioUni: total, montoDescu: 0,
-        compra: total, tributos: null,
-      }],
-      resumen: {
-        totalCompra: total, descu: 0, totalDescu: 0,
-        subTotal: total, ivaRete1: 0, reteRenta: 0,
-        totalPagar: total, totalLetras: montoALetras(total),
-        condicionOperacion: 1,
-        pagos: [{ codigo: '01', montoPago: total, referencia: null, plazo: null, periodo: null }],
-        numPagoElectronico: null,
-      },
-      apendice: null,
-    };
-  }
-
-  // FEXE — Factura de Exportación (11)
-  private buildFexe(amb: string, tipoDte: string, numCtrl: string, codGen: string, fec: string, hor: string, emisor: any, nitEmisor: string) {
-    const total = 1.00;
-    return {
-      identificacion: { version: 1, ambiente: amb, tipoDte, numeroControl: numCtrl, codigoGeneracion: codGen, tipoModelo: 1, tipoOperacion: 1, tipoContingencia: null, motivoContin: null, fecEmi: fec, horEmi: hor, tipoMoneda: 'USD' },
-      documentoRelacionado: null,
-      emisor,
-      receptor: {
-        tipoPersona: 1, nombre: 'TEST FOREIGN BUYER', codPais: 'US',
-        nombrePais: 'Estados Unidos', tipoDocumento: '37', numDocumento: '000000000',
-        complemento: '123 Test St', nombreComercial: null, telefono: emisor.telefono, correo: emisor.correo,
-      },
-      otrosDocumentos: null, ventaTercero: null,
-      cuerpoDocumento: [{
-        numItem: 1, cantidad: 1, codigo: 'TEST-001', uniMedida: 59,
-        descripcion: 'Exported service - iFactu test', precioUni: total,
-        montoDescu: 0, ventaGravada: total, tributos: null, noGravado: 0,
-      }],
-      resumen: {
-        totalGravada: total, descuento: 0, porcentajeDescuento: 0, totalDescu: 0,
-        montoTotalOperacion: total, totalNoGravado: 0,
-        totalPagar: total, totalLetras: montoALetras(total),
-        condicionOperacion: 1, medioPago: ['01'],
-        pagos: [{ codigo: '01', montoPago: total, referencia: null, plazo: null, periodo: null }],
-        codIncoterms: 'EXW', descIncoterms: 'En fábrica',
-        observaciones: null, flete: 0, seguro: 0,
-      },
-      apendice: null,
-    };
-  }
-
-  // Retención (07)
-  private buildRetencion(amb: string, tipoDte: string, numCtrl: string, codGen: string, fec: string, hor: string, emisor: any, nitEmisor: string) {
-    const total = 0.10;
-    return {
-      identificacion: { version: 1, ambiente: amb, tipoDte, numeroControl: numCtrl, codigoGeneracion: codGen, tipoModelo: 1, tipoOperacion: 1, tipoContingencia: null, motivoContin: null, fecEmi: fec, horEmi: hor, tipoMoneda: 'USD' },
-      emisor,
-      receptor: {
-        nit: nitEmisor, nombre: 'RETENIDO DE PRUEBA S.A.',
-        descActividad: emisor.descActividad, correo: emisor.correo, telefono: emisor.telefono,
-        nombreComercial: null,
-      },
-      cuerpoDocumento: [{
-        numItem: 1, tipoDte: '01', tipoDoc: 1,
-        numDocumento: uuidv4().toUpperCase(),
-        fechaEmision: fec, montoSujetoGrav: 1.13, ivaRetenido: total,
-        descripcion: 'Retención de prueba iFactu',
-      }],
-      resumen: { totalSujetoRetencion: 1.13, totalIVAretenido: total, totalIVAretenidoLetras: montoALetras(total) },
-      apendice: null,
-    };
-  }
-
-  // Donación (15)
-  private buildDonacion(amb: string, tipoDte: string, numCtrl: string, codGen: string, fec: string, hor: string, emisor: any) {
-    const total = 1.00;
-    return {
-      identificacion: { version: 1, ambiente: amb, tipoDte, numeroControl: numCtrl, codigoGeneracion: codGen, tipoModelo: 1, tipoOperacion: 1, tipoContingencia: null, motivoContin: null, fecEmi: fec, horEmi: hor, tipoMoneda: 'USD' },
-      emisor,
-      receptor: {
-        nombre: 'RECEPTOR DONACIÓN PRUEBA', correo: emisor.correo, telefono: emisor.telefono,
-        tipoDocumento: null, numDocumento: null, descripcionActividad: null, direccion: null,
-      },
-      otrosDocumentos: null,
-      cuerpoDocumento: [{
-        numItem: 1, tipoItem: 2, cantidad: 1, codigo: 'DON-001', uniMedida: 59,
-        descripcion: 'Donación de prueba iFactu', precioUni: total, montoDescu: 0,
-        ventaNoSuj: 0, ventaExenta: 0, ventaGravada: total, tributos: null,
-      }],
-      resumen: {
-        totalNoSuj: 0, totalExenta: 0, totalGravada: total,
-        montoTotalOperacion: total, totalLetras: montoALetras(total),
-      },
-      apendice: null,
+      receptor: { nombre: 'RECEPTOR DONACIÓN PRUEBA', correo: 'donacion@test.com', telefono: '00000000' },
+      items: [{ numItem: 1, tipoDonacion: 1, cantidad: 1, codigo: 'DON-001', uniMedida: 59, descripcion: 'Donación de prueba iFactu', valorUni: 1.00, montoDescu: 0, depreciacion: 0, valor: 1.00 }],
     };
   }
 
@@ -401,7 +240,7 @@ export class TestMhService {
   private async getEmpresaPruebas(empresaId: string): Promise<Empresa> {
     const empresa = await this.empresaRepo.findOne({ where: { id: empresaId } });
     if (!empresa) throw new NotFoundException('Empresa no encontrada');
-    if (empresa.mhAmbiente === '01') throw new Error('Esta empresa está en ambiente de producción. Las pruebas solo están disponibles en ambiente de pruebas (00).');
+    if (empresa.mhAmbiente === '01') throw new Error('Esta empresa está en producción. Las pruebas solo están disponibles en ambiente 00.');
     return empresa;
   }
 }

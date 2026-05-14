@@ -42,6 +42,6 @@ import { Empresa } from '../empresa/entities/empresa.entity';
   ],
   controllers: [DteController, PublicDteController, InvalidacionController],
   providers: [CfService, CcfService, InvalidacionService, PdfService, ConsultaMhService, NotaService, ContingenciaService, FexeService, NreService, RetencionService, FseService, DonacionService, SignerService, TransmitterService, CatalogService, TicketService, NotificacionDteService],
-  exports: [CfService, CcfService, ConsultaMhService, TicketService, InvalidacionService, PdfService],
+  exports: [CfService, CcfService, ConsultaMhService, TicketService, InvalidacionService, PdfService, FseService, FexeService, RetencionService, DonacionService],
 })
 export class DteModule {}

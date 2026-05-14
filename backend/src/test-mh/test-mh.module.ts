@@ -1,20 +1,18 @@
-import { Module } from '@nestjs/common';
+import { Module, forwardRef } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
-import { HttpModule } from '@nestjs/axios';
 import { TestMhService } from './test-mh.service';
 import { TestMhController } from './test-mh.controller';
 import { Empresa } from '../empresa/entities/empresa.entity';
 import { AuthMhModule } from '../auth-mh/auth-mh.module';
-import { SignerService } from '../dte/services/signer.service';
-import { TransmitterService } from '../dte/services/transmitter.service';
+import { DteModule } from '../dte/dte.module';
 
 @Module({
   imports: [
     TypeOrmModule.forFeature([Empresa]),
-    HttpModule,
     AuthMhModule,
+    forwardRef(() => DteModule),
   ],
   controllers: [TestMhController],
-  providers: [TestMhService, SignerService, TransmitterService],
+  providers: [TestMhService],
 })
 export class TestMhModule {}
