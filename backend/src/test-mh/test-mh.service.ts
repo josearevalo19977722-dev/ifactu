@@ -44,12 +44,14 @@ export interface LoteJob {
   iniciadoEn: Date;
 }
 
-// Contador para generar correlativos de prueba únicos sin tocar la BD
+// Contador para generar correlativos de prueba únicos sin tocar la BD.
+// El segmento de 8 chars debe ser codEstableMH(4) + codPuntoVentaMH(4) del emisor.
+// Usamos '00010001' que coincide con los valores fijos del emisor de prueba.
 let _testCounter = 0;
 function nextTestControl(tipoDte: string): string {
   _testCounter = (_testCounter + 1) % 999999999999999;
   const seq = String(_testCounter).padStart(15, '0');
-  return `DTE-${tipoDte}-T0TEST00-${seq}`;
+  return `DTE-${tipoDte}-00010001-${seq}`;
 }
 
 @Injectable()
