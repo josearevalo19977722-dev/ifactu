@@ -316,11 +316,9 @@ export class ContingenciaService {
     const horaInicio = this.extraerHora(dtes[0].createdAt);
     const horaFin    = this.extraerHora(dtes[dtes.length - 1].createdAt);
 
+    // Payload mínimo según referencia SVFE — sin campos extra que confunden al validador
     const payload = {
       nit,
-      nitEmisor: nit,
-      ambiente,
-      version: 1,
       tipoContingencia,
       motivoContingencia,
       fechaInicio: fInicio,
@@ -328,8 +326,7 @@ export class ContingenciaService {
       horaInicio,
       horaFin,
       cantidadDoc: dtes.length,
-      // Intentar con enteros (1) además de strings ("01") en caso de que MH requiera numérico
-      tipoDocumentos: [...new Set(dtes.map((d) => parseInt(d.tipoDte, 10)))],
+      tipoDocumentos: [...new Set(dtes.map((d) => d.tipoDte))],
     };
 
     this.logger.log(`registrarEvento payload: ${JSON.stringify(payload)}`);
