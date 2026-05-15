@@ -104,6 +104,8 @@ export class ContingenciaService {
         this.logger.log(`Evento de contingencia registrado: ${codigoEvento}`);
       } catch (err) {
         this.logger.warn(`No se pudo registrar evento de contingencia: ${err.message}`);
+        // Sin codigoEvento válido el lote será rechazado — propagar el error
+        throw new Error(`Error registrando evento de contingencia: ${err.message}`);
       } finally {
         // El endpoint /contingencia consume el token; invalidar para que enviarLote obtenga uno fresco
         this.authMh.invalidarToken(empresa.id);
@@ -327,18 +329,27 @@ export class ContingenciaService {
       codEvento: uuidv4().toUpperCase(),
     };
 
-    const { data } = await firstValueFrom(
-      this.http.post(url, payload, {
-        headers: {
-          Authorization: token,
-          'Content-Type': 'application/json',
-          nitEmisor: nit,
-          'User-Agent': 'facturacion-dte/1.0',
-        },
-        params: { ambiente },
-        timeout: 15000,
-      }),
-    );
+    this.logger.log(`registrarEvento payload: ${JSON.stringify(payload)}`);
+
+    let data: any;
+    try {
+      ({ data } = await firstValueFrom(
+        this.http.post(url, payload, {
+          headers: {
+            Authorization: token,
+            'Content-Type': 'application/json',
+            nitEmisor: nit,
+            'User-Agent': 'facturacion-dte/1.0',
+          },
+          params: { ambiente },
+          timeout: 15000,
+        }),
+      ));
+    } catch (err) {
+      const body = err.response?.data;
+      this.logger.error(`registrarEvento HTTP ${err.response?.status}: ${JSON.stringify(body ?? err.message)}`);
+      throw err;
+    }
 
     this.logger.log(`registrarEvento respuesta: ${JSON.stringify(data)}`);
     // Hacienda puede devolver el código en data.body o directamente en data
