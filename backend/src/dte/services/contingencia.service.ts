@@ -316,8 +316,9 @@ export class ContingenciaService {
     const horaInicio = this.extraerHora(dtes[0].createdAt);
     const horaFin    = this.extraerHora(dtes[dtes.length - 1].createdAt);
 
-    // Payload mínimo según referencia SVFE — sin campos extra que confunden al validador
-    const payload = {
+    // El endpoint /fesv/contingencia espera { nit, documento: JWS_firmado }
+    // igual que los DTEs — el evento debe ir firmado con el certificado de la empresa
+    const eventoJson = {
       nit,
       tipoContingencia,
       motivoContingencia,
@@ -329,7 +330,14 @@ export class ContingenciaService {
       tipoDocumentos: [...new Set(dtes.map((d) => d.tipoDte))],
     };
 
-    this.logger.log(`registrarEvento payload: ${JSON.stringify(payload)}`);
+    this.logger.log(`registrarEvento eventoJson: ${JSON.stringify(eventoJson)}`);
+
+    const firmado = await this.signer.firmar(eventoJson, empresa);
+    const jwsStr  = typeof firmado === 'string'
+      ? firmado
+      : (firmado as any).body ?? JSON.stringify(firmado);
+
+    const payload = { nit, documento: jwsStr };
 
     let data: any;
     try {
@@ -399,7 +407,8 @@ export class ContingenciaService {
 
     const payload: Record<string, unknown> = {
       ambiente,
-      idLote:      uuidv4().toUpperCase(),
+      idEnvio:     uuidv4().toUpperCase(),
+      nitEmisor:   nit,
       cantidadDoc: dtes.length,
       version:     1,
       documentos,
