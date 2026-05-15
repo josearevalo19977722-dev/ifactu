@@ -318,6 +318,7 @@ export class ContingenciaService {
 
     const payload = {
       nit,
+      ambiente,
       tipoContingencia,
       motivoContingencia,
       fechaInicio: fInicio,
@@ -341,7 +342,6 @@ export class ContingenciaService {
             nitEmisor: nit,
             'User-Agent': 'facturacion-dte/1.0',
           },
-          params: { ambiente },
           timeout: 15000,
         }),
       ));
