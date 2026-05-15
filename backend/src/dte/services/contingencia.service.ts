@@ -317,8 +317,10 @@ export class ContingenciaService {
     const horaFin    = this.extraerHora(dtes[dtes.length - 1].createdAt);
 
     const payload = {
+      nit,
       nitEmisor: nit,
       ambiente,
+      version: 1,
       tipoContingencia,
       motivoContingencia,
       fechaInicio: fInicio,
@@ -326,7 +328,8 @@ export class ContingenciaService {
       horaInicio,
       horaFin,
       cantidadDoc: dtes.length,
-      tipoDocumentos: [...new Set(dtes.map((d) => d.tipoDte))],
+      // Intentar con enteros (1) además de strings ("01") en caso de que MH requiera numérico
+      tipoDocumentos: [...new Set(dtes.map((d) => parseInt(d.tipoDte, 10)))],
     };
 
     this.logger.log(`registrarEvento payload: ${JSON.stringify(payload)}`);
