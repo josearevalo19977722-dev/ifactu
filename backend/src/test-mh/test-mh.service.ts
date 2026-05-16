@@ -2,6 +2,7 @@ import { Injectable, Logger, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { v4 as uuidv4 } from 'uuid';
+import { decrypt } from '../utils/encryption.util';
 import { Empresa } from '../empresa/entities/empresa.entity';
 import { Dte, EstadoDte } from '../dte/entities/dte.entity';
 import { AuthMhService } from '../auth-mh/auth-mh.service';
@@ -459,6 +460,10 @@ export class TestMhService {
     const empresa = await this.empresaRepo.findOne({ where: { id: empresaId } });
     if (!empresa) throw new NotFoundException('Empresa no encontrada');
     if (empresa.mhAmbiente === '01') throw new Error('Esta empresa está en producción. Las pruebas solo están disponibles en ambiente 00.');
+    // Desencriptar campos sensibles antes de usar
+    const encKey = (this.config.get('DB_ENCRYPTION_KEY', '') || '').trim();
+    if (empresa.mhApiKey)       empresa.mhApiKey       = decrypt(empresa.mhApiKey, encKey);
+    if (empresa.mhPasswordCert) empresa.mhPasswordCert = decrypt(empresa.mhPasswordCert, encKey);
     return empresa;
   }
 }
