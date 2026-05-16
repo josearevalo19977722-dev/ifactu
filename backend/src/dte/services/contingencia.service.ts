@@ -13,6 +13,7 @@ import { SignerService } from './signer.service';
 import { ConsultaMhService } from './consulta-mh.service';
 import { EmpresaService } from '../../empresa/services/empresa.service';
 import { getAmbiente, getMhUrls, isModoDemo, getNitEmisor } from './mh-config.helper';
+import { svDateTime } from '../../utils/sv-datetime';
 
 export interface EventoContingencia {
   codigoEvento: string;
@@ -307,27 +308,59 @@ export class ContingenciaService {
     const token    = await this.authMh.getToken(empresa);
     const ambiente = getAmbiente(empresa, this.config);
 
-    // Calcular rango real de fechas y horas del lote (punto 7)
-    const fechasEmision = dtes.map((d) => d.fechaEmision).sort();
+    // Fecha/hora de transmisión del evento (ahora mismo)
+    const { fecEmi: fTransmision, horEmi: hTransmision } = svDateTime();
+    const codigoGeneracion = uuidv4().toUpperCase();
+
+    // Calcular rango de fechas del lote de contingencia
+    const fechasEmision = dtes
+      .map((d) => String(d.fechaEmision).substring(0, 10))
+      .sort();
     const fInicio = fechasEmision[0];
     const fFin    = fechasEmision[fechasEmision.length - 1];
+    const hInicio = this.extraerHora(dtes[0].createdAt);
+    const hFin    = this.extraerHora(dtes[dtes.length - 1].createdAt);
 
-    // Obtener hora real del primer y último DTE en contingencia
-    const horaInicio = this.extraerHora(dtes[0].createdAt);
-    const horaFin    = this.extraerHora(dtes[dtes.length - 1].createdAt);
-
-    // El endpoint /fesv/contingencia espera { nit, documento: JWS_firmado }
-    // igual que los DTEs — el evento debe ir firmado con el certificado de la empresa
+    /**
+     * Esquema oficial del Evento de Contingencia (versión 3).
+     * Referencia: dazza-dev/dgii-json-generator — Contingency/ContingencyEvent
+     * Secciones requeridas: identificacion, emisor, detalleDTE[], motivo
+     */
     const eventoJson = {
-      nit,
-      tipoContingencia,
-      motivoContingencia,
-      fechaInicio: fInicio,
-      fechaFin:    fFin,
-      horaInicio,
-      horaFin,
-      cantidadDoc: dtes.length,
-      tipoDocumentos: [...new Set(dtes.map((d) => d.tipoDte))],
+      identificacion: {
+        version:           3,
+        ambiente,
+        codigoGeneracion,
+        fTransmision,
+        hTransmision,
+      },
+      emisor: {
+        nit,
+        nombre:               empresa.nombreLegal,
+        // Responsable del evento: usamos el NIT de la empresa como identificador legal
+        nombreResponsable:    empresa.nombreComercial || empresa.nombreLegal,
+        tipoDocResponsable:   '36',   // 36 = NIT (CAT-022)
+        numeroDocResponsable: nit,
+        tipoEstablecimiento:  (empresa.tipoEstablecimiento || '02').toString(),
+        codEstableMH:         (empresa.codEstableMh    || '0001').toString().padStart(4, '0'),
+        codPuntoVenta:        (empresa.codPuntoVentaMh || 'P001').toString(),
+        telefono:             empresa.telefono || '',
+        correo:               empresa.correo   || '',
+      },
+      // Un item por cada DTE emitido en contingencia
+      detalleDTE: dtes.map((dte, i) => ({
+        noItem:           i + 1,
+        codigoGeneracion: dte.codigoGeneracion,
+        tipoDoc:          dte.tipoDte,
+      })),
+      motivo: {
+        fInicio,
+        fFin,
+        hInicio,
+        hFin,
+        tipoContingencia,
+        motivoContingencia,
+      },
     };
 
     this.logger.log(`registrarEvento eventoJson: ${JSON.stringify(eventoJson)}`);
@@ -337,6 +370,7 @@ export class ContingenciaService {
       ? firmado
       : (firmado as any).body ?? JSON.stringify(firmado);
 
+    // Payload externo: sólo nit + documento (JWS) — Manual MH sección 4.4
     const payload = { nit, documento: jwsStr };
 
     let data: any;
@@ -359,10 +393,10 @@ export class ContingenciaService {
     }
 
     this.logger.log(`registrarEvento respuesta: ${JSON.stringify(data)}`);
-    // Hacienda puede devolver el código en data.body o directamente en data
-    const codigo = data.body?.codigoEvento ?? data.codigoEvento ?? data.body?.codEvento ?? data.codEvento ?? '';
-    if (!codigo) this.logger.warn(`registrarEvento: respuesta sin codigoEvento — ${JSON.stringify(data)}`);
-    return codigo;
+    // La respuesta exitosa devuelve selloRecibido (no codigoEvento) — Manual MH p.30
+    const sello = data.selloRecibido ?? data.body?.selloRecibido ?? '';
+    if (!sello) this.logger.warn(`registrarEvento: respuesta sin selloRecibido — ${JSON.stringify(data)}`);
+    return sello;
   }
 
   private async enviarLote(
@@ -405,18 +439,15 @@ export class ContingenciaService {
       };
     }));
 
+    // Manual MH sección 4.2.2: campos del lote (idEnvio = UUID v4 UPPERCASE)
+    // No incluir cantidadDoc ni codigoEvento — no están en el esquema oficial
     const payload: Record<string, unknown> = {
       ambiente,
-      idEnvio:     uuidv4().toUpperCase(),
-      nitEmisor:   nit,
-      cantidadDoc: dtes.length,
-      version:     1,
+      idEnvio:   uuidv4().toUpperCase(),
+      version:   1,
+      nitEmisor: nit,
       documentos,
     };
-
-    if (codigoEvento) {
-      payload.codigoEvento = codigoEvento;
-    }
 
     const enviar = () => firstValueFrom(
       this.http.post(url, payload, {
