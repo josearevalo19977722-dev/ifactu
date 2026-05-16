@@ -4,14 +4,18 @@ import { Injectable, NotFoundException, Inject, forwardRef } from '@nestjs/commo
 export const TIPOS_DTE_TODOS = ['01', '03', '04', '05', '06', '07', '11', '14', '15'] as const;
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
+import { ConfigService } from '@nestjs/config';
 import { Empresa } from '../entities/empresa.entity';
 import { Usuario, RolUsuario } from '../../usuarios/usuario.entity';
 import { Dte } from '../../dte/entities/dte.entity';
 import * as bcrypt from 'bcrypt';
 import { BillingService } from '../../billing/billing.service';
+import { encrypt, decrypt } from '../../utils/encryption.util';
 
 @Injectable()
 export class TenantsService {
+  private readonly encryptionKey: string;
+
   constructor(
     @InjectRepository(Empresa)
     private readonly empresaRepo: Repository<Empresa>,
@@ -21,12 +25,22 @@ export class TenantsService {
     private readonly dteRepo: Repository<Dte>,
     @Inject(forwardRef(() => BillingService))
     private readonly billing: BillingService,
-  ) {}
+    private readonly config: ConfigService,
+  ) {
+    this.encryptionKey = (this.config.get('DB_ENCRYPTION_KEY', '') || '').trim();
+  }
+
+  /** Oculta campos sensibles antes de devolver al frontend */
+  private sanitizeTenant(e: Empresa): Empresa {
+    const copy = { ...e } as any;
+    if (copy.mhApiKey)       copy.mhApiKey       = '••••••••';
+    if (copy.mhPasswordCert) copy.mhPasswordCert = '••••••••';
+    return copy;
+  }
 
   async listTenants() {
-    return this.empresaRepo.find({
-      order: { createdAt: 'DESC' },
-    });
+    const tenants = await this.empresaRepo.find({ order: { createdAt: 'DESC' } });
+    return tenants.map(t => this.sanitizeTenant(t));
   }
 
   async createTenant(dto: any) {
@@ -77,6 +91,19 @@ export class TenantsService {
   async updateTenant(id: string, dto: Partial<Empresa>) {
     const empresa = await this.empresaRepo.findOne({ where: { id } });
     if (!empresa) throw new NotFoundException('Empresa no encontrada');
+
+    // Encriptar campos sensibles si vienen con valor real (no el placeholder ••••••••)
+    if ((dto as any).mhApiKey && (dto as any).mhApiKey !== '••••••••') {
+      (dto as any).mhApiKey = encrypt((dto as any).mhApiKey, this.encryptionKey);
+    } else {
+      delete (dto as any).mhApiKey; // no tocar el valor existente
+    }
+    if ((dto as any).mhPasswordCert && (dto as any).mhPasswordCert !== '••••••••') {
+      (dto as any).mhPasswordCert = encrypt((dto as any).mhPasswordCert, this.encryptionKey);
+    } else {
+      delete (dto as any).mhPasswordCert; // no tocar el valor existente
+    }
+
     // Campos editables por superadmin
     const allowed: (keyof Empresa)[] = [
       'nombreLegal', 'nombreComercial', 'nit', 'nrc', 'correo', 'telefono',
@@ -96,7 +123,7 @@ export class TenantsService {
         (empresa as any)[key] = (dto as any)[key];
       }
     }
-    return this.empresaRepo.save(empresa);
+    return this.sanitizeTenant(await this.empresaRepo.save(empresa));
   }
 
   async getTenantStats(id: string) {

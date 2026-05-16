@@ -244,8 +244,8 @@ export function TenantsPage() {
       pagoAlDia: t.pagoAlDia ?? true,
       esAgenteRetencion: t.esAgenteRetencion ?? false,
       mhAmbiente: t.mhAmbiente ?? '00',
-      mhPasswordCert: t.mhPasswordCert ?? '',
-      mhApiKey: t.mhApiKey ?? '',
+      mhPasswordCert: '',  // Siempre vacío: dejar vacío = no cambiar; escribir = actualizar
+      mhApiKey: '',        // Siempre vacío: dejar vacío = no cambiar; escribir = actualizar
       tiposDteHabilitados:
         Array.isArray(t.tiposDteHabilitados) && t.tiposDteHabilitados.length > 0
           ? [...t.tiposDteHabilitados]
@@ -755,12 +755,12 @@ export function TenantsPage() {
                 </label>
               </div>
               <div className="form-group">
-                <label className="form-label">Password Certificado (clave privada)</label>
-                <input className="form-control" type="password" value={editForm.mhPasswordCert ?? ''} onChange={e => setEditForm({...editForm, mhPasswordCert: e.target.value})} placeholder="Contraseña del .crt" />
+                <label className="form-label">Password Certificado <span style={{fontWeight:400,color:'var(--text-muted)'}}>(dejar vacío = no cambiar)</span></label>
+                <input className="form-control" type="password" value={editForm.mhPasswordCert ?? ''} onChange={e => setEditForm({...editForm, mhPasswordCert: e.target.value})} placeholder="Nueva contraseña del .crt" />
               </div>
               <div className="form-group">
-                <label className="form-label">API Key MH (opcional)</label>
-                <input className="form-control" value={editForm.mhApiKey ?? ''} onChange={e => setEditForm({...editForm, mhApiKey: e.target.value})} placeholder="Token MH si aplica" />
+                <label className="form-label">API Key / Password MH <span style={{fontWeight:400,color:'var(--text-muted)'}}>(dejar vacío = no cambiar)</span></label>
+                <input className="form-control" type="password" value={editForm.mhApiKey ?? ''} onChange={e => setEditForm({...editForm, mhApiKey: e.target.value})} placeholder="Nueva contraseña Hacienda" />
               </div>
               <div className="form-group" style={{ display: 'flex', flexDirection: 'column', gap: 10, justifyContent: 'flex-end' }}>
                 <label style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 13, cursor: 'pointer' }}>
