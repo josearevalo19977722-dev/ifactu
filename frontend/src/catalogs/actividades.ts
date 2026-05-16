@@ -158,6 +158,7 @@ export const ACTIVIDADES_ECONOMICAS: ActividadEconomica[] = [
   { codigo: '46730', descripcion: 'Venta al por mayor de madera, materiales de construcción' },
   { codigo: '46900', descripcion: 'Venta al por mayor de otros productos' },
   { codigo: '47110', descripcion: 'Venta al por menor en comercios no especializados con predominio de alimentos' },
+  { codigo: '47112', descripcion: 'Venta en tiendas de artículos de primera necesidad' },
   { codigo: '47190', descripcion: 'Venta al por menor de otros productos en comercios no especializados' },
   { codigo: '47210', descripcion: 'Venta al por menor de frutas y verduras' },
   { codigo: '47220', descripcion: 'Venta al por menor de carne y productos cárnicos' },
