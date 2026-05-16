@@ -657,10 +657,12 @@ export function TenantsPage() {
                   value={editForm.descActividad}
                   onChange={e => {
                     const val = e.target.value;
-                    const found = ACTIVIDADES_ECONOMICAS.find(a => a.descripcion === val);
+                    const found = ACTIVIDADES_ECONOMICAS.find(
+                      a => a.descripcion === val || a.codigo === val
+                    );
                     setEditForm({ ...editForm, descActividad: val, codActividad: found ? found.codigo : editForm.codActividad });
                   }}
-                  placeholder="Escribe para buscar actividad..."
+                  placeholder="Escribe nombre o código..."
                 />
                 <datalist id="edit-lista-actividades">
                   {ACTIVIDADES_ECONOMICAS.map(a => (
@@ -673,8 +675,12 @@ export function TenantsPage() {
                 <input
                   className="form-control"
                   value={editForm.codActividad}
-                  readOnly
-                  style={{ backgroundColor: 'var(--bg-subtle)', color: 'var(--text-2)' }}
+                  onChange={e => {
+                    const cod = e.target.value;
+                    const found = ACTIVIDADES_ECONOMICAS.find(a => a.codigo === cod);
+                    setEditForm({ ...editForm, codActividad: cod, descActividad: found ? found.descripcion : editForm.descActividad });
+                  }}
+                  placeholder="Ej: 46900"
                 />
               </div>
               <div className="form-group">

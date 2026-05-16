@@ -341,10 +341,12 @@ export function ConfiguracionPage() {
                     onChange={(e) => {
                       const val = e.target.value;
                       setActDesc(val);
-                      const found = ACTIVIDADES_ECONOMICAS.find(a => a.descripcion === val);
+                      const found = ACTIVIDADES_ECONOMICAS.find(
+                        a => a.descripcion === val || a.codigo === val
+                      );
                       if (found) setActCod(found.codigo);
                     }}
-                    placeholder="Escribe para buscar actividad..."
+                    placeholder="Escribe nombre o código de actividad..."
                     required
                   />
                   <datalist id="lista-actividades">
@@ -359,9 +361,13 @@ export function ConfiguracionPage() {
                     className="form-control"
                     name="codActividad"
                     value={actCod}
-                    onChange={(e) => setActCod(e.target.value)}
-                    readOnly
-                    style={{ backgroundColor: 'var(--bg-subtle)', color: 'var(--text-2)' }}
+                    onChange={(e) => {
+                      const cod = e.target.value;
+                      setActCod(cod);
+                      const found = ACTIVIDADES_ECONOMICAS.find(a => a.codigo === cod);
+                      if (found) setActDesc(found.descripcion);
+                    }}
+                    placeholder="Ej: 46900"
                     required
                   />
                 </div>
