@@ -168,13 +168,14 @@ export class NotaService {
     let totalDescu = 0;
     let ivaTotal = 0;
 
-    const signo = tipoDte === '05' ? -1 : 1;
+    // NC (05) y ND (06): MH requiere valores positivos en ambos casos.
+    // El tipo de documento (05/06) ya indica si es crédito o débito.
 
     const cuerpoDocumentoNum = dto.items.map((item, index) => {
       const cantidad = item.cantidad || 1;
       const precioUnitario = r2(item.precioUni || 0);
-      const ventaGravada = r2(precioUnitario * cantidad * signo);
-      const ivaItem = r2(Math.abs(ventaGravada) * 0.13 * signo);
+      const ventaGravada = r2(precioUnitario * cantidad);
+      const ivaItem = r2(ventaGravada * 0.13);
 
       totalGravada += ventaGravada;
       ivaTotal += ivaItem;
@@ -276,7 +277,6 @@ export class NotaService {
         montoTotalOperacion:  r2(totalPagar),
         totalLetras:          montoALetras(Math.abs(totalPagar)),
         condicionOperacion:   1,
-        numPagoElectronico:   null,
       },
       extension: null,
       apendice: null,

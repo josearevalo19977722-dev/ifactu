@@ -244,7 +244,7 @@ export class TestMhService {
       condicionOperacion: 1,
       receptor: {
         tipoDocumento: o?.tipoDocumento ?? '13',
-        numDocumento: o?.numDocumento ?? '00000000-0',
+        numDocumento: o?.numDocumento ?? '06141678-3',
         nombre: o?.nombre ?? 'SUJETO EXCLUIDO DE PRUEBA',
         codActividad: '46900',
         direccionDepartamento: '06',
