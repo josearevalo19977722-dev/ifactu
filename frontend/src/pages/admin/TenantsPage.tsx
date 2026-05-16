@@ -1066,7 +1066,7 @@ export function TenantsPage() {
                   <select
                     value={testDteTipo}
                     onChange={e => { setTestDteTipo(e.target.value); setTestDte({ loading: false, resultado: null }); }}
-                    style={{ padding: '7px 12px', borderRadius: 6, border: '1px solid var(--border)', fontSize: '.85rem', background: 'var(--white)', color: 'var(--text)' }}
+                    style={{ padding: '7px 12px', borderRadius: 6, border: '1px solid var(--border)', fontSize: '.85rem', background: 'var(--input-bg)', color: 'var(--text)', colorScheme: 'dark' }}
                   >
                     {(testTenant.tiposDteHabilitados?.length > 0 ? testTenant.tiposDteHabilitados : ['01','03','11','14','07','15']).map((cod: string) => (
                       <option key={cod} value={cod}>{cod} — {OPCION_LABEL[cod] ?? cod}</option>
@@ -1101,7 +1101,7 @@ export function TenantsPage() {
                       <span style={{ fontSize: '.75rem', color: 'var(--text-muted)' }}>{showReceptorForm ? '▲ ocultar' : '▼ editar'}</span>
                     </button>
                     {showReceptorForm && (
-                      <div style={{ padding: '14px 16px', display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px 14px', background: 'var(--white)' }}>
+                      <div style={{ padding: '14px 16px', display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px 14px', background: 'var(--surface)' }}>
                         {/* Nombre — todos los tipos */}
                         <div style={{ gridColumn: '1 / -1' }}>
                           <label style={{ fontSize: '.78rem', fontWeight: 600, display: 'block', marginBottom: 3 }}>Nombre / Razón social</label>
@@ -1244,7 +1244,7 @@ export function TenantsPage() {
                       value={lote.cantidad}
                       onChange={e => setLote(l => ({ ...l, cantidad: Number(e.target.value) }))}
                       disabled={lote.polling}
-                      style={{ padding: '7px 12px', borderRadius: 6, border: '1px solid var(--border)', fontSize: '.85rem', background: 'var(--white)', color: 'var(--text)' }}
+                      style={{ padding: '7px 12px', borderRadius: 6, border: '1px solid var(--border)', fontSize: '.85rem', background: 'var(--input-bg)', color: 'var(--text)', colorScheme: 'dark' }}
                     >
                       {[1, 3, 5, 10, 20].map(n => (
                         <option key={n} value={n}>{n} DTEs (~{Math.round(n * 15 / 60 * 10) / 10} min)</option>
