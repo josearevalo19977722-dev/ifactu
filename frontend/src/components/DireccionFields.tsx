@@ -47,7 +47,7 @@ export function DireccionFields({
         <label>Departamento *</label>
         <select
           {...register(fieldDepartamento, { required: true })}
-          onChange={(e) => {
+          onChange={() => {
             setDistrito('');
             setValue(fieldMunicipio, '', { shouldDirty: true });
           }}
@@ -66,7 +66,7 @@ export function DireccionFields({
         <select
           {...register(fieldMunicipio, { required: true })}
           disabled={!deptoSeleccionado}
-          onChange={(e) => {
+          onChange={() => {
             setDistrito('');
           }}
         >
