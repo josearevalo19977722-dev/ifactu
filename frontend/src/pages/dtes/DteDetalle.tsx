@@ -311,7 +311,11 @@ export function DteDetalle() {
                           <td>${Number(item.montoDescu ?? 0).toFixed(2)}</td>
                           <td>${Number(gravada ?? 0).toFixed(2)}</td>
                           <td>${Number(exenta ?? 0).toFixed(2)}</td>
-                          {esCcf && <td>${(Number(item.ventaGravada) * 0.13).toFixed(2)}</td>}
+                          {esCcf && <td>${(
+                            Number(json?.resumen?.totalGravada) > 0
+                              ? (Number(item.ventaGravada) / Number(json.resumen.totalGravada)) * Number(json?.resumen?.tributos?.[0]?.valor ?? Number(json.resumen.totalGravada) * 0.13)
+                              : Number(item.ventaGravada) * 0.13
+                          ).toFixed(2)}</td>}
                         </tr>
                       );
                     })}
@@ -349,12 +353,12 @@ export function DteDetalle() {
                 {esCcf && (
                   <div className="detail-row">
                     <dt>IVA (13%)</dt>
-                    <dd>${(Number(json?.resumen?.totalGravada ?? 0) * 0.13).toFixed(2)}</dd>
+                    <dd>${Number(json?.resumen?.tributos?.[0]?.valor ?? (Number(json?.resumen?.totalGravada ?? 0) * 0.13)).toFixed(2)}</dd>
                   </div>
                 )}
                 <div className="detail-row total-row">
                   <dt>Total a pagar</dt>
-                  <dd>${Number(dte.totalPagar).toFixed(2)}</dd>
+                  <dd>${Number(json?.resumen?.totalPagar ?? dte.totalPagar).toFixed(2)}</dd>
                 </div>
               </dl>
             </div>

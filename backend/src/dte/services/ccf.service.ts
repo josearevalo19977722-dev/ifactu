@@ -326,15 +326,35 @@ export class CcfService {
   }
 
   private async calcularTotal(dto: CreateCcfDto, empresa: Empresa): Promise<number> {
-    const totalGravada = dto.items.reduce((s, i) => s + i.ventaGravada, 0);
-    const totalExenta = dto.items.reduce((s, i) => s + i.ventaExenta, 0);
-    const totalNoSuj = dto.items.reduce((s, i) => s + i.ventaNoSuj, 0);
-    const totalDescu = dto.items.reduce((s, i) => s + i.montoDescu, 0);
-    const ivaTotal = Math.round(totalGravada * 0.13 * 100) / 100;
+    const r2 = (n: number) => Math.round(n * 100) / 100;
+
+    // Mismo cálculo residual que construirJson para mantener consistencia exacta
+    let totalGravada = 0;
+    let ivaTotal     = 0;
+
+    for (const item of dto.items) {
+      const cantidad   = item.cantidad   || 1;
+      const precioOrig = item.precioUni  || 0;
+      const descuento  = item.montoDescu || 0;
+      const precioNeto = item.incluyeIva ? precioOrig / 1.13 : precioOrig;
+      const ventaGrav  = r2(precioNeto * cantidad - descuento);
+      const ivaItem    = item.incluyeIva
+        ? r2(precioOrig * cantidad - descuento - ventaGrav)
+        : r2(ventaGrav * 0.13);
+      totalGravada += ventaGrav;
+      ivaTotal     += ivaItem;
+    }
+
+    totalGravada = r2(totalGravada);
+    ivaTotal     = r2(ivaTotal);
+
+    const totalExenta = r2(dto.items.reduce((s, i) => s + (i.ventaExenta || 0), 0));
+    const totalNoSuj  = r2(dto.items.reduce((s, i) => s + (i.ventaNoSuj  || 0), 0));
+    const totalDescu  = r2(dto.items.reduce((s, i) => s + (i.montoDescu  || 0), 0));
 
     let ivaRete1 = 0;
     if (totalGravada >= 100 && dto.receptor.esGranContribuyente && !empresa.esAgenteRetencion) {
-      ivaRete1 = Math.round(totalGravada * 0.01 * 100) / 100;
+      ivaRete1 = r2(totalGravada * 0.01);
     }
 
     const total = totalGravada + totalExenta + totalNoSuj - totalDescu + ivaTotal - ivaRete1 - (dto.reteRenta ?? 0);
