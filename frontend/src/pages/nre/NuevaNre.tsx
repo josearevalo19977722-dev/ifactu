@@ -157,6 +157,7 @@ export function NuevaNre() {
                   register={register}
                   setValue={setValue}
                   getValues={getValues}
+                  watch={watch}
                 />
               </div>
             </div>

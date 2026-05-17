@@ -214,6 +214,7 @@ export function NuevaRetencion() {
                 register={register}
                 setValue={setValue}
                 getValues={getValues}
+                watch={watch}
               />
               <div className="form-row">
                 <div className="form-group">

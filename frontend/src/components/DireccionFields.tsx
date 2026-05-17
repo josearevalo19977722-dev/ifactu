@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import type { UseFormGetValues, UseFormRegister, UseFormSetValue } from 'react-hook-form';
+import type { UseFormGetValues, UseFormRegister, UseFormSetValue, UseFormWatch } from 'react-hook-form';
 import { DEPARTAMENTOS, getDistritos, getMunicipios } from '../catalogs/departamentos';
 
 interface Props {
@@ -9,6 +9,7 @@ interface Props {
   register: UseFormRegister<any>;
   setValue: UseFormSetValue<any>;
   getValues: UseFormGetValues<any>;
+  watch: UseFormWatch<any>;
   defaultDepartamento?: string;
 }
 
@@ -19,10 +20,11 @@ export function DireccionFields({
   register,
   setValue,
   getValues,
-  defaultDepartamento = '',
+  watch,
 }: Props) {
-  const [deptoSeleccionado, setDeptoSeleccionado] = useState(defaultDepartamento);
-  const [muniSeleccionado, setMuniSeleccionado] = useState('');
+  // Usar watch para que los selects reaccionen a setValue externo (ej: cargar cliente del catálogo)
+  const deptoSeleccionado = watch(fieldDepartamento) || '';
+  const muniSeleccionado  = watch(fieldMunicipio)    || '';
   const [distrito, setDistrito] = useState('');
   const municipios = getMunicipios(deptoSeleccionado);
   const distritos = getDistritos(deptoSeleccionado, muniSeleccionado);
@@ -46,10 +48,8 @@ export function DireccionFields({
         <select
           {...register(fieldDepartamento, { required: true })}
           onChange={(e) => {
-            setDeptoSeleccionado(e.target.value);
-            setMuniSeleccionado('');
             setDistrito('');
-            setValue(fieldMunicipio, '');
+            setValue(fieldMunicipio, '', { shouldDirty: true });
           }}
         >
           <option value="">Seleccionar...</option>
@@ -67,7 +67,6 @@ export function DireccionFields({
           {...register(fieldMunicipio, { required: true })}
           disabled={!deptoSeleccionado}
           onChange={(e) => {
-            setMuniSeleccionado(e.target.value);
             setDistrito('');
           }}
         >
