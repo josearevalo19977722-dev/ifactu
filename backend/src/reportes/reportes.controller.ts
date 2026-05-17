@@ -20,12 +20,17 @@ export class ReportesController {
 
   /** Vista previa JSON para el frontend */
   @Get('resumen')
-  resumen(
+  async resumen(
     @Query('mes')  mes:  string,
     @Query('anio') anio: string,
     @Req() req: Request,
   ) {
-    return this.reportesService.resumenMes(Number(mes), Number(anio), (req.user as any).empresaId);
+    try {
+      return await this.reportesService.resumenMes(Number(mes), Number(anio), (req.user as any).empresaId);
+    } catch (err) {
+      console.error('[REPORTES] resumen error:', err?.message, err?.stack);
+      throw err;
+    }
   }
 
   /** Libro de Ventas a Consumidores (CF) → Excel */

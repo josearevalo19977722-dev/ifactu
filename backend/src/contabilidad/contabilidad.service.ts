@@ -152,8 +152,7 @@ export class ContabilidadService {
       referenciaId: dte.id,
       lineas,
       ...totales(lineas),
-      empresa:    dte.empresa,
-      empresaId:  dte.empresaId ?? null,
+      empresa: dte.empresa,
     };
   }
 
@@ -179,7 +178,6 @@ export class ContabilidadService {
       referenciaId: compra.id,
       lineas,
       ...totales(lineas),
-      empresaId:    compra.empresaId ?? null,
     };
   }
 
@@ -221,7 +219,7 @@ export class ContabilidadService {
       this.asientoRepo.createQueryBuilder('a')
         .where('a.fecha >= :desde', { desde })
         .andWhere('a.fecha <= :hasta', { hasta })
-        .andWhere('a.empresaId = :empresaId', { empresaId })
+        .andWhere('"a"."empresa_id" = :empresaId', { empresaId })
         .select('a.referenciaId')
         .getMany(),
     ]);
