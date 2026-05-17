@@ -2,6 +2,8 @@ import { useState } from 'react';
 import { useFieldArray, useForm } from 'react-hook-form';
 import { useMutation } from '@tanstack/react-query';
 import { useNavigate } from 'react-router-dom';
+import { useGuardarCliente } from '../../hooks/useGuardarCliente';
+import { GuardarClienteModal } from '../../components/GuardarClienteModal';
 import { DireccionFields } from '../../components/DireccionFields';
 import { UNIDADES_MEDIDA } from '../../catalogs/unidades';
 import { ConfirmEmitirModal } from '../../components/ConfirmEmitirModal';
@@ -59,6 +61,7 @@ export function NuevaFse() {
   const toast = useToast();
   const [stockMap, setStockMap] = useState<Record<number, number>>({});
   const [pendingData, setPendingData] = useState<FseForm | null>(null);
+  const { marcarDelCatalogo, checkGuardarCliente, clienteNuevoModal, setClienteNuevoModal, marcarGuardado } = useGuardarCliente();
   const { register, control, handleSubmit, watch, setValue, getValues } = useForm<FseForm>({
     defaultValues: { condicionOperacion: 1, items: [{ ...itemVacio }] },
   });
@@ -96,6 +99,7 @@ export function NuevaFse() {
     setValue('receptor.direccionDepartamento', c.direccionDepartamento || '');
     setValue('receptor.direccionMunicipio', c.direccionMunicipio || '');
     setValue('receptor.direccionComplemento', c.direccionComplemento || '');
+    marcarDelCatalogo();
   };
 
   const onProductoSelect = (index: number, p: Producto) => {
@@ -123,7 +127,10 @@ export function NuevaFse() {
       </div>
 
       <div style={{ padding: '20px 28px', maxWidth: 900 }}>
-        <form onSubmit={handleSubmit(setPendingData)}>
+        <form onSubmit={handleSubmit((data) => {
+          checkGuardarCliente(data.receptor ?? {});
+          setPendingData(data);
+        })}>
 
           {/* Sujeto Excluido */}
           <div className="table-card" style={{ marginBottom: 20 }}>
@@ -369,6 +376,8 @@ export function NuevaFse() {
             onCancel={() => setPendingData(null)}
           />
         )}
+
+        {clienteNuevoModal && <GuardarClienteModal datos={clienteNuevoModal} onClose={() => setClienteNuevoModal(null)} onGuardado={marcarGuardado} />}
       </div>
     </div>
   );

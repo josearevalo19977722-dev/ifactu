@@ -9,6 +9,8 @@ import { ConfirmEmitirModal } from '../../components/ConfirmEmitirModal';
 import { useToast } from '../../context/ToastContext';
 import { parseApiError } from '../../utils/parseApiError';
 import { handleDteEmitido } from '../../utils/dte-result';
+import { useGuardarCliente } from '../../hooks/useGuardarCliente';
+import { GuardarClienteModal } from '../../components/GuardarClienteModal';
 
 import { ClienteSelect, type Cliente } from '../../components/ClienteSelect';
 import { ProductoSelect, type Producto } from '../../components/ProductoSelect';
@@ -45,6 +47,7 @@ export function NuevaNre() {
   const navigate = useNavigate();
   const toast = useToast();
   const [pendingData, setPendingData] = useState<NreForm | null>(null);
+  const { marcarDelCatalogo, checkGuardarCliente, clienteNuevoModal, setClienteNuevoModal, marcarGuardado } = useGuardarCliente();
   const { register, control, handleSubmit, watch, setValue, getValues } = useForm<NreForm>({
     defaultValues: { condicionOperacion: 1, items: [{ ...itemVacio }] },
   });
@@ -85,6 +88,7 @@ export function NuevaNre() {
     setValue('receptor.direccionDepartamento', c.direccionDepartamento || '');
     setValue('receptor.direccionMunicipio', c.direccionMunicipio || '');
     setValue('receptor.direccionComplemento', c.direccionComplemento || '');
+    marcarDelCatalogo();
   };
 
   const onProductoSelect = (index: number, p: Producto) => {
@@ -105,7 +109,10 @@ export function NuevaNre() {
       </div>
 
       <div className="page">
-        <form onSubmit={handleSubmit(setPendingData)}>
+        <form onSubmit={handleSubmit((data) => {
+          checkGuardarCliente(data.receptor ?? {});
+          setPendingData(data);
+        })}>
 
           {/* Receptor */}
           <div className="form-section">
@@ -296,6 +303,8 @@ export function NuevaNre() {
             onCancel={() => setPendingData(null)}
           />
         )}
+
+        {clienteNuevoModal && <GuardarClienteModal datos={clienteNuevoModal} onClose={() => setClienteNuevoModal(null)} onGuardado={marcarGuardado} />}
       </div>
     </div>
   );

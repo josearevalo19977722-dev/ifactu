@@ -8,6 +8,8 @@ import { useToast } from '../../context/ToastContext';
 import { parseApiError } from '../../utils/parseApiError';
 import { handleDteEmitido } from '../../utils/dte-result';
 import { PAISES } from '../../catalogs/paises';
+import { useGuardarCliente } from '../../hooks/useGuardarCliente';
+import { GuardarClienteModal } from '../../components/GuardarClienteModal';
 
 import { ClienteSelect, type Cliente } from '../../components/ClienteSelect';
 import { ProductoSelect, type Producto } from '../../components/ProductoSelect';
@@ -40,6 +42,7 @@ export function NuevaFexe() {
   const navigate = useNavigate();
   const toast = useToast();
   const [pendingData, setPendingData] = useState<FexeForm | null>(null);
+  const { marcarDelCatalogo, checkGuardarCliente, clienteNuevoModal, setClienteNuevoModal, marcarGuardado } = useGuardarCliente();
   const { register, control, handleSubmit, watch, setValue } = useForm<FexeForm>({
     defaultValues: {
       condicionOperacion: 1,
@@ -93,6 +96,7 @@ export function NuevaFexe() {
       const pais = PAISES.find(p => p.codigo === c.codPais);
       setValue('receptor.nombrePais', pais?.nombre || c.nombrePais || '');
     }
+    marcarDelCatalogo();
   };
 
   const onProductoSelect = (index: number, p: Producto) => {
@@ -113,7 +117,10 @@ export function NuevaFexe() {
       </div>
 
       <div className="page">
-        <form onSubmit={handleSubmit(setPendingData)}>
+        <form onSubmit={handleSubmit((data) => {
+          checkGuardarCliente(data.receptor ?? {});
+          setPendingData(data);
+        })}>
 
           {/* Receptor extranjero */}
           <div className="form-section">
@@ -316,6 +323,8 @@ export function NuevaFexe() {
             onCancel={() => setPendingData(null)}
           />
         )}
+
+        {clienteNuevoModal && <GuardarClienteModal datos={clienteNuevoModal} onClose={() => setClienteNuevoModal(null)} onGuardado={marcarGuardado} />}
       </div>
     </div>
   );

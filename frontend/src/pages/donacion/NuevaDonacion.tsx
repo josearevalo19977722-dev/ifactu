@@ -10,6 +10,8 @@ import { DireccionFields } from '../../components/DireccionFields';
 import { UNIDADES_MEDIDA } from '../../catalogs/unidades';
 import { ActividadSelect } from '../../components/ActividadSelect';
 import { TIPOS_ESTABLECIMIENTO } from '../../catalogs/tiposEstablecimiento';
+import { useGuardarCliente } from '../../hooks/useGuardarCliente';
+import { GuardarClienteModal } from '../../components/GuardarClienteModal';
 
 import { ClienteSelect, type Cliente } from '../../components/ClienteSelect';
 import { ProductoSelect, type Producto } from '../../components/ProductoSelect';
@@ -63,6 +65,7 @@ export function NuevaDonacion() {
   const navigate = useNavigate();
   const toast = useToast();
   const [pendingData, setPendingData] = useState<DonacionForm | null>(null);
+  const { marcarDelCatalogo, checkGuardarCliente, clienteNuevoModal, setClienteNuevoModal, marcarGuardado } = useGuardarCliente();
   const { register, control, handleSubmit, watch, setValue, getValues } = useForm<DonacionForm>({
     defaultValues: {
       donatario: {
@@ -113,6 +116,7 @@ export function NuevaDonacion() {
     setValue('donatario.direccionDepartamento',c.direccionDepartamento || '');
     setValue('donatario.direccionMunicipio',   c.direccionMunicipio || '');
     setValue('donatario.direccionComplemento', c.direccionComplemento || '');
+    marcarDelCatalogo();
   };
 
   const onProductoSelect = (index: number, p: Producto) => {
@@ -132,7 +136,10 @@ export function NuevaDonacion() {
       </div>
 
       <div style={{ padding: '20px 28px', maxWidth: 960 }}>
-        <form onSubmit={handleSubmit(setPendingData)}>
+        <form onSubmit={handleSubmit((data) => {
+          checkGuardarCliente(data.donatario ?? {});
+          setPendingData(data);
+        })}>
 
           {/* Donatario */}
           <div className="table-card" style={{ marginBottom: 20 }}>
@@ -363,6 +370,8 @@ export function NuevaDonacion() {
             onCancel={() => setPendingData(null)}
           />
         )}
+
+        {clienteNuevoModal && <GuardarClienteModal datos={clienteNuevoModal} onClose={() => setClienteNuevoModal(null)} onGuardado={marcarGuardado} />}
       </div>
     </div>
   );

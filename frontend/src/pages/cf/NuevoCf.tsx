@@ -2,6 +2,8 @@ import { useState } from 'react';
 import { useFieldArray, useForm } from 'react-hook-form';
 import { useMutation } from '@tanstack/react-query';
 import { useNavigate } from 'react-router-dom';
+import { useGuardarCliente } from '../../hooks/useGuardarCliente';
+import { GuardarClienteModal } from '../../components/GuardarClienteModal';
 import { dteApi } from '../../api/dte.api';
 import type { CreateCfPayload } from '../../types/dte';
 import { UNIDADES_MEDIDA } from '../../catalogs/unidades';
@@ -25,6 +27,7 @@ export function NuevoCf() {
   const toast = useToast();
   const [stockMap, setStockMap] = useState<Record<number, number>>({});
   const [pendingData, setPendingData] = useState<CreateCfPayload | null>(null);
+  const { marcarDelCatalogo, checkGuardarCliente, clienteNuevoModal, setClienteNuevoModal, marcarGuardado } = useGuardarCliente();
   const { register, control, handleSubmit, watch, setValue } =
     useForm<CreateCfPayload>({
       defaultValues: {
@@ -56,6 +59,7 @@ export function NuevoCf() {
     setValue('receptor.numDocumento', c.numDocumento || '');
     setValue('receptor.correo', c.correo || '');
     setValue('receptor.telefono', c.telefono || '');
+    marcarDelCatalogo();
   };
 
   const onProductoSelect = (index: number, p: Producto) => {
@@ -96,6 +100,7 @@ export function NuevoCf() {
           // Asegurar que montoPago refleje el total real antes de enviar
           const total = Math.round((data.items.reduce((s, i) => s + (i.precioUni * i.cantidad), 0)) * 100) / 100;
           data.pagos = data.pagos.map((p, i) => ({ ...p, montoPago: i === 0 ? total : p.montoPago }));
+          checkGuardarCliente(data.receptor ?? {});
           setPendingData(data);
         })}>
 
@@ -337,6 +342,8 @@ export function NuevoCf() {
             onCancel={() => setPendingData(null)}
           />
         )}
+
+        {clienteNuevoModal && <GuardarClienteModal datos={clienteNuevoModal} onClose={() => setClienteNuevoModal(null)} onGuardado={marcarGuardado} />}
       </div>
     </div>
   );

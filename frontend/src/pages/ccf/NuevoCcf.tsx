@@ -3,6 +3,8 @@ import { useFieldArray, useForm } from 'react-hook-form';
 import { useMutation, useQuery } from '@tanstack/react-query';
 import { useNavigate } from 'react-router-dom';
 import apiClient from '../../api/apiClient';
+import { useGuardarCliente } from '../../hooks/useGuardarCliente';
+import { GuardarClienteModal } from '../../components/GuardarClienteModal';
 import { dteApi } from '../../api/dte.api';
 import type { CreateCcfPayload } from '../../types/dte';
 import { DireccionFields } from '../../components/DireccionFields';
@@ -29,8 +31,7 @@ export function NuevoCcf() {
   const toast = useToast();
   const [stockMap, setStockMap] = useState<Record<number, number>>({});
   const [pendingData, setPendingData] = useState<CreateCcfPayload | null>(null);
-  const [clienteDelCatalogo, setClienteDelCatalogo] = useState(false);
-  const [guardarClienteModal, setGuardarClienteModal] = useState<{ nombre: string; nit: string; nrc: string; correo: string; telefono: string; codActividad: string; descActividad: string; } | null>(null);
+  const { marcarDelCatalogo, checkGuardarCliente, clienteNuevoModal, setClienteNuevoModal, marcarGuardado } = useGuardarCliente();
   const { register, control, handleSubmit, watch, setValue, getValues } =
     useForm<CreateCcfPayload>({
       defaultValues: {
@@ -74,7 +75,7 @@ export function NuevoCcf() {
     setValue('receptor.direccionMunicipio', c.direccionMunicipio || '');
     setValue('receptor.direccionComplemento', c.direccionComplemento || '');
     setValue('receptor.esGranContribuyente', !!c.esGranContribuyente);
-    setClienteDelCatalogo(true);
+    marcarDelCatalogo();
   };
 
   const onProductoSelect = (index: number, p: Producto) => {
@@ -133,18 +134,7 @@ export function NuevoCcf() {
           // Se envía el precioUni original al backend (IVA-inc o sin IVA según flag).
           // El backend hace la conversión y calcula IVA residual para preservar el total exacto.
           const finalData = { ...data };
-          // Si el receptor fue escrito manualmente (no del catálogo), preguntar si guardar
-          if (!clienteDelCatalogo && data.receptor?.nombre && data.receptor?.nit) {
-            setGuardarClienteModal({
-              nombre: data.receptor.nombre,
-              nit: data.receptor.nit,
-              nrc: data.receptor.nrc || '',
-              correo: data.receptor.correo || '',
-              telefono: data.receptor.telefono || '',
-              codActividad: data.receptor.codActividad || '',
-              descActividad: data.receptor.descActividad || '',
-            });
-          }
+          checkGuardarCliente(data.receptor ?? {});
           setPendingData(finalData as CreateCcfPayload);
         })}>
 
@@ -414,53 +404,12 @@ export function NuevoCcf() {
           />
         )}
 
-        {/* Modal: guardar cliente nuevo en catálogo */}
-        {guardarClienteModal && (
-          <div className="modal-overlay" onClick={() => setGuardarClienteModal(null)}>
-            <div className="modal" style={{ maxWidth: 420 }} onClick={e => e.stopPropagation()}>
-              <div className="modal-header">
-                <h3 className="modal-title">💾 ¿Guardar cliente?</h3>
-              </div>
-              <div className="modal-body" style={{ fontSize: '.9rem', color: 'var(--text-2)', lineHeight: 1.6 }}>
-                <p><strong style={{ color: 'var(--text)' }}>{guardarClienteModal.nombre}</strong> no existe en tu catálogo de clientes.</p>
-                <p>¿Deseas guardarlo para poder seleccionarlo rápidamente en el futuro?</p>
-              </div>
-              <div className="modal-footer" style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
-                <button
-                  className="btn btn-ghost btn-sm"
-                  onClick={() => setGuardarClienteModal(null)}
-                >
-                  No, gracias
-                </button>
-                <button
-                  className="btn btn-primary btn-sm"
-                  onClick={async () => {
-                    try {
-                      await apiClient.post('/contactos', {
-                        nombre: guardarClienteModal.nombre,
-                        nit: guardarClienteModal.nit,
-                        nrc: guardarClienteModal.nrc || null,
-                        correo: guardarClienteModal.correo || null,
-                        telefono: guardarClienteModal.telefono || null,
-                        codActividad: guardarClienteModal.codActividad || null,
-                        descActividad: guardarClienteModal.descActividad || null,
-                        numDocumento: guardarClienteModal.nit,
-                        tipoDocumento: '36',
-                      });
-                      toast.success('Cliente guardado', `${guardarClienteModal.nombre} agregado al catálogo`);
-                      setClienteDelCatalogo(true);
-                    } catch {
-                      toast.error('Error', 'No se pudo guardar el cliente');
-                    } finally {
-                      setGuardarClienteModal(null);
-                    }
-                  }}
-                >
-                  Sí, guardar
-                </button>
-              </div>
-            </div>
-          </div>
+        {clienteNuevoModal && (
+          <GuardarClienteModal
+            datos={clienteNuevoModal}
+            onClose={() => setClienteNuevoModal(null)}
+            onGuardado={marcarGuardado}
+          />
         )}
       </div>
     </div>

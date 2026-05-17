@@ -8,6 +8,8 @@ import { parseApiError } from '../../utils/parseApiError';
 import { handleDteEmitido } from '../../utils/dte-result';
 import { DireccionFields } from '../../components/DireccionFields';
 import { ActividadSelect } from '../../components/ActividadSelect';
+import { useGuardarCliente } from '../../hooks/useGuardarCliente';
+import { GuardarClienteModal } from '../../components/GuardarClienteModal';
 
 import { ClienteSelect, type Cliente } from '../../components/ClienteSelect';
 
@@ -65,6 +67,7 @@ export function NuevaRetencion() {
   const navigate = useNavigate();
   const toast = useToast();
   const [pendingData, setPendingData] = useState<RetencionForm | null>(null);
+  const { marcarDelCatalogo, checkGuardarCliente, clienteNuevoModal, setClienteNuevoModal, marcarGuardado } = useGuardarCliente();
   const ahora = new Date();
   const { register, control, handleSubmit, setValue, watch, getValues } = useForm<RetencionForm>({
     defaultValues: {
@@ -129,6 +132,7 @@ export function NuevaRetencion() {
     setValue('receptor.direccionDepartamento', c.direccionDepartamento || '');
     setValue('receptor.direccionMunicipio', c.direccionMunicipio || '');
     setValue('receptor.direccionComplemento', c.direccionComplemento || '');
+    marcarDelCatalogo();
   };
 
   const mutation = useMutation({
@@ -150,7 +154,10 @@ export function NuevaRetencion() {
       </div>
 
       <div style={{ padding: '20px 28px', maxWidth: 900 }}>
-        <form onSubmit={handleSubmit(setPendingData)}>
+        <form onSubmit={handleSubmit((data) => {
+          checkGuardarCliente(data.receptor ?? {});
+          setPendingData(data);
+        })}>
 
           {/* Período */}
           <div className="table-card" style={{ marginBottom: 20 }}>
@@ -413,6 +420,8 @@ export function NuevaRetencion() {
             onCancel={() => setPendingData(null)}
           />
         )}
+
+        {clienteNuevoModal && <GuardarClienteModal datos={clienteNuevoModal} onClose={() => setClienteNuevoModal(null)} onGuardado={marcarGuardado} />}
       </div>
     </div>
   );
