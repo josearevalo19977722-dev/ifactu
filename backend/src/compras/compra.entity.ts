@@ -1,4 +1,5 @@
-import { Entity, PrimaryGeneratedColumn, Column, CreateDateColumn, UpdateDateColumn } from 'typeorm';
+import { Entity, PrimaryGeneratedColumn, Column, CreateDateColumn, UpdateDateColumn, ManyToOne, JoinColumn } from 'typeorm';
+import { Empresa } from '../empresa/entities/empresa.entity';
 
 export enum EstadoCompra {
   REGISTRADA = 'REGISTRADA',
@@ -57,6 +58,14 @@ export class Compra {
 
   @Column({ type: 'enum', enum: EstadoCompra, default: EstadoCompra.REGISTRADA })
   estado: EstadoCompra;
+
+  /** Empresa propietaria del registro */
+  @Column({ nullable: true, type: 'uuid' })
+  empresaId: string | null;
+
+  @ManyToOne(() => Empresa, { nullable: true, onDelete: 'CASCADE' })
+  @JoinColumn({ name: 'empresaId' })
+  empresa: Empresa;
 
   @CreateDateColumn() createdAt: Date;
   @UpdateDateColumn() updatedAt: Date;

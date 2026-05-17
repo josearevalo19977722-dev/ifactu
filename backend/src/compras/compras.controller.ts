@@ -14,7 +14,9 @@ export class ComprasController {
   constructor(private readonly svc: ComprasService) {}
 
   @Post()
-  registrar(@Body() dto: Partial<Compra>) { return this.svc.registrar(dto); }
+  registrar(@Body() dto: Partial<Compra>, @Req() req: Request) {
+    return this.svc.registrar({ ...dto, empresaId: (req.user as any).empresaId });
+  }
 
   /** Recibe un JSON DTE y devuelve la compra + ítems pre-llenados sin guardar */
   @Post('parsear-json')
@@ -24,9 +26,10 @@ export class ComprasController {
 
   /** Recibe un JSON DTE, lo parsea, guarda y opcionalmente aplica al inventario */
   @Post('desde-json')
-  registrarDesdeJson(@Body() body: { json: any; aplicarInventario?: boolean }) {
+  registrarDesdeJson(@Body() body: { json: any; aplicarInventario?: boolean }, @Req() req: Request) {
     return this.svc.registrarDesdeJson(body.json, {
-      aplicarInventario: body.aplicarInventario !== false, // default: true
+      aplicarInventario: body.aplicarInventario !== false,
+      empresaId: (req.user as any).empresaId,
     });
   }
 

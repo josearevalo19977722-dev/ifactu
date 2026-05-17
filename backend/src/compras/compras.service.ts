@@ -86,7 +86,7 @@ export class ComprasService {
   /** Parsea un JSON DTE, lo guarda y procesa el inventario automáticamente */
   async registrarDesdeJson(
     raw: any,
-    optsInventario: { aplicarInventario: boolean },
+    optsInventario: { aplicarInventario: boolean; empresaId?: string },
   ): Promise<{ compra: Compra; inventario: Awaited<ReturnType<InventarioService['procesarItemsCompra']>> | null }> {
     const { compra: datos, items } = parsearJsonDte(raw);
 
@@ -96,7 +96,7 @@ export class ComprasService {
       if (existe) throw new BadRequestException('Este DTE ya fue registrado (codigoGeneracion duplicado)');
     }
 
-    const compra = await this.registrar(datos);
+    const compra = await this.registrar({ ...datos, empresaId: optsInventario.empresaId ?? null });
 
     let inventario: Awaited<ReturnType<InventarioService['procesarItemsCompra']>> | null = null;
     if (optsInventario.aplicarInventario && items.length > 0) {
@@ -140,6 +140,8 @@ export class ComprasService {
     const { mes, anio, q, page = 1, limit = 20, empresaId } = params;
     const qb = this.repo.createQueryBuilder('c');
 
+    if (empresaId) qb.andWhere('c.empresaId = :empresaId', { empresaId });
+
     if (mes && anio) {
       const desde = `${anio}-${String(mes).padStart(2,'0')}-01`;
       const ultimo = new Date(anio, mes, 0).getDate();
@@ -169,11 +171,12 @@ export class ComprasService {
     const ultimo = new Date(anio, mes, 0).getDate();
     const hasta  = `${anio}-${String(mes).padStart(2,'0')}-${String(ultimo).padStart(2,'0')}`;
 
-    const compras = await this.repo.createQueryBuilder('c')
+    const qb = this.repo.createQueryBuilder('c')
       .where('c.fechaEmision >= :desde', { desde })
       .andWhere('c.fechaEmision <= :hasta', { hasta })
-      .andWhere("c.estado = 'REGISTRADA'")
-      .getMany();
+      .andWhere("c.estado = 'REGISTRADA'");
+    if (empresaId) qb.andWhere('c.empresaId = :empresaId', { empresaId });
+    const compras = await qb.getMany();
 
     return compras.reduce((acc, c) => ({
       cantidad:      acc.cantidad + 1,
@@ -207,11 +210,12 @@ export class ComprasService {
     const ultimo = new Date(anio, mes, 0).getDate();
     const hasta  = `${anio}-${String(mes).padStart(2,'0')}-${String(ultimo).padStart(2,'0')}`;
 
-    return this.repo.createQueryBuilder('c')
+    const qb = this.repo.createQueryBuilder('c')
       .where('c.fechaEmision >= :desde', { desde })
       .andWhere('c.fechaEmision <= :hasta', { hasta })
-      .andWhere("c.estado = 'REGISTRADA'")
-      .orderBy('c.fechaEmision', 'ASC')
+      .andWhere("c.estado = 'REGISTRADA'");
+    if (empresaId) qb.andWhere('c.empresaId = :empresaId', { empresaId });
+    return qb.orderBy('c.fechaEmision', 'ASC')
       .addOrderBy('c.proveedorNombre', 'ASC')
       .getMany();
   }
