@@ -211,7 +211,7 @@ export class ContabilidadService {
         .where('d.fechaEmision >= :desde', { desde })
         .andWhere('d.fechaEmision <= :hasta', { hasta })
         .andWhere("d.estado NOT IN ('ANULADO','RECHAZADO','PENDIENTE')")
-        .andWhere('d.empresa = :empresaId', { empresaId })
+        .andWhere('d.empresaId = :empresaId', { empresaId })
         .andWhere("d.ambiente = '02'")
         .leftJoinAndSelect('d.empresa', 'empresa')
         .getMany(),
@@ -219,7 +219,7 @@ export class ContabilidadService {
       this.asientoRepo.createQueryBuilder('a')
         .where('a.fecha >= :desde', { desde })
         .andWhere('a.fecha <= :hasta', { hasta })
-        .andWhere('a.empresa = :empresaId', { empresaId })
+        .andWhere('a.empresa_id = :empresaId', { empresaId })
         .select('a.referenciaId')
         .getMany(),
     ]);

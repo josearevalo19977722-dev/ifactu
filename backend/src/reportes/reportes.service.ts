@@ -124,7 +124,7 @@ export class ReportesService {
       .andWhere('dte.fechaEmision >= :desde', { desde })
       .andWhere('dte.fechaEmision <= :hasta', { hasta: hastaStr })
       .andWhere("dte.estado != 'ANULADO'")
-      .andWhere('dte.empresa = :empresaId', { empresaId })
+      .andWhere('dte.empresaId = :empresaId', { empresaId })
       .andWhere("dte.ambiente = '02'")
       .orderBy('dte.fechaEmision', 'ASC')
       .addOrderBy('dte.numeroControl', 'ASC')
