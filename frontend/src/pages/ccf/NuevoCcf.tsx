@@ -98,8 +98,20 @@ export function NuevoCcf() {
   };
 
   const totalGravada = items.reduce((s, i) => s + (Number(i.ventaGravada) || 0), 0);
-  const iva          = Math.round(totalGravada * 0.13 * 100) / 100;
-  
+
+  // IVA usando método residual para items con precio IVA incluido,
+  // así 5.00 IVA-inc → base 4.42 + IVA 0.58 = 5.00 exacto.
+  const iva = Math.round(
+    items.reduce((s, i) => {
+      const vg   = Number(i.ventaGravada) || 0;
+      if (i.incluyeIva && vg > 0) {
+        const bruto = Math.round(Number(i.precioUni) * (Number(i.cantidad) || 1) * 100) / 100;
+        return s + Math.round((bruto - vg) * 100) / 100;
+      }
+      return s + Math.round(vg * 0.13 * 100) / 100;
+    }, 0) * 100
+  ) / 100;
+
   // Retención 1% IVA: si total > 100 y receptor es Grande y emisor NO es agente
   const aplicaRetencion = totalGravada >= 100 && !!esGranContribuyente && empresa && !empresa.esAgenteRetencion;
   const retencion = aplicaRetencion ? Math.round(totalGravada * 0.01 * 100) / 100 : 0;
@@ -118,13 +130,9 @@ export function NuevoCcf() {
       <div className="page">
         <form onSubmit={handleSubmit((data) => {
           data.pagos[0].montoPago = totalPagar;
-          const finalData = {
-            ...data,
-            items: data.items.map(item => {
-              const netPrice = item.incluyeIva ? (Number(item.precioUni) / 1.13) : Number(item.precioUni);
-              return { ...item, precioUni: Math.round(netPrice * 1000000) / 1000000 };
-            })
-          };
+          // Se envía el precioUni original al backend (IVA-inc o sin IVA según flag).
+          // El backend hace la conversión y calcula IVA residual para preservar el total exacto.
+          const finalData = { ...data };
           // Si el receptor fue escrito manualmente (no del catálogo), preguntar si guardar
           if (!clienteDelCatalogo && data.receptor?.nombre && data.receptor?.nit) {
             setGuardarClienteModal({

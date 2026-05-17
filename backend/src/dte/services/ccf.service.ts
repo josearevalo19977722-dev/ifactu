@@ -171,16 +171,27 @@ export class CcfService {
     let ivaTotal = 0;
 
     const cuerpoDocumento = dto.items.map((item, index) => {
-      const cantidad = item.cantidad || 1;
-      // Si incluyeIva=true el precio ingresado es bruto → extraemos precio neto ÷ 1.13
-      const precioUnitario = item.incluyeIva
-        ? r2((item.precioUni || 0) / 1.13)
-        : r2(item.precioUni || 0);
-      const ventaGravada = r2(precioUnitario * cantidad);
-      const ivaItem = r2(ventaGravada * 0.13);
-      
+      const cantidad     = item.cantidad || 1;
+      const precioOrig   = item.precioUni || 0;
+      const descuento    = item.montoDescu || 0;
+
+      // Precio neto sin IVA (sin redondear aún para mantener precisión)
+      const precioNeto   = item.incluyeIva ? precioOrig / 1.13 : precioOrig;
+
+      // ventaGravada redondeada a 2 decimales (lo que va en el JSON DTE)
+      const ventaGravada = r2(precioNeto * cantidad - descuento);
+
+      // IVA residual cuando precio incluye IVA → preserva el total exacto del cliente
+      // Ej: $5 IVA-inc → base 4.42 + IVA residual 0.58 = $5.00 exacto
+      const ivaItem = item.incluyeIva
+        ? r2(precioOrig * cantidad - descuento - ventaGravada)
+        : r2(ventaGravada * 0.13);
+
+      // precioUni en el JSON: neto con 6 decimales (requerido por MH)
+      const precioUniJson = Math.round(precioNeto * 1000000) / 1000000;
+
       totalGravada += ventaGravada;
-      ivaTotal += ivaItem;
+      ivaTotal     += ivaItem;
 
       return {
         numItem: index + 1,
@@ -191,8 +202,8 @@ export class CcfService {
         codTributo: null,
         uniMedida: item.uniMedida || 59,
         descripcion: item.descripcion,
-        precioUni: precioUnitario,
-        montoDescu: 0,
+        precioUni: precioUniJson,
+        montoDescu: descuento,
         ventaNoSuj: 0,
         ventaExenta: 0,
         ventaGravada: ventaGravada,
