@@ -136,8 +136,8 @@ export class ComprasService {
     return this.repo.save(this.repo.create(dto));
   }
 
-  async listar(params: { mes?: number; anio?: number; q?: string; page?: number; limit?: number }) {
-    const { mes, anio, q, page = 1, limit = 20 } = params;
+  async listar(params: { mes?: number; anio?: number; q?: string; page?: number; limit?: number; empresaId?: string }) {
+    const { mes, anio, q, page = 1, limit = 20, empresaId } = params;
     const qb = this.repo.createQueryBuilder('c');
 
     if (mes && anio) {
@@ -164,7 +164,7 @@ export class ComprasService {
       .getManyAndCount();
   }
 
-  async resumenMes(mes: number, anio: number) {
+  async resumenMes(mes: number, anio: number, empresaId?: string) {
     const desde = `${anio}-${String(mes).padStart(2,'0')}-01`;
     const ultimo = new Date(anio, mes, 0).getDate();
     const hasta  = `${anio}-${String(mes).padStart(2,'0')}-${String(ultimo).padStart(2,'0')}`;
@@ -202,7 +202,7 @@ export class ComprasService {
   }
 
   /** Devuelve todas las compras REGISTRADAS de un mes/año (para CSV F-07) */
-  async getComprasMes(mes: number, anio: number): Promise<Compra[]> {
+  async getComprasMes(mes: number, anio: number, empresaId?: string): Promise<Compra[]> {
     const desde = `${anio}-${String(mes).padStart(2,'0')}-01`;
     const ultimo = new Date(anio, mes, 0).getDate();
     const hasta  = `${anio}-${String(mes).padStart(2,'0')}-${String(ultimo).padStart(2,'0')}`;

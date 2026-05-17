@@ -183,7 +183,7 @@ export class ContabilidadService {
 
   // ── Borrar todos los asientos de un mes (para regenerar) ─────────────────
 
-  async limpiarLote(mes: number, anio: number): Promise<{ eliminados: number }> {
+  async limpiarLote(mes: number, anio: number, empresaId: string): Promise<{ eliminados: number }> {
     const desde  = `${anio}-${String(mes).padStart(2,'0')}-01`;
     const ultimo = new Date(anio, mes, 0).getDate();
     const hasta  = `${anio}-${String(mes).padStart(2,'0')}-${String(ultimo).padStart(2,'0')}`;
@@ -193,6 +193,7 @@ export class ContabilidadService {
       .from(AsientoContable)
       .where('fecha >= :desde', { desde })
       .andWhere('fecha <= :hasta', { hasta })
+      .andWhere('empresa_id = :empresaId', { empresaId })
       .execute();
 
     return { eliminados: result.affected ?? 0 };
@@ -200,7 +201,7 @@ export class ContabilidadService {
 
   // ── Generación por lote (un mes completo) ─────────────────────────────────
 
-  async generarLote(mes: number, anio: number): Promise<{ generados: number; omitidos: number }> {
+  async generarLote(mes: number, anio: number, empresaId: string): Promise<{ generados: number; omitidos: number }> {
     const desde  = `${anio}-${String(mes).padStart(2,'0')}-01`;
     const ultimo = new Date(anio, mes, 0).getDate();
     const hasta  = `${anio}-${String(mes).padStart(2,'0')}-${String(ultimo).padStart(2,'0')}`;
@@ -210,12 +211,15 @@ export class ContabilidadService {
         .where('d.fechaEmision >= :desde', { desde })
         .andWhere('d.fechaEmision <= :hasta', { hasta })
         .andWhere("d.estado NOT IN ('ANULADO','RECHAZADO','PENDIENTE')")
+        .andWhere('d.empresa = :empresaId', { empresaId })
+        .andWhere("d.ambiente = '02'")
         .leftJoinAndSelect('d.empresa', 'empresa')
         .getMany(),
-      this.comprasService.getComprasMes(mes, anio),
+      this.comprasService.getComprasMes(mes, anio, empresaId),
       this.asientoRepo.createQueryBuilder('a')
         .where('a.fecha >= :desde', { desde })
         .andWhere('a.fecha <= :hasta', { hasta })
+        .andWhere('a.empresa = :empresaId', { empresaId })
         .select('a.referenciaId')
         .getMany(),
     ]);
@@ -244,8 +248,8 @@ export class ContabilidadService {
 
   // ── Listar asientos del mes ───────────────────────────────────────────────
 
-  async listar(params: { mes: number; anio: number; page?: number; limit?: number }) {
-    const { mes, anio, page = 1, limit = 50 } = params;
+  async listar(params: { mes: number; anio: number; page?: number; limit?: number; empresaId: string }) {
+    const { mes, anio, page = 1, limit = 50, empresaId } = params;
     const desde  = `${anio}-${String(mes).padStart(2,'0')}-01`;
     const ultimo = new Date(anio, mes, 0).getDate();
     const hasta  = `${anio}-${String(mes).padStart(2,'0')}-${String(ultimo).padStart(2,'0')}`;
@@ -253,6 +257,7 @@ export class ContabilidadService {
     return this.asientoRepo.createQueryBuilder('a')
       .where('a.fecha >= :desde', { desde })
       .andWhere('a.fecha <= :hasta', { hasta })
+      .andWhere('a.empresa = :empresaId', { empresaId })
       .orderBy('a.fecha', 'ASC')
       .addOrderBy('a.createdAt', 'ASC')
       .skip((page - 1) * limit)
@@ -262,7 +267,7 @@ export class ContabilidadService {
 
   // ── Resumen / Libro Mayor del mes ─────────────────────────────────────────
 
-  async resumenMes(mes: number, anio: number) {
+  async resumenMes(mes: number, anio: number, empresaId: string) {
     const desde  = `${anio}-${String(mes).padStart(2,'0')}-01`;
     const ultimo = new Date(anio, mes, 0).getDate();
     const hasta  = `${anio}-${String(mes).padStart(2,'0')}-${String(ultimo).padStart(2,'0')}`;
@@ -270,6 +275,7 @@ export class ContabilidadService {
     const asientos = await this.asientoRepo.createQueryBuilder('a')
       .where('a.fecha >= :desde', { desde })
       .andWhere('a.fecha <= :hasta', { hasta })
+      .andWhere('a.empresa = :empresaId', { empresaId })
       .getMany();
 
     const globalDebe  = n(asientos.reduce((s, a) => s + Number(a.totalDebe),  0));

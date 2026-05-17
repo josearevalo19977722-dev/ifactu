@@ -1,5 +1,5 @@
-import { Body, Controller, Get, Param, Patch, Post, Query, Res, UseGuards } from '@nestjs/common';
-import type { Response } from 'express';
+import { Body, Controller, Get, Param, Patch, Post, Query, Req, Res, UseGuards } from '@nestjs/common';
+import type { Request, Response } from 'express';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 import { ComprasService } from './compras.service';
 import { Compra } from './compra.entity';
@@ -37,26 +37,29 @@ export class ComprasController {
     @Query('q')     q?: string,
     @Query('page')  page = '1',
     @Query('limit') limit = '20',
+    @Req() req?: Request,
   ) {
     return this.svc.listar({
       mes: mes ? Number(mes) : undefined,
       anio: anio ? Number(anio) : undefined,
       q, page: Number(page), limit: Number(limit),
+      empresaId: (req!.user as any).empresaId,
     });
   }
 
   @Get('resumen')
-  resumen(@Query('mes') mes: string, @Query('anio') anio: string) {
-    return this.svc.resumenMes(Number(mes), Number(anio));
+  resumen(@Query('mes') mes: string, @Query('anio') anio: string, @Req() req: Request) {
+    return this.svc.resumenMes(Number(mes), Number(anio), (req.user as any).empresaId);
   }
 
   @Get('excel')
   async excel(
     @Query('mes') mes: string, @Query('anio') anio: string,
     @Res() res: Response,
+    @Req() req: Request,
   ) {
     const mesN = Number(mes); const anioN = Number(anio);
-    const [compras] = await this.svc.listar({ mes: mesN, anio: anioN, limit: 9999 });
+    const [compras] = await this.svc.listar({ mes: mesN, anio: anioN, limit: 9999, empresaId: (req.user as any).empresaId });
 
     const wb = new ExcelJS.Workbook();
     const ws = wb.addWorksheet('Libro de Compras');

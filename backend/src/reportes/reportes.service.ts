@@ -112,8 +112,8 @@ export class ReportesService {
     private readonly comprasService: ComprasService,
   ) {}
 
-  // Obtener DTEs de un mes/año para un tipo dado
-  private async getDtesMes(tipos: string[], mes: number, anio: number): Promise<Dte[]> {
+  // Obtener DTEs de un mes/año para un tipo dado, filtrados por empresa y ambiente producción
+  private async getDtesMes(tipos: string[], mes: number, anio: number, empresaId: string): Promise<Dte[]> {
     const desde = `${anio}-${String(mes).padStart(2,'0')}-01`;
     const hasta = new Date(anio, mes, 0); // último día del mes
     const hastaStr = `${anio}-${String(mes).padStart(2,'0')}-${String(hasta.getDate()).padStart(2,'0')}`;
@@ -124,6 +124,8 @@ export class ReportesService {
       .andWhere('dte.fechaEmision >= :desde', { desde })
       .andWhere('dte.fechaEmision <= :hasta', { hasta: hastaStr })
       .andWhere("dte.estado != 'ANULADO'")
+      .andWhere('dte.empresa = :empresaId', { empresaId })
+      .andWhere("dte.ambiente = '02'")
       .orderBy('dte.fechaEmision', 'ASC')
       .addOrderBy('dte.numeroControl', 'ASC')
       .getMany();
@@ -133,9 +135,9 @@ export class ReportesService {
 
   // ── Pago a Cuenta (F-14) — 1.75 % sobre ingresos brutos ─────────────────
 
-  async pagoACuenta(mes: number, anio: number) {
+  async pagoACuenta(mes: number, anio: number, empresaId: string) {
     const tipos = ['01','03','05','06','07','11','14','15'];
-    const dtes  = await this.getDtesMes(tipos, mes, anio);
+    const dtes  = await this.getDtesMes(tipos, mes, anio, empresaId);
 
     const porTipo: Record<string, { nombre: string; cantidad: number; total: number }> = {};
     const NOMBRES: Record<string, string> = {
@@ -175,11 +177,11 @@ export class ReportesService {
     };
   }
 
-  async resumenMes(mes: number, anio: number) {
+  async resumenMes(mes: number, anio: number, empresaId: string) {
     const [cf, ccf, reten] = await Promise.all([
-      this.getDtesMes(['01'], mes, anio),
-      this.getDtesMes(['03','05','06'], mes, anio),
-      this.getDtesMes(['07'], mes, anio),
+      this.getDtesMes(['01'], mes, anio, empresaId),
+      this.getDtesMes(['03','05','06'], mes, anio, empresaId),
+      this.getDtesMes(['07'], mes, anio, empresaId),
     ]);
 
     const sumar = (dtes: Dte[]) => dtes.reduce((acc, d) => {
@@ -194,7 +196,7 @@ export class ReportesService {
       };
     }, { cantidad: 0, exenta: 0, noSuj: 0, gravada: 0, iva: 0, total: 0 });
 
-    const compras = await this.comprasService.resumenMes(mes, anio);
+    const compras = await this.comprasService.resumenMes(mes, anio, empresaId);
     const debitoFiscal  = n(sumar(cf).iva + sumar(ccf).iva);
     const creditoFiscal = compras.ivaCredito;
     const ivaPagar      = n(debitoFiscal - creditoFiscal);
@@ -211,8 +213,8 @@ export class ReportesService {
 
   // ── Excel Libro Ventas CF ────────────────────────────────────────────────
 
-  async excelLibroVentasCf(mes: number, anio: number): Promise<Buffer> {
-    const dtes = await this.getDtesMes(['01'], mes, anio);
+  async excelLibroVentasCf(mes: number, anio: number, empresaId: string): Promise<Buffer> {
+    const dtes = await this.getDtesMes(['01'], mes, anio, empresaId);
     const wb   = new ExcelJS.Workbook();
     wb.creator  = 'Sistema DTE El Salvador';
     wb.created  = new Date();
@@ -280,8 +282,8 @@ export class ReportesService {
 
   // ── Excel Libro Ventas CCF ───────────────────────────────────────────────
 
-  async excelLibroVentasCcf(mes: number, anio: number): Promise<Buffer> {
-    const dtes = await this.getDtesMes(['03','05','06'], mes, anio);
+  async excelLibroVentasCcf(mes: number, anio: number, empresaId: string): Promise<Buffer> {
+    const dtes = await this.getDtesMes(['03','05','06'], mes, anio, empresaId);
     const wb   = new ExcelJS.Workbook();
     wb.creator  = 'Sistema DTE El Salvador';
     wb.created  = new Date();
@@ -351,11 +353,11 @@ export class ReportesService {
 
   // ── Excel Anexo F-07 ────────────────────────────────────────────────────
 
-  async excelAnexoF07(mes: number, anio: number): Promise<Buffer> {
+  async excelAnexoF07(mes: number, anio: number, empresaId: string): Promise<Buffer> {
     const [cf, ccf, reten] = await Promise.all([
-      this.getDtesMes(['01'], mes, anio),
-      this.getDtesMes(['03','05','06'], mes, anio),
-      this.getDtesMes(['07'], mes, anio),
+      this.getDtesMes(['01'], mes, anio, empresaId),
+      this.getDtesMes(['03','05','06'], mes, anio, empresaId),
+      this.getDtesMes(['07'], mes, anio, empresaId),
     ]);
 
     const wb = new ExcelJS.Workbook();
@@ -459,8 +461,8 @@ export class ReportesService {
    * Tipos DTE: 03, 05, 06 | Número de Anexo: 1
    * Columnas A-T (20 cols) según Manual F-07 V14 enero 2025
    */
-  async csvAnexo1(mes: number, anio: number): Promise<string> {
-    const dtes = await this.getDtesMes(['03', '05', '06'], mes, anio);
+  async csvAnexo1(mes: number, anio: number, empresaId: string): Promise<string> {
+    const dtes = await this.getDtesMes(['03', '05', '06'], mes, anio, empresaId);
     const lines: string[] = [];
 
     for (const dte of dtes) {
@@ -525,8 +527,8 @@ export class ReportesService {
    * Columnas A-W (23 cols) — agrupado por día
    * Ventas Gravadas Locales (col N) incluye IVA (así lo exige Hacienda para CF)
    */
-  async csvAnexo2(mes: number, anio: number): Promise<string> {
-    const dtes = await this.getDtesMes(['01'], mes, anio);
+  async csvAnexo2(mes: number, anio: number, empresaId: string): Promise<string> {
+    const dtes = await this.getDtesMes(['01'], mes, anio, empresaId);
     const lines: string[] = [];
 
     // Agrupar por día (fechaEmision YYYY-MM-DD)
@@ -615,8 +617,8 @@ export class ReportesService {
    * Columnas A-U (21 cols) | Número de Anexo: 3
    * Nuevas columnas Q,R,S,T activas desde febrero 2024
    */
-  async csvAnexo3(mes: number, anio: number): Promise<string> {
-    const compras = await this.comprasService.getComprasMes(mes, anio);
+  async csvAnexo3(mes: number, anio: number, empresaId: string): Promise<string> {
+    const compras = await this.comprasService.getComprasMes(mes, anio, empresaId);
     const lines: string[] = [];
 
     for (const c of compras) {
