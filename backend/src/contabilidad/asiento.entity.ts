@@ -39,6 +39,10 @@ export class AsientoContable {
   @Column({ type: 'jsonb', default: '[]' })
   lineas: LineaAsiento[];
 
+  /** FK explícita para filtros en QueryBuilder */
+  @Column({ name: 'empresa_id', nullable: true, type: 'uuid' })
+  empresaId: string | null;
+
   @ManyToOne(() => Empresa, { nullable: true })
   @JoinColumn({ name: 'empresa_id' })
   empresa: Empresa;
