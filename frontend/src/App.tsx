@@ -258,12 +258,12 @@ function AppLayout() {
         </nav>
 
         <div className="sidebar-footer">
-          {/* ── Selector de empresa (solo CONTADOR con múltiples empresas) ── */}
-          {usuario.rol === 'CONTADOR' && misEmpresas.length > 1 && (
+          {/* ── Selector de empresa (CONTADOR: siempre visible para confirmar empresa activa) ── */}
+          {usuario.rol === 'CONTADOR' && misEmpresas.length > 0 && (
             <div style={{ padding: '0 8px 6px', position: 'relative' }}>
               <button
                 type="button"
-                onClick={() => setEmpresaMenuOpen(o => !o)}
+                onClick={() => misEmpresas.length > 1 && setEmpresaMenuOpen(o => !o)}
                 style={{
                   width: '100%',
                   background: 'rgba(255,255,255,.06)',
@@ -272,15 +272,17 @@ function AppLayout() {
                   padding: '6px 10px',
                   color: '#e2e8f0',
                   fontSize: 12,
-                  cursor: 'pointer',
+                  cursor: misEmpresas.length > 1 ? 'pointer' : 'default',
                   display: 'flex',
                   justifyContent: 'space-between',
                   alignItems: 'center',
                   gap: 6,
                 }}
               >
-                <span>🏢 {empresaPerfil?.nombreLegal || 'Empresa actual'}</span>
-                <span style={{ fontSize: 10, opacity: 0.6 }}>{empresaMenuOpen ? '▲' : '▼'}</span>
+                <span>🏢 {empresaPerfil?.nombreLegal || misEmpresas.find(e => e.id === usuario.empresaId)?.nombre || 'Empresa actual'}</span>
+                {misEmpresas.length > 1 && (
+                  <span style={{ fontSize: 10, opacity: 0.6 }}>{empresaMenuOpen ? '▲' : '▼'}</span>
+                )}
               </button>
               {empresaMenuOpen && (
                 <div style={{
