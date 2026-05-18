@@ -212,7 +212,7 @@ export class ContabilidadService {
         .andWhere('d.fechaEmision <= :hasta', { hasta })
         .andWhere("d.estado NOT IN ('ANULADO','RECHAZADO','PENDIENTE')")
         .andWhere('d.empresaId = :empresaId', { empresaId })
-        .andWhere("d.ambiente = '02'")
+        .andWhere("d.ambiente = '01'")
         .leftJoinAndSelect('d.empresa', 'empresa')
         .getMany(),
       this.comprasService.getComprasMes(mes, anio, empresaId),
