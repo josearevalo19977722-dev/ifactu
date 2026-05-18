@@ -476,11 +476,9 @@ export class ContingenciaService {
             return (await enviar()).data;
           } catch (err2) {
             const b = err2.response?.data;
-            this.logger.error(`enviarLote retry HTTP ${err2.response?.status}: ${JSON.stringify(b ?? err2.message)}`);
-            const msg = b?.descripcionMsg ?? b?.mensaje ?? b?.message ?? err2.message;
-            // 401 sin body = API rechaza fuera del horario permitido (08:00–17:00 pruebas / 22:00–05:00 prod)
-            const extra = (!b || b === '') ? ' — El endpoint /recepcionlote de pruebas solo acepta envíos entre 08:00 y 17:00 CST' : '';
-            throw new Error(msg + extra);
+            this.logger.error(`enviarLote retry HTTP ${err2.response?.status} headers:${JSON.stringify(err2.response?.headers)} body:${JSON.stringify(b ?? err2.message)}`);
+            const msg = b?.descripcionMsg ?? b?.mensaje ?? b?.message ?? err2.message ?? 'Sin respuesta del MH (401)';
+            throw new Error(msg);
           }
         }
         const msg = body?.descripcionMsg ?? body?.mensaje ?? body?.message ?? err.message;
