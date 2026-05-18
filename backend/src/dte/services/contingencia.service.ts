@@ -440,13 +440,14 @@ export class ContingenciaService {
     }));
 
     // Manual MH sección 4.2.2: campos del lote (idEnvio = UUID v4 UPPERCASE)
-    // No incluir cantidadDoc ni codigoEvento — no están en el esquema oficial
+    // Para lotes de contingencia se incluye codigoEvento (selloRecibido del evento previo)
     const payload: Record<string, unknown> = {
       ambiente,
-      idEnvio:   uuidv4().toUpperCase(),
-      version:   1,
-      nitEmisor: nit,
+      idEnvio:      uuidv4().toUpperCase(),
+      version:      1,
+      nitEmisor:    nit,
       documentos,
+      ...(codigoEvento ? { codigoEvento } : {}),
     };
 
     const enviar = () => firstValueFrom(
@@ -499,7 +500,8 @@ export class ContingenciaService {
   private validarHorarioLote(ambiente: string): void {
     const esPruebas = ambiente === '00';
     const horario   = esPruebas ? HORARIO_LOTES.pruebas : HORARIO_LOTES.produccion;
-    const horaActual = new Date().getHours();
+    // Usar hora CST (UTC-6) para comparar con horarios de Hacienda
+    const horaActual = new Date(Date.now() - 6 * 60 * 60 * 1000).getUTCHours();
 
     let dentroDeHorario: boolean;
     if (horario.inicio < horario.fin) {
