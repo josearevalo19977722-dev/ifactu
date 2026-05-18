@@ -211,7 +211,7 @@ export class ContabilidadService {
         .where('d.fechaEmision >= :desde', { desde })
         .andWhere('d.fechaEmision <= :hasta', { hasta })
         .andWhere("d.estado NOT IN ('ANULADO','RECHAZADO','PENDIENTE')")
-        .andWhere('d.empresaId = :empresaId', { empresaId })
+        .andWhere('"d"."empresa_id" = :empresaId', { empresaId })
         .andWhere("d.ambiente = '02'")
         .leftJoinAndSelect('d.empresa', 'empresa')
         .getMany(),
@@ -257,7 +257,7 @@ export class ContabilidadService {
     return this.asientoRepo.createQueryBuilder('a')
       .where('a.fecha >= :desde', { desde })
       .andWhere('a.fecha <= :hasta', { hasta })
-      .andWhere('a.empresa = :empresaId', { empresaId })
+      .andWhere('"a"."empresa_id" = :empresaId', { empresaId })
       .orderBy('a.fecha', 'ASC')
       .addOrderBy('a.createdAt', 'ASC')
       .skip((page - 1) * limit)
@@ -275,7 +275,7 @@ export class ContabilidadService {
     const asientos = await this.asientoRepo.createQueryBuilder('a')
       .where('a.fecha >= :desde', { desde })
       .andWhere('a.fecha <= :hasta', { hasta })
-      .andWhere('a.empresa = :empresaId', { empresaId })
+      .andWhere('"a"."empresa_id" = :empresaId', { empresaId })
       .getMany();
 
     const globalDebe  = n(asientos.reduce((s, a) => s + Number(a.totalDebe),  0));

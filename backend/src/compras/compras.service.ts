@@ -140,7 +140,7 @@ export class ComprasService {
     const { mes, anio, q, page = 1, limit = 20, empresaId } = params;
     const qb = this.repo.createQueryBuilder('c');
 
-    if (empresaId) qb.andWhere('c.empresaId = :empresaId', { empresaId });
+    if (empresaId) qb.andWhere('"c"."empresa_id" = :empresaId', { empresaId });
 
     if (mes && anio) {
       const desde = `${anio}-${String(mes).padStart(2,'0')}-01`;
@@ -175,7 +175,7 @@ export class ComprasService {
       .where('c.fechaEmision >= :desde', { desde })
       .andWhere('c.fechaEmision <= :hasta', { hasta })
       .andWhere("c.estado = 'REGISTRADA'");
-    if (empresaId) qb.andWhere('c.empresaId = :empresaId', { empresaId });
+    if (empresaId) qb.andWhere('"c"."empresa_id" = :empresaId', { empresaId });
     const compras = await qb.getMany();
 
     return compras.reduce((acc, c) => ({
@@ -214,7 +214,7 @@ export class ComprasService {
       .where('c.fechaEmision >= :desde', { desde })
       .andWhere('c.fechaEmision <= :hasta', { hasta })
       .andWhere("c.estado = 'REGISTRADA'");
-    if (empresaId) qb.andWhere('c.empresaId = :empresaId', { empresaId });
+    if (empresaId) qb.andWhere('"c"."empresa_id" = :empresaId', { empresaId });
     return qb.orderBy('c.fechaEmision', 'ASC')
       .addOrderBy('c.proveedorNombre', 'ASC')
       .getMany();
