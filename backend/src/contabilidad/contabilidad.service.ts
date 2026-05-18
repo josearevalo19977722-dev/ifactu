@@ -211,7 +211,7 @@ export class ContabilidadService {
         .where('d.fechaEmision >= :desde', { desde })
         .andWhere('d.fechaEmision <= :hasta', { hasta })
         .andWhere("d.estado NOT IN ('ANULADO','RECHAZADO','PENDIENTE')")
-        .andWhere('"d"."empresa_id" = :empresaId', { empresaId })
+        .andWhere('d.empresaId = :empresaId', { empresaId })
         .andWhere("d.ambiente = '02'")
         .leftJoinAndSelect('d.empresa', 'empresa')
         .getMany(),
