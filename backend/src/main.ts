@@ -10,8 +10,19 @@ async function bootstrap() {
   const allowedOrigin = process.env.FRONTEND_URL ?? '*';
 
   app.enableCors({
-    // En producción, solo el dominio del frontend. En dev, cualquier origen.
-    origin: isProd ? allowedOrigin : '*',
+    origin: (origin, callback) => {
+      // Sin origen (curl, Postman, SSR) → OK
+      if (!origin) return callback(null, true);
+      // Extensiones Chrome/Edge → siempre OK (la clave valida el acceso)
+      if (origin.startsWith('chrome-extension://') || origin.startsWith('moz-extension://')) {
+        return callback(null, true);
+      }
+      // En dev → cualquier origen
+      if (!isProd) return callback(null, true);
+      // En producción → solo el frontend autorizado
+      if (origin === allowedOrigin) return callback(null, true);
+      return callback(new Error(`CORS: origen no permitido: ${origin}`));
+    },
     methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS', 'PATCH', 'HEAD'],
     allowedHeaders: ['Content-Type', 'X-API-Key', 'Authorization', 'Accept'],
     credentials: false,
