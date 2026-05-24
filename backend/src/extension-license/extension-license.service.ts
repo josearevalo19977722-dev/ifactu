@@ -72,10 +72,31 @@ export class ExtensionLicenseService {
 
   // ── Validar (llamado por la extensión) ─────────────────────────────────────
 
+  /** Normaliza la clave: quita guiones/espacios, pone minúsculas.
+   *  La extensión re-formatea el UUID con guiones cada 4 chars al mostrarlo,
+   *  por lo que hay que revertir ese formato antes de buscar en BD. */
+  private normalizarClave(raw: string): string {
+    // Quitar todos los guiones y espacios, poner minúsculas
+    const stripped = raw.replace(/[-\s]/g, '').toLowerCase();
+    // Si tiene 32 hex chars, reconstruir como UUID estándar 8-4-4-4-12
+    if (/^[0-9a-f]{32}$/.test(stripped)) {
+      return [
+        stripped.slice(0, 8),
+        stripped.slice(8, 12),
+        stripped.slice(12, 16),
+        stripped.slice(16, 20),
+        stripped.slice(20, 32),
+      ].join('-');
+    }
+    // Si ya tiene formato UUID o es otro tipo de clave, devolver en minúsculas sin espacios
+    return raw.trim().toLowerCase();
+  }
+
   async validar(apiKey: string): Promise<ValidarResult> {
     if (!apiKey) return { valid: false, error: 'Clave no proporcionada' };
 
-    const lic = await this.repo.findOne({ where: { apiKey, activa: true } });
+    const normalized = this.normalizarClave(apiKey);
+    const lic = await this.repo.findOne({ where: { apiKey: normalized, activa: true } });
     if (!lic) return { valid: false, error: 'Licencia inválida o revocada' };
 
     if (lic.expiresAt && new Date() > lic.expiresAt) {
@@ -110,7 +131,7 @@ export class ExtensionLicenseService {
     fingerprint: string;
     nombre_dispositivo?: string;
   }): Promise<{ success: boolean; error?: string }> {
-    const lic = await this.repo.findOne({ where: { apiKey: dto.clave, activa: true } });
+    const lic = await this.repo.findOne({ where: { apiKey: this.normalizarClave(dto.clave), activa: true } });
     if (!lic) return { success: false, error: 'Licencia no encontrada' };
     if (lic.expiresAt && new Date() > lic.expiresAt) {
       return { success: false, error: 'Licencia expirada' };
@@ -165,7 +186,7 @@ export class ExtensionLicenseService {
     fingerprint?: string;
     cantidad: number;
   }): Promise<{ ok: boolean; dtes_usados_mes?: number; max_dtes_mes?: number; error?: string }> {
-    const lic = await this.repo.findOne({ where: { apiKey: dto.clave, activa: true } });
+    const lic = await this.repo.findOne({ where: { apiKey: this.normalizarClave(dto.clave), activa: true } });
     if (!lic) return { ok: false, error: 'Licencia no encontrada' };
 
     const licActualizada = await this.resetearContadorSiNuevoMes(lic);
