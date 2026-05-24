@@ -1,6 +1,14 @@
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import apiClient from '../../api/apiClient';
+
+interface Usuario {
+  id: string;
+  nombre: string;
+  email: string;
+  rol: string;
+  activo: boolean;
+}
 
 interface Licencia {
   id: string;
@@ -41,7 +49,10 @@ export function ExtensionLicenciasAdmin() {
   const [busqueda, setBusqueda] = useState('');
   const [modalCrear, setModalCrear] = useState(false);
   const [modalPlan, setModalPlan] = useState<Plan | null | 'nuevo'>(null);
-  const [form, setForm] = useState({ nombre: '', email: '', plan: 'monthly', maxDtesMes: '', expiresAt: '', usuarioId: '' });
+  const [modoCrear, setModoCrear] = useState<'ifactu' | 'externo'>('ifactu');
+  const [buscarUsuario, setBuscarUsuario] = useState('');
+  const [usuarioSeleccionado, setUsuarioSeleccionado] = useState<Usuario | null>(null);
+  const [form, setForm] = useState({ nombre: '', email: '', plan: 'monthly' });
   const [formPlan, setFormPlan] = useState({ tipo: '', nombre: '', precio: '', maxDtesMes: '500', maxDispositivos: '1', paymentLinkUrl: '', activo: true });
 
   // ── Queries ────────────────────────────────────────────────────────────────
@@ -56,6 +67,20 @@ export function ExtensionLicenciasAdmin() {
     queryFn: () => apiClient.get('/extension/admin/planes').then(r => r.data),
     enabled: tab === 'planes',
   });
+
+  const { data: todosUsuarios = [] } = useQuery<Usuario[]>({
+    queryKey: ['superadmin-usuarios-mini'],
+    queryFn: () => apiClient.get('/auth/superadmin/usuarios').then(r => r.data),
+    enabled: modalCrear && modoCrear === 'ifactu',
+  });
+
+  const usuariosFiltrados = useMemo(() => {
+    const q = buscarUsuario.toLowerCase().trim();
+    if (!q) return todosUsuarios.slice(0, 8);
+    return todosUsuarios
+      .filter(u => u.nombre.toLowerCase().includes(q) || u.email.toLowerCase().includes(q))
+      .slice(0, 8);
+  }, [todosUsuarios, buscarUsuario]);
 
   // ── Mutations ──────────────────────────────────────────────────────────────
   const crearMut = useMutation({
@@ -295,53 +320,135 @@ export function ExtensionLicenciasAdmin() {
 
       {/* ─── Modal: Crear licencia ─── */}
       {modalCrear && (
-        <div style={s.overlay} onClick={() => setModalCrear(false)}>
+        <div style={s.overlay} onClick={() => { setModalCrear(false); setUsuarioSeleccionado(null); setBuscarUsuario(''); }}>
           <div style={s.modal} onClick={e => e.stopPropagation()}>
-            <h2 style={{ margin: '0 0 20px', fontSize: 17, fontWeight: 700 }}>Nueva licencia</h2>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
-              <div>
-                <label style={s.label}>Nombre</label>
-                <input value={form.nombre} onChange={e => setForm({ ...form, nombre: e.target.value })} style={s.input} placeholder="Nombre del usuario" />
-              </div>
-              <div>
-                <label style={s.label}>Email</label>
-                <input value={form.email} onChange={e => setForm({ ...form, email: e.target.value })} style={s.input} placeholder="correo@ejemplo.com" type="email" />
-              </div>
-              <div>
-                <label style={s.label}>Plan</label>
-                <select value={form.plan} onChange={e => setForm({ ...form, plan: e.target.value })} style={s.input}>
-                  {Object.entries(PLAN_NOMBRES).map(([k, v]) => <option key={k} value={k}>{v}</option>)}
-                </select>
-              </div>
-              <div>
-                <label style={s.label}>Límite DTEs/mes (0 = ilimitado)</label>
-                <input value={form.maxDtesMes} onChange={e => setForm({ ...form, maxDtesMes: e.target.value })} style={s.input} placeholder="200" type="number" />
-              </div>
-              <div>
-                <label style={s.label}>Vence el (opcional)</label>
-                <input value={form.expiresAt} onChange={e => setForm({ ...form, expiresAt: e.target.value })} style={s.input} type="date" />
-              </div>
-              <div>
-                <label style={s.label}>UUID de usuario iFactu (opcional — para vincular a un CONTADOR existente)</label>
-                <input value={form.usuarioId} onChange={e => setForm({ ...form, usuarioId: e.target.value })} style={s.input} placeholder="xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx" />
-                <div style={{ fontSize: 11, color: '#94a3b8', marginTop: 3 }}>
-                  Si se especifica, el CONTADOR verá esta licencia en su página "Mi Licencia".
+            <h2 style={{ margin: '0 0 16px', fontSize: 17, fontWeight: 700 }}>Nueva licencia</h2>
+
+            {/* Toggle modo */}
+            <div style={{ display: 'flex', background: '#f1f5f9', borderRadius: 10, padding: 4, marginBottom: 20, gap: 4 }}>
+              {(['ifactu', 'externo'] as const).map(m => (
+                <button
+                  key={m}
+                  onClick={() => { setModoCrear(m); setUsuarioSeleccionado(null); setBuscarUsuario(''); }}
+                  style={{
+                    flex: 1, padding: '7px 0', borderRadius: 7, border: 'none', cursor: 'pointer',
+                    fontSize: 13, fontWeight: 600, transition: 'all .15s',
+                    background: modoCrear === m ? '#fff' : 'transparent',
+                    color: modoCrear === m ? '#6366f1' : '#64748b',
+                    boxShadow: modoCrear === m ? '0 1px 4px rgba(0,0,0,.1)' : 'none',
+                  }}
+                >
+                  {m === 'ifactu' ? '👤 Usuario iFactu' : '🌐 Cliente externo'}
+                </button>
+              ))}
+            </div>
+
+            {/* ── Modo: usuario iFactu ── */}
+            {modoCrear === 'ifactu' && (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+                {!usuarioSeleccionado ? (
+                  <>
+                    <div>
+                      <label style={s.label}>Buscar usuario</label>
+                      <input
+                        autoFocus
+                        value={buscarUsuario}
+                        onChange={e => setBuscarUsuario(e.target.value)}
+                        style={s.input}
+                        placeholder="Nombre o correo del CONTADOR…"
+                      />
+                    </div>
+                    <div style={{ border: '1px solid #e2e8f0', borderRadius: 8, overflow: 'hidden', maxHeight: 220, overflowY: 'auto' }}>
+                      {usuariosFiltrados.length === 0 && (
+                        <div style={{ padding: '14px 16px', color: '#94a3b8', fontSize: 13 }}>Sin resultados</div>
+                      )}
+                      {usuariosFiltrados.map(u => (
+                        <div
+                          key={u.id}
+                          onClick={() => setUsuarioSeleccionado(u)}
+                          style={{ padding: '10px 16px', cursor: 'pointer', borderBottom: '1px solid #f1f5f9', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}
+                          onMouseEnter={e => (e.currentTarget.style.background = '#f8fafc')}
+                          onMouseLeave={e => (e.currentTarget.style.background = '')}
+                        >
+                          <div>
+                            <div style={{ fontWeight: 600, fontSize: 13, color: '#0f172a' }}>{u.nombre}</div>
+                            <div style={{ fontSize: 11, color: '#64748b' }}>{u.email}</div>
+                          </div>
+                          <span style={{ fontSize: 10, background: '#ede9fe', color: '#6d28d9', padding: '2px 7px', borderRadius: 99, fontWeight: 600 }}>
+                            {u.rol}
+                          </span>
+                        </div>
+                      ))}
+                    </div>
+                  </>
+                ) : (
+                  <div style={{ background: '#f0fdf4', border: '1px solid #bbf7d0', borderRadius: 10, padding: '12px 16px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                    <div>
+                      <div style={{ fontWeight: 700, fontSize: 14, color: '#166534' }}>✅ {usuarioSeleccionado.nombre}</div>
+                      <div style={{ fontSize: 12, color: '#15803d' }}>{usuarioSeleccionado.email}</div>
+                    </div>
+                    <button onClick={() => setUsuarioSeleccionado(null)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#64748b', fontSize: 18 }}>✕</button>
+                  </div>
+                )}
+                <div style={{ background: '#fefce8', border: '1px solid #fde68a', borderRadius: 8, padding: '10px 14px', fontSize: 12, color: '#92400e' }}>
+                  💡 Se creará una licencia <strong>iFactu incluido</strong> (DTEs ilimitados, sin vencimiento). El usuario la verá automáticamente en su panel.
                 </div>
               </div>
-            </div>
+            )}
+
+            {/* ── Modo: cliente externo ── */}
+            {modoCrear === 'externo' && (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+                <div>
+                  <label style={s.label}>Nombre</label>
+                  <input value={form.nombre} onChange={e => setForm({ ...form, nombre: e.target.value })} style={s.input} placeholder="Nombre del cliente" autoFocus />
+                </div>
+                <div>
+                  <label style={s.label}>Email</label>
+                  <input value={form.email} onChange={e => setForm({ ...form, email: e.target.value })} style={s.input} placeholder="correo@ejemplo.com" type="email" />
+                </div>
+                <div>
+                  <label style={s.label}>Plan</label>
+                  <select value={form.plan} onChange={e => setForm({ ...form, plan: e.target.value })} style={s.input}>
+                    {planes.filter(p => p.activo).map(p => (
+                      <option key={p.tipo} value={p.tipo}>{p.nombre} — ${Number(p.precio).toFixed(2)}</option>
+                    ))}
+                    {planes.length === 0 && Object.entries(PLAN_NOMBRES).filter(([k]) => k !== 'ifactu' && k !== 'free').map(([k, v]) => (
+                      <option key={k} value={k}>{v}</option>
+                    ))}
+                  </select>
+                </div>
+              </div>
+            )}
+
             <div style={{ display: 'flex', gap: 10, marginTop: 20, justifyContent: 'flex-end' }}>
-              <button onClick={() => setModalCrear(false)} style={{ ...s.btn('#94a3b8') }}>Cancelar</button>
               <button
-                disabled={crearMut.isPending}
-                onClick={() => crearMut.mutate({
-                  nombre:    form.nombre,
-                  email:     form.email,
-                  origen:    form.usuarioId ? 'ifactu' : 'n1co',
-                  plan:      form.usuarioId ? 'ifactu' : form.plan,
-                  maxDtesMes: form.maxDtesMes ? Number(form.maxDtesMes) : undefined,
-                  expiresAt: form.expiresAt || undefined,
-                  usuarioId: form.usuarioId || undefined,
-                })}
+                onClick={() => { setModalCrear(false); setUsuarioSeleccionado(null); setBuscarUsuario(''); }}
+                style={s.btn('#94a3b8')}
+              >
+                Cancelar
+              </button>
+              <button
+                disabled={crearMut.isPending || (modoCrear === 'ifactu' && !usuarioSeleccionado) || (modoCrear === 'externo' && (!form.nombre || !form.email))}
+                onClick={() => {
+                  if (modoCrear === 'ifactu' && usuarioSeleccionado) {
+                    crearMut.mutate({
+                      nombre:    usuarioSeleccionado.nombre,
+                      email:     usuarioSeleccionado.email,
+                      origen:    'ifactu',
+                      plan:      'ifactu',
+                      maxDtesMes: 0,
+                      usuarioId: usuarioSeleccionado.id,
+                    });
+                  } else {
+                    crearMut.mutate({
+                      nombre:  form.nombre,
+                      email:   form.email,
+                      origen:  'n1co',
+                      plan:    form.plan,
+                    });
+                  }
+                }}
                 style={s.btn('#6366f1')}
               >
                 {crearMut.isPending ? 'Creando…' : 'Crear licencia'}
