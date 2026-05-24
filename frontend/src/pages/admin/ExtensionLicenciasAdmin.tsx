@@ -251,7 +251,7 @@ export function ExtensionLicenciasAdmin() {
                       </span>
                     </td>
                     <td style={{ padding: '10px 12px' }}>
-                      <div style={{ display: 'flex', gap: 6', flexWrap: 'wrap' }}>
+                      <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
                         <button
                           title="Genera una nueva clave manteniendo el mismo registro"
                           onClick={() => { if (confirm(`¿Regenerar clave de ${lic.email || lic.nombre}? La clave anterior dejará de funcionar.`)) regenerarMut.mutate(lic.id); }}
