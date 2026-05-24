@@ -164,6 +164,14 @@ export class ExtensionLicenseController {
     });
   }
 
+  /** PATCH /api/extension/licencias/:id/regenerar-clave */
+  @Patch('extension/licencias/:id/regenerar-clave')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(RolUsuario.SUPERADMIN)
+  async regenerarClave(@Param('id') id: string) {
+    return this.svc.regenerarClave(id);
+  }
+
   /** PATCH /api/extension/licencias/:id/revocar */
   @Patch('extension/licencias/:id/revocar')
   @UseGuards(JwtAuthGuard, RolesGuard)

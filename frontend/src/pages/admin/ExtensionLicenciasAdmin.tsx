@@ -98,6 +98,11 @@ export function ExtensionLicenciasAdmin() {
     onSuccess: () => qc.invalidateQueries({ queryKey: ['extension-licencias-admin'] }),
   });
 
+  const regenerarMut = useMutation({
+    mutationFn: (id: string) => apiClient.patch(`/extension/licencias/${id}/regenerar-clave`).then(r => r.data),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['extension-licencias-admin'] }),
+  });
+
   const upsertPlanMut = useMutation({
     mutationFn: (body: any) => apiClient.put(`/extension/admin/planes/${body.tipo}`, body).then(r => r.data),
     onSuccess: () => { qc.invalidateQueries({ queryKey: ['extension-planes-admin'] }); setModalPlan(null); },
@@ -246,7 +251,14 @@ export function ExtensionLicenciasAdmin() {
                       </span>
                     </td>
                     <td style={{ padding: '10px 12px' }}>
-                      <div style={{ display: 'flex', gap: 6 }}>
+                      <div style={{ display: 'flex', gap: 6', flexWrap: 'wrap' }}>
+                        <button
+                          title="Genera una nueva clave manteniendo el mismo registro"
+                          onClick={() => { if (confirm(`¿Regenerar clave de ${lic.email || lic.nombre}? La clave anterior dejará de funcionar.`)) regenerarMut.mutate(lic.id); }}
+                          style={s.btn('#f59e0b')}
+                        >
+                          🔄 Clave
+                        </button>
                         {lic.activa ? (
                           <button
                             onClick={() => { if (confirm(`¿Revocar licencia de ${lic.email}?`)) revocarMut.mutate(lic.id); }}

@@ -288,6 +288,16 @@ export class ExtensionLicenseService {
     return this.repo.find({ order: { createdAt: 'DESC' } });
   }
 
+  /** Genera una nueva API key para la licencia, manteniendo todos los demás datos. */
+  async regenerarClave(id: string): Promise<{ apiKey: string }> {
+    const lic = await this.repo.findOne({ where: { id } });
+    if (!lic) throw new NotFoundException('Licencia no encontrada');
+    const nuevaClave = this.generarApiKey();
+    await this.repo.update(id, { apiKey: nuevaClave });
+    this.logger.log(`Clave regenerada para licencia ${id} (${lic.email})`);
+    return { apiKey: nuevaClave };
+  }
+
   async revocar(id: string): Promise<void> {
     const lic = await this.repo.findOne({ where: { id } });
     if (!lic) throw new NotFoundException('Licencia no encontrada');
