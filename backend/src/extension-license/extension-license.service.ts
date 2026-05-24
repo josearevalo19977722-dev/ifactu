@@ -90,11 +90,22 @@ export class ExtensionLicenseService {
     return raw.replace(/[-\s]/g, '').toUpperCase();
   }
 
+  /** Busca la licencia normalizando ambos lados: input del usuario y valor en BD.
+   *  Soporta tanto el nuevo formato corto (16 hex sin guiones)
+   *  como UUIDs legacy (32 hex con guiones en formato 8-4-4-4-12). */
+  private async buscarPorClave(rawClave: string): Promise<ExtensionLicense | null> {
+    const stripped = rawClave.replace(/[-\s]/g, '').toUpperCase();
+    return this.repo
+      .createQueryBuilder('l')
+      .where("REPLACE(UPPER(l.\"apiKey\"), '-', '') = :key", { key: stripped })
+      .andWhere('l.activa = true')
+      .getOne();
+  }
+
   async validar(apiKey: string): Promise<ValidarResult> {
     if (!apiKey) return { valid: false, error: 'Clave no proporcionada' };
 
-    const normalized = this.normalizarClave(apiKey);
-    const lic = await this.repo.findOne({ where: { apiKey: normalized, activa: true } });
+    const lic = await this.buscarPorClave(apiKey);
     if (!lic) return { valid: false, error: 'Licencia inválida o revocada' };
 
     if (lic.expiresAt && new Date() > lic.expiresAt) {
@@ -129,7 +140,7 @@ export class ExtensionLicenseService {
     fingerprint: string;
     nombre_dispositivo?: string;
   }): Promise<{ success: boolean; error?: string }> {
-    const lic = await this.repo.findOne({ where: { apiKey: this.normalizarClave(dto.clave), activa: true } });
+    const lic = await this.buscarPorClave(dto.clave);
     if (!lic) return { success: false, error: 'Licencia no encontrada' };
     if (lic.expiresAt && new Date() > lic.expiresAt) {
       return { success: false, error: 'Licencia expirada' };
@@ -184,7 +195,7 @@ export class ExtensionLicenseService {
     fingerprint?: string;
     cantidad: number;
   }): Promise<{ ok: boolean; dtes_usados_mes?: number; max_dtes_mes?: number; error?: string }> {
-    const lic = await this.repo.findOne({ where: { apiKey: this.normalizarClave(dto.clave), activa: true } });
+    const lic = await this.buscarPorClave(dto.clave);
     if (!lic) return { ok: false, error: 'Licencia no encontrada' };
 
     const licActualizada = await this.resetearContadorSiNuevoMes(lic);

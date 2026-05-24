@@ -93,7 +93,7 @@ export function ExtensionLicenciaPage() {
                   wordBreak: 'break-all',
                   minWidth: 0,
                 }}>
-                  {licencia.apiKey}
+                  {licencia.apiKey.replace(/-/g, '').toUpperCase().match(/.{1,4}/g)?.join('-') ?? licencia.apiKey}
                 </code>
                 <button
                   onClick={copiar}

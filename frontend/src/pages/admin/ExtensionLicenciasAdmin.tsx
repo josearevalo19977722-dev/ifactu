@@ -214,7 +214,7 @@ export function ExtensionLicenciasAdmin() {
                         onClick={() => navigator.clipboard.writeText(lic.apiKey)}
                         style={{ fontSize: 11, background: '#f1f5f9', padding: '2px 6px', borderRadius: 4, cursor: 'pointer', letterSpacing: 1 }}
                       >
-                        {lic.apiKey.match(/.{1,4}/g)?.join('-') ?? lic.apiKey}
+                        {lic.apiKey.replace(/-/g, '').toUpperCase().match(/.{1,4}/g)?.join('-') ?? lic.apiKey}
                       </code>
                     </td>
                     <td style={{ padding: '10px 12px' }}>
