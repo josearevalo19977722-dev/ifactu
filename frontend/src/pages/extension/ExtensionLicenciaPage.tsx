@@ -6,9 +6,23 @@ interface LicenciaResp {
   licencia: {
     apiKey: string;
     activa: boolean;
+    plan: string;
+    maxDtesMes: number;
+    dtesUsadosMes: number;
+    expiresAt: string | null;
     createdAt: string;
   } | null;
 }
+
+const PLAN_NOMBRES: Record<string, string> = {
+  free:       'Gratuito',
+  monthly:    'Mensual',
+  annual:     'Anual',
+  lifetime_1: 'Vitalicio (1 equipo)',
+  lifetime_2: 'Vitalicio (2 equipos)',
+  lifetime_5: 'Vitalicio (5 equipos)',
+  ifactu:     'iFactu (incluido)',
+};
 
 export function ExtensionLicenciaPage() {
   const [copiado, setCopiado] = useState(false);
@@ -27,6 +41,12 @@ export function ExtensionLicenciaPage() {
       setTimeout(() => setCopiado(false), 2500);
     });
   };
+
+  const porcentajeUso = licencia && licencia.maxDtesMes > 0
+    ? Math.min(100, Math.round((licencia.dtesUsadosMes / licencia.maxDtesMes) * 100))
+    : 0;
+
+  const colorBarra = porcentajeUso >= 90 ? '#ef4444' : porcentajeUso >= 70 ? '#f59e0b' : '#6366f1';
 
   return (
     <div style={{ maxWidth: 680, margin: '0 auto', padding: '32px 20px' }}>
@@ -56,6 +76,7 @@ export function ExtensionLicenciaPage() {
           {/* Tarjeta de licencia */}
           <div style={{ background: '#fff', border: '1px solid #e2e8f0', borderRadius: 16, boxShadow: '0 2px 12px rgba(0,0,0,.06)', overflow: 'hidden', marginBottom: 20 }}>
 
+            {/* Header degradado con la clave */}
             <div style={{ background: 'linear-gradient(135deg, #4f46e5 0%, #7c3aed 100%)', padding: '20px 24px' }}>
               <div style={{ fontSize: 11, fontWeight: 700, color: 'rgba(255,255,255,.6)', textTransform: 'uppercase', letterSpacing: 1.5, marginBottom: 4 }}>
                 Tu clave de licencia
@@ -94,6 +115,7 @@ export function ExtensionLicenciaPage() {
               </div>
             </div>
 
+            {/* Datos del plan */}
             <div style={{ padding: '16px 24px', display: 'flex', gap: 24, flexWrap: 'wrap', borderBottom: '1px solid #f1f5f9' }}>
               <div>
                 <div style={{ fontSize: 11, color: '#94a3b8', fontWeight: 600, textTransform: 'uppercase', marginBottom: 3 }}>Estado</div>
@@ -103,7 +125,17 @@ export function ExtensionLicenciaPage() {
               </div>
               <div>
                 <div style={{ fontSize: 11, color: '#94a3b8', fontWeight: 600, textTransform: 'uppercase', marginBottom: 3 }}>Plan</div>
-                <div style={{ fontSize: 13, fontWeight: 600, color: '#6366f1' }}>iFactu (incluido)</div>
+                <div style={{ fontSize: 13, fontWeight: 600, color: '#6366f1' }}>
+                  {PLAN_NOMBRES[licencia.plan] ?? licencia.plan}
+                </div>
+              </div>
+              <div>
+                <div style={{ fontSize: 11, color: '#94a3b8', fontWeight: 600, textTransform: 'uppercase', marginBottom: 3 }}>Vence</div>
+                <div style={{ fontSize: 13, color: '#334155' }}>
+                  {licencia.expiresAt
+                    ? new Date(licencia.expiresAt).toLocaleDateString('es-SV', { day: '2-digit', month: 'short', year: 'numeric' })
+                    : 'Sin vencimiento'}
+                </div>
               </div>
               <div>
                 <div style={{ fontSize: 11, color: '#94a3b8', fontWeight: 600, textTransform: 'uppercase', marginBottom: 3 }}>Generada</div>
@@ -112,6 +144,38 @@ export function ExtensionLicenciaPage() {
                 </div>
               </div>
             </div>
+
+            {/* Barra de uso mensual */}
+            {licencia.maxDtesMes > 0 && (
+              <div style={{ padding: '14px 24px', borderBottom: '1px solid #f1f5f9' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 6 }}>
+                  <span style={{ fontSize: 12, fontWeight: 600, color: '#475569' }}>DTEs procesados este mes</span>
+                  <span style={{ fontSize: 12, fontWeight: 700, color: colorBarra }}>
+                    {licencia.dtesUsadosMes} / {licencia.maxDtesMes}
+                  </span>
+                </div>
+                <div style={{ background: '#f1f5f9', borderRadius: 99, height: 8, overflow: 'hidden' }}>
+                  <div style={{
+                    height: '100%',
+                    width: `${porcentajeUso}%`,
+                    background: colorBarra,
+                    borderRadius: 99,
+                    transition: 'width .3s ease',
+                  }} />
+                </div>
+                {porcentajeUso >= 90 && (
+                  <div style={{ marginTop: 6, fontSize: 12, color: '#ef4444' }}>
+                    ⚠️ Estás cerca del límite mensual. Considera actualizar tu plan.
+                  </div>
+                )}
+              </div>
+            )}
+
+            {licencia.maxDtesMes === 0 && (
+              <div style={{ padding: '10px 24px', borderBottom: '1px solid #f1f5f9', fontSize: 12, color: '#10b981', fontWeight: 600 }}>
+                ✅ DTEs ilimitados incluidos en tu plan
+              </div>
+            )}
 
             <div style={{ padding: '14px 24px', background: '#f8fafc', fontSize: 12, color: '#64748b' }}>
               ⚠️ No compartas esta clave. Es personal e intransferible.

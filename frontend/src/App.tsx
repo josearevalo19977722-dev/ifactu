@@ -36,6 +36,7 @@ import {
   PagosAdmin,
   ContabilidadPage,
   ExtensionLicenciaPage,
+  ExtensionLicenciasAdmin,
 } from './routes/lazyPages';
 import { ImpersonacionBanner } from './components/ImpersonacionBanner';
 import { DteLimiteProvider } from './components/DteLimiteProvider';
@@ -152,6 +153,9 @@ function AppLayout() {
               </NavLink>
               <NavLink to="/admin/pagos">
                 <span className="nav-icon" aria-hidden>💳</span> Pagos N1CO
+              </NavLink>
+              <NavLink to="/admin/extension-licencias">
+                <span className="nav-icon" aria-hidden>🧩</span> Ext. Licencias
               </NavLink>
               <NavLink to="/configuracion/whatsapp">
                 <span className="nav-icon" aria-hidden>💬</span> WhatsApp
@@ -385,6 +389,7 @@ function AppLayout() {
             {isSuperAdmin && <Route path="/admin/contingencia" element={<ContingenciaGlobal />} />}
             {isSuperAdmin && <Route path="/admin/salud" element={<SaludSistema />} />}
             {isSuperAdmin && <Route path="/admin/pagos" element={<PagosAdmin />} />}
+            {isSuperAdmin && <Route path="/admin/extension-licencias" element={<ExtensionLicenciasAdmin />} />}
             <Route path="/extension/licencia" element={<ExtensionLicenciaPage />} />
           </Routes>
         </Suspense>
