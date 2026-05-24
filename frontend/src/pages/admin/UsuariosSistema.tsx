@@ -152,6 +152,7 @@ export function UsuariosSistema() {
                 <tr>
                   <th>Nombre</th>
                   <th>Correo</th>
+                  <th>UUID</th>
                   <th>Empresa</th>
                   <th>Rol</th>
                   <th>Estado</th>
@@ -160,7 +161,7 @@ export function UsuariosSistema() {
               </thead>
               <tbody>
                 {filtrados.length === 0 ? (
-                  <tr><td colSpan={6} style={{ textAlign: 'center', color: 'var(--text-3)', padding: 32 }}>
+                  <tr><td colSpan={7} style={{ textAlign: 'center', color: 'var(--text-3)', padding: 32 }}>
                     Sin resultados
                   </td></tr>
                 ) : filtrados.map((u) => {
@@ -169,6 +170,15 @@ export function UsuariosSistema() {
                     <tr key={u.id}>
                       <td className="text-main">{u.nombre}</td>
                       <td className="mono" style={{ fontSize: '.85rem' }}>{u.email}</td>
+                      <td>
+                        <span
+                          title="Click para copiar UUID"
+                          onClick={() => navigator.clipboard.writeText(u.id)}
+                          style={{ fontFamily: 'monospace', fontSize: 10, color: '#94a3b8', cursor: 'pointer', background: '#f1f5f9', padding: '2px 5px', borderRadius: 4 }}
+                        >
+                          {u.id.slice(0, 8)}…
+                        </span>
+                      </td>
                       <td style={{ color: 'var(--text-2)', fontSize: '.875rem' }}>
                         {u.empresa?.nombreLegal ?? <span style={{ color: 'var(--text-3)' }}>—</span>}
                       </td>

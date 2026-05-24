@@ -132,6 +132,7 @@ export class ExtensionLicenseController {
       plan?: string;
       maxDtesMes?: number;
       expiresAt?: string;
+      usuarioId?: string;
     },
   ) {
     if (!body.nombre || !body.email) throw new BadRequestException('nombre y email son requeridos');
@@ -142,6 +143,7 @@ export class ExtensionLicenseController {
       plan:       body.plan,
       maxDtesMes: body.maxDtesMes,
       expiresAt:  body.expiresAt ? new Date(body.expiresAt) : undefined,
+      usuarioId:  body.usuarioId || undefined,
     });
   }
 

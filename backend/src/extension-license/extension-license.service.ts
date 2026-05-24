@@ -228,10 +228,16 @@ export class ExtensionLicenseService {
     plan?: string;
     maxDtesMes?: number;
     expiresAt?: Date;
+    usuarioId?: string;
   }): Promise<ExtensionLicense> {
     const plan       = dto.plan ?? (dto.origen === 'n1co' ? 'monthly' : 'ifactu');
     const planCfg    = await this.planRepo.findOne({ where: { tipo: plan } }).catch(() => null);
     const maxDtesMes = dto.maxDtesMes ?? planCfg?.maxDtesMes ?? 200;
+
+    // Si se vincula a un usuario existente, revocar su licencia anterior para evitar duplicados
+    if (dto.usuarioId) {
+      await this.repo.update({ usuarioId: dto.usuarioId, activa: true }, { activa: false });
+    }
 
     const lic = this.repo.create({
       apiKey:       randomUUID(),
@@ -242,7 +248,7 @@ export class ExtensionLicenseService {
       expiresAt:    dto.expiresAt ?? null,
       nombre:       dto.nombre,
       email:        dto.email,
-      usuarioId:    null,
+      usuarioId:    dto.usuarioId ?? null,
       n1coOrderCode: null,
     });
     return this.repo.save(lic);

@@ -41,7 +41,7 @@ export function ExtensionLicenciasAdmin() {
   const [busqueda, setBusqueda] = useState('');
   const [modalCrear, setModalCrear] = useState(false);
   const [modalPlan, setModalPlan] = useState<Plan | null | 'nuevo'>(null);
-  const [form, setForm] = useState({ nombre: '', email: '', plan: 'monthly', maxDtesMes: '', expiresAt: '' });
+  const [form, setForm] = useState({ nombre: '', email: '', plan: 'monthly', maxDtesMes: '', expiresAt: '', usuarioId: '' });
   const [formPlan, setFormPlan] = useState({ tipo: '', nombre: '', precio: '', maxDtesMes: '500', maxDispositivos: '1', paymentLinkUrl: '', activo: true });
 
   // ── Queries ────────────────────────────────────────────────────────────────
@@ -321,18 +321,26 @@ export function ExtensionLicenciasAdmin() {
                 <label style={s.label}>Vence el (opcional)</label>
                 <input value={form.expiresAt} onChange={e => setForm({ ...form, expiresAt: e.target.value })} style={s.input} type="date" />
               </div>
+              <div>
+                <label style={s.label}>UUID de usuario iFactu (opcional — para vincular a un CONTADOR existente)</label>
+                <input value={form.usuarioId} onChange={e => setForm({ ...form, usuarioId: e.target.value })} style={s.input} placeholder="xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx" />
+                <div style={{ fontSize: 11, color: '#94a3b8', marginTop: 3 }}>
+                  Si se especifica, el CONTADOR verá esta licencia en su página "Mi Licencia".
+                </div>
+              </div>
             </div>
             <div style={{ display: 'flex', gap: 10, marginTop: 20, justifyContent: 'flex-end' }}>
               <button onClick={() => setModalCrear(false)} style={{ ...s.btn('#94a3b8') }}>Cancelar</button>
               <button
                 disabled={crearMut.isPending}
                 onClick={() => crearMut.mutate({
-                  nombre: form.nombre,
-                  email: form.email,
-                  origen: 'n1co',
-                  plan: form.plan,
+                  nombre:    form.nombre,
+                  email:     form.email,
+                  origen:    form.usuarioId ? 'ifactu' : 'n1co',
+                  plan:      form.usuarioId ? 'ifactu' : form.plan,
                   maxDtesMes: form.maxDtesMes ? Number(form.maxDtesMes) : undefined,
                   expiresAt: form.expiresAt || undefined,
+                  usuarioId: form.usuarioId || undefined,
                 })}
                 style={s.btn('#6366f1')}
               >
