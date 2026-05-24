@@ -6,7 +6,7 @@ import {
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
-import { randomUUID } from 'crypto';
+import { randomBytes } from 'crypto';
 import { ExtensionLicense } from './extension-license.entity';
 import { LicenseDevice } from './license-device.entity';
 import { ExtensionPlanConfig } from './extension-plan-config.entity';
@@ -72,24 +72,22 @@ export class ExtensionLicenseService {
 
   // ── Validar (llamado por la extensión) ─────────────────────────────────────
 
-  /** Normaliza la clave: quita guiones/espacios, pone minúsculas.
-   *  La extensión re-formatea el UUID con guiones cada 4 chars al mostrarlo,
-   *  por lo que hay que revertir ese formato antes de buscar en BD. */
+  /**
+   * Genera una clave de licencia en formato XXXX-XXXX-XXXX-XXXX
+   * (16 chars hex uppercase, almacenados SIN guiones en BD).
+   * El usuario la ve con guiones; la extensión los inserta automáticamente.
+   */
+  private generarApiKey(): string {
+    return randomBytes(8).toString('hex').toUpperCase(); // ej: A3F79B2E4C1D8E6A
+  }
+
+  /**
+   * Normaliza la clave antes de buscarla en BD:
+   * quita guiones/espacios y convierte a mayúsculas.
+   * Soporta tanto el nuevo formato corto (16 hex) como UUIDs legacy.
+   */
   private normalizarClave(raw: string): string {
-    // Quitar todos los guiones y espacios, poner minúsculas
-    const stripped = raw.replace(/[-\s]/g, '').toLowerCase();
-    // Si tiene 32 hex chars, reconstruir como UUID estándar 8-4-4-4-12
-    if (/^[0-9a-f]{32}$/.test(stripped)) {
-      return [
-        stripped.slice(0, 8),
-        stripped.slice(8, 12),
-        stripped.slice(12, 16),
-        stripped.slice(16, 20),
-        stripped.slice(20, 32),
-      ].join('-');
-    }
-    // Si ya tiene formato UUID o es otro tipo de clave, devolver en minúsculas sin espacios
-    return raw.trim().toLowerCase();
+    return raw.replace(/[-\s]/g, '').toUpperCase();
   }
 
   async validar(apiKey: string): Promise<ValidarResult> {
@@ -222,7 +220,7 @@ export class ExtensionLicenseService {
     if (existente) return existente;
 
     const lic = this.repo.create({
-      apiKey:      randomUUID(),
+      apiKey:      this.generarApiKey(),
       origen:      'ifactu',
       activa:      true,
       plan:        'ifactu',
@@ -261,7 +259,7 @@ export class ExtensionLicenseService {
     }
 
     const lic = this.repo.create({
-      apiKey:       randomUUID(),
+      apiKey:       this.generarApiKey(),
       origen:       dto.origen ?? 'n1co',
       activa:       true,
       plan,
@@ -392,7 +390,7 @@ export class ExtensionLicenseService {
     } else {
       // Crear nueva licencia
       const nuevaLic = this.repo.create({
-        apiKey:       randomUUID(),
+        apiKey:       this.generarApiKey(),
         origen:       'n1co',
         activa:       true,
         plan:         plan?.tipo ?? 'monthly',

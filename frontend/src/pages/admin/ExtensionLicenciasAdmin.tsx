@@ -209,8 +209,12 @@ export function ExtensionLicenciasAdmin() {
                       <div style={{ color: '#64748b', fontSize: 11 }}>{lic.email || '—'}</div>
                     </td>
                     <td style={{ padding: '10px 12px' }}>
-                      <code style={{ fontSize: 11, background: '#f1f5f9', padding: '2px 6px', borderRadius: 4 }}>
-                        {lic.apiKey.slice(0, 8)}…
+                      <code
+                        title="Click para copiar"
+                        onClick={() => navigator.clipboard.writeText(lic.apiKey)}
+                        style={{ fontSize: 11, background: '#f1f5f9', padding: '2px 6px', borderRadius: 4, cursor: 'pointer', letterSpacing: 1 }}
+                      >
+                        {lic.apiKey.match(/.{1,4}/g)?.join('-') ?? lic.apiKey}
                       </code>
                     </td>
                     <td style={{ padding: '10px 12px' }}>
