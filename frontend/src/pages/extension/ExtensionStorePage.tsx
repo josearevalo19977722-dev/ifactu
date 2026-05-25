@@ -194,7 +194,6 @@ export function ExtensionStorePage() {
                     width: '100%',
                     padding: '12px 0',
                     borderRadius: 12,
-                    border: 'none',
                     cursor: cargando === plan.tipo ? 'wait' : 'pointer',
                     fontSize: 14,
                     fontWeight: 700,
