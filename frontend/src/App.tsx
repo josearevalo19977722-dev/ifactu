@@ -37,6 +37,7 @@ import {
   ContabilidadPage,
   ExtensionLicenciaPage,
   ExtensionLicenciasAdmin,
+  ExtensionStorePage,
 } from './routes/lazyPages';
 import { ImpersonacionBanner } from './components/ImpersonacionBanner';
 import { DteLimiteProvider } from './components/DteLimiteProvider';
@@ -407,6 +408,7 @@ function App() {
             <Suspense fallback={<RouteFallback />}>
               <Routes>
                 <Route path="/login" element={<LoginRoute />} />
+                <Route path="/extension" element={<ExtensionStorePage />} />
                 <Route path="/consultar/:id" element={<ConsultaPublicaPage />} />
                 <Route path="/verificar/:codigoGeneracion" element={<VerificarDte />} />
                 <Route path="/*" element={<AppLayout />} />

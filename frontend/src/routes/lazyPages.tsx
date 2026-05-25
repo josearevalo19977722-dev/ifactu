@@ -87,6 +87,9 @@ export const ContabilidadPage = lazy(() =>
 export const ExtensionLicenciaPage = lazy(() =>
   import('../pages/extension/ExtensionLicenciaPage').then(m => ({ default: m.ExtensionLicenciaPage })),
 );
+export const ExtensionStorePage = lazy(() =>
+  import('../pages/extension/ExtensionStorePage').then(m => ({ default: m.ExtensionStorePage })),
+);
 export const ExtensionLicenciasAdmin = lazy(() =>
   import('../pages/admin/ExtensionLicenciasAdmin').then(m => ({ default: m.ExtensionLicenciasAdmin })),
 );
