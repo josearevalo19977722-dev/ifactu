@@ -23,7 +23,7 @@ const ICONOS: Record<string, string> = {
 const POPULAR = 'annual'; // plan destacado
 
 const FEATURES = [
-  '📥 Descarga DTEs automáticamente desde Gmail y Outlook',
+  '📥 Descarga DTEs automáticamente desde Gmail',
   '📄 Soporte para CF, CCF, NRE, FSE y más tipos de DTE',
   '🔍 Detecta y organiza adjuntos JSON + PDF en segundos',
   '🤖 Autopilot: escanea tu bandeja sin intervención manual',
@@ -82,7 +82,7 @@ export function ExtensionStorePage() {
           </span>
         </h1>
         <p style={{ fontSize: 18, color: '#94a3b8', maxWidth: 520, margin: '0 auto 40px', lineHeight: 1.6 }}>
-          iFactu_Conta detecta y organiza tus comprobantes fiscales electrónicos directamente desde Gmail y Outlook.
+          iFactu_Conta detecta y organiza tus comprobantes fiscales electrónicos directamente desde Gmail.
         </p>
 
         {/* Features */}
@@ -183,7 +183,7 @@ export function ExtensionStorePage() {
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginBottom: 24, fontSize: 13, color: '#cbd5e1' }}>
                   <div>📄 {plan.maxDtesMes === 0 ? 'DTEs ilimitados' : `${plan.maxDtesMes} DTEs/mes`}</div>
                   <div>🖥️ {plan.maxDispositivos} {plan.maxDispositivos === 1 ? 'equipo' : 'equipos'}</div>
-                  <div>✅ Gmail + Outlook</div>
+                  <div>✅ Gmail</div>
                   {esVitalicio && <div style={{ color: '#86efac' }}>♾️ Sin suscripción mensual</div>}
                   {plan.tipo === 'annual' && <div style={{ color: '#86efac' }}>💰 Ahorra vs plan mensual</div>}
                 </div>
