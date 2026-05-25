@@ -42,7 +42,7 @@ export function ExtensionStorePage() {
 
   const comprar = async (plan: Plan) => {
     if (!plan.paymentLinkUrl) {
-      alert('Este plan no está disponible aún. Contáctanos en soporte@jsolutionsv.com');
+      alert('Este plan no está disponible aún. Contáctanos en jsolution.sv@gmail.com');
       return;
     }
     setCargando(plan.tipo);
@@ -108,10 +108,11 @@ export function ExtensionStorePage() {
             placeholder="tucorreo@empresa.com"
             style={{
               padding: '10px 16px', borderRadius: 10,
-              border: '1px solid rgba(99,102,241,.3)',
-              background: 'rgba(255,255,255,.06)',
+              border: '1px solid rgba(99,102,241,.4)',
+              background: 'rgba(255,255,255,.12)',
               color: '#f8fafc', fontSize: 14,
               outline: 'none',
+              boxShadow: '0 0 0 0 transparent',
             }}
           />
         </div>
@@ -127,7 +128,7 @@ export function ExtensionStorePage() {
           <div style={{ textAlign: 'center', background: 'rgba(255,255,255,.05)', borderRadius: 16, padding: '40px 24px', color: '#94a3b8' }}>
             <div style={{ fontSize: 32, marginBottom: 12 }}>🚧</div>
             <div style={{ fontWeight: 700, fontSize: 16, marginBottom: 8 }}>Planes próximamente</div>
-            <div style={{ fontSize: 13 }}>Estamos configurando los planes. Escríbenos a <a href="mailto:soporte@jsolutionsv.com" style={{ color: '#818cf8' }}>soporte@jsolutionsv.com</a></div>
+            <div style={{ fontSize: 13 }}>Estamos configurando los planes. Escríbenos a <a href="mailto:jsolution.sv@gmail.com" style={{ color: '#818cf8' }}>jsolution.sv@gmail.com</a></div>
           </div>
         )}
 
@@ -214,17 +215,31 @@ export function ExtensionStorePage() {
         </div>
 
         {/* Footer */}
-        <div style={{ textAlign: 'center', marginTop: 48, color: '#475569', fontSize: 13, display: 'flex', flexDirection: 'column', gap: 8 }}>
-          <div>🔒 Pago seguro procesado por N1CO · Cancela cuando quieras</div>
+        <div style={{ textAlign: 'center', marginTop: 48, color: '#64748b', fontSize: 13, display: 'flex', flexDirection: 'column', gap: 10, alignItems: 'center' }}>
+          {/* Logo N1CO */}
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8, color: '#94a3b8' }}>
+            <span>🔒 Pago seguro procesado por</span>
+            <img
+              src="https://n1co.shop/n1co-logo.png"
+              alt="N1CO"
+              style={{ height: 18, verticalAlign: 'middle', filter: 'brightness(0) invert(.6)' }}
+              onError={e => {
+                (e.currentTarget as HTMLImageElement).style.display = 'none';
+                (e.currentTarget.nextSibling as HTMLElement).style.display = 'inline';
+              }}
+            />
+            <span style={{ display: 'none', fontWeight: 700, color: '#94a3b8', letterSpacing: 1 }}>N1CO</span>
+            <span style={{ color: '#475569' }}>· Cancela cuando quieras</span>
+          </div>
           <div>
             ¿Tienes preguntas? Escríbenos a{' '}
-            <a href="mailto:soporte@jsolutionsv.com" style={{ color: '#818cf8' }}>soporte@jsolutionsv.com</a>
+            <a href="mailto:jsolution.sv@gmail.com" style={{ color: '#818cf8' }}>jsolution.sv@gmail.com</a>
           </div>
-          <div style={{ marginTop: 8 }}>
+          <div>
             ¿Ya tienes una clave?{' '}
             <a
-              href="chrome://extensions"
-              onClick={e => { e.preventDefault(); window.open('https://chrome.google.com/webstore', '_blank'); }}
+              href="https://chromewebstore.google.com"
+              target="_blank" rel="noreferrer"
               style={{ color: '#818cf8' }}
             >
               Instala la extensión →

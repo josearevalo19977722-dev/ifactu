@@ -146,7 +146,7 @@ export function ExtensionLicenciasAdmin() {
       padding: '6px 14px', borderRadius: 7, border: 'none', cursor: 'pointer',
       fontSize: 12, fontWeight: 600, background: color, color: '#fff',
     } as React.CSSProperties),
-    input: { width: '100%', padding: '8px 12px', borderRadius: 8, border: '1px solid #e2e8f0', fontSize: 13, boxSizing: 'border-box' } as React.CSSProperties,
+    input: { width: '100%', padding: '8px 12px', borderRadius: 8, border: '1px solid #e2e8f0', fontSize: 13, boxSizing: 'border-box', color: '#0f172a', background: '#fff' } as React.CSSProperties,
     label: { fontSize: 12, fontWeight: 600, color: '#475569', display: 'block', marginBottom: 4 } as React.CSSProperties,
     overlay: { position: 'fixed', inset: 0, background: 'rgba(0,0,0,.4)', zIndex: 1000, display: 'flex', alignItems: 'center', justifyContent: 'center' } as React.CSSProperties,
     modal: { background: '#fff', borderRadius: 16, padding: 28, width: 480, maxWidth: '95vw', maxHeight: '90vh', overflowY: 'auto' } as React.CSSProperties,
