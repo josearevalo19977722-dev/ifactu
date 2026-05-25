@@ -245,6 +245,11 @@ export function ExtensionStorePage() {
               Instala la extensión →
             </a>
           </div>
+          <div style={{ color: '#475569' }}>
+            <a href="/privacidad-extension" style={{ color: '#475569' }}>Política de Privacidad</a>
+            {' · '}
+            <a href="https://ifactu.jsolutionsv.com" style={{ color: '#475569' }}>ifactu.jsolutionsv.com</a>
+          </div>
         </div>
       </div>
     </div>
