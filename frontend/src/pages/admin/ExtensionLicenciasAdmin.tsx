@@ -146,10 +146,11 @@ export function ExtensionLicenciasAdmin() {
       padding: '6px 14px', borderRadius: 7, border: 'none', cursor: 'pointer',
       fontSize: 12, fontWeight: 600, background: color, color: '#fff',
     } as React.CSSProperties),
-    input: { width: '100%', padding: '8px 12px', borderRadius: 8, border: '1px solid #e2e8f0', fontSize: 13, boxSizing: 'border-box', color: '#0f172a', background: '#fff' } as React.CSSProperties,
+    input: { width: '100%', padding: '8px 12px', borderRadius: 8, border: '1.5px solid #cbd5e1', fontSize: 13, boxSizing: 'border-box', color: '#0f172a', background: '#f8fafc', WebkitTextFillColor: '#0f172a' } as React.CSSProperties,
+    inputDisabled: { width: '100%', padding: '8px 12px', borderRadius: 8, border: '1.5px solid #e2e8f0', fontSize: 13, boxSizing: 'border-box', color: '#94a3b8', background: '#f1f5f9', WebkitTextFillColor: '#94a3b8', cursor: 'not-allowed' } as React.CSSProperties,
     label: { fontSize: 12, fontWeight: 600, color: '#475569', display: 'block', marginBottom: 4 } as React.CSSProperties,
-    overlay: { position: 'fixed', inset: 0, background: 'rgba(0,0,0,.4)', zIndex: 1000, display: 'flex', alignItems: 'center', justifyContent: 'center' } as React.CSSProperties,
-    modal: { background: '#fff', borderRadius: 16, padding: 28, width: 480, maxWidth: '95vw', maxHeight: '90vh', overflowY: 'auto' } as React.CSSProperties,
+    overlay: { position: 'fixed', inset: 0, background: 'rgba(0,0,0,.5)', zIndex: 1000, display: 'flex', alignItems: 'center', justifyContent: 'center' } as React.CSSProperties,
+    modal: { background: '#ffffff', borderRadius: 16, padding: 28, width: 480, maxWidth: '95vw', maxHeight: '90vh', overflowY: 'auto', color: '#0f172a' } as React.CSSProperties,
   };
 
   return (
@@ -217,7 +218,7 @@ export function ExtensionLicenciasAdmin() {
                       <code
                         title="Click para copiar"
                         onClick={() => navigator.clipboard.writeText(lic.apiKey)}
-                        style={{ fontSize: 11, background: '#f1f5f9', padding: '2px 6px', borderRadius: 4, cursor: 'pointer', letterSpacing: 1 }}
+                        style={{ fontSize: 11, background: '#e2e8f0', color: '#1e293b', padding: '3px 8px', borderRadius: 5, cursor: 'pointer', letterSpacing: 1.5, fontWeight: 600, display: 'inline-block' }}
                       >
                         {lic.apiKey.replace(/-/g, '').toUpperCase().match(/.{1,4}/g)?.join('-') ?? lic.apiKey}
                       </code>
@@ -338,7 +339,7 @@ export function ExtensionLicenciasAdmin() {
       {modalCrear && (
         <div style={s.overlay} onClick={() => { setModalCrear(false); setUsuarioSeleccionado(null); setBuscarUsuario(''); }}>
           <div style={s.modal} onClick={e => e.stopPropagation()}>
-            <h2 style={{ margin: '0 0 16px', fontSize: 17, fontWeight: 700 }}>Nueva licencia</h2>
+            <h2 style={{ margin: '0 0 16px', fontSize: 17, fontWeight: 700, color: '#0f172a' }}>Nueva licencia</h2>
 
             {/* Toggle modo */}
             <div style={{ display: 'flex', background: '#f1f5f9', borderRadius: 10, padding: 4, marginBottom: 20, gap: 4 }}>
@@ -479,7 +480,7 @@ export function ExtensionLicenciasAdmin() {
       {modalPlan !== null && (
         <div style={s.overlay} onClick={() => setModalPlan(null)}>
           <div style={s.modal} onClick={e => e.stopPropagation()}>
-            <h2 style={{ margin: '0 0 20px', fontSize: 17, fontWeight: 700 }}>
+            <h2 style={{ margin: '0 0 20px', fontSize: 17, fontWeight: 700, color: '#0f172a' }}>
               {modalPlan === 'nuevo' ? 'Nuevo plan' : `Editar: ${(modalPlan as Plan).nombre}`}
             </h2>
             <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
@@ -488,7 +489,7 @@ export function ExtensionLicenciasAdmin() {
                 <input
                   value={formPlan.tipo}
                   onChange={e => setFormPlan({ ...formPlan, tipo: e.target.value })}
-                  style={s.input}
+                  style={modalPlan !== 'nuevo' ? s.inputDisabled : s.input}
                   placeholder="monthly"
                   disabled={modalPlan !== 'nuevo'}
                 />
