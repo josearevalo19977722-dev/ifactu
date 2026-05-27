@@ -2442,8 +2442,9 @@ textarea.form-control {
   display: none;
 }
 
-@media (max-width: 640px) {
-  /* ── Topbar móvil visible ── */
+/* ── HAMBURGER + SIDEBAR DESLIZANTE ≤ 900px (móvil + tablet) ──────────── */
+@media (max-width: 900px) {
+  /* Topbar móvil visible */
   .mobile-topbar {
     display: flex;
     align-items: center;
@@ -2463,19 +2464,18 @@ textarea.form-control {
     letter-spacing: .04em;
   }
 
-  /* ── Sidebar deslizante ── */
+  /* Sidebar deslizante */
   .sidebar {
     transform: translateX(-100%);
     transition: transform .25s cubic-bezier(.4,0,.2,1);
     z-index: 55;
-    /* sombra cuando está abierta se pone con la clase --open */
   }
   .sidebar--open {
     transform: translateX(0);
     box-shadow: 4px 0 32px rgba(0,0,0,.55);
   }
 
-  /* ── Overlay semitransparente ── */
+  /* Overlay semitransparente */
   .sidebar-overlay {
     display: block;
     position: fixed;
@@ -2485,76 +2485,85 @@ textarea.form-control {
     backdrop-filter: blur(2px);
   }
 
-  /* ── Content: sin margen de sidebar, padding top para el topbar móvil ── */
+  /* Content: ocupa todo el ancho */
   .content {
     margin-left: 0;
     padding-top: 52px;
   }
 
-  /* ── Topbar de página: menos padding en móvil ── */
+  /* Topbar de página */
   .topbar {
-    padding: 0 14px;
+    padding: 0 16px;
     min-height: 50px;
   }
-  .topbar-title {
-    font-size: .92rem;
-  }
+}
 
-  /* ── Páginas con padding lateral ── */
+/* ── AJUSTES MÓVIL ≤ 640px ──────────────────────────────────────────────── */
+@media (max-width: 640px) {
+  /* Topbar título más pequeño */
+  .topbar-title { font-size: .92rem; }
+
+  /* Páginas */
   .page { padding: 16px 14px; }
   .card { padding: 14px; }
 
-  /* ── Tablas: scroll horizontal ── */
+  /* ── Tablas: sin min-width forzado, fuente compacta, scroll horizontal ── */
   .table-wrap,
   .table-responsive {
     overflow-x: auto;
     -webkit-overflow-scrolling: touch;
+    /* Sombra sutil en el borde derecho como pista visual de scroll */
+    background:
+      linear-gradient(to right, var(--color-surface) 30%, transparent),
+      linear-gradient(to left,  var(--color-surface) 30%, transparent) right,
+      radial-gradient(farthest-side at 0   50%, rgba(0,0,0,.18), transparent),
+      radial-gradient(farthest-side at 100% 50%, rgba(0,0,0,.18), transparent) right;
+    background-repeat: no-repeat;
+    background-size: 40px 100%, 40px 100%, 14px 100%, 14px 100%;
+    background-attachment: local, local, scroll, scroll;
   }
   table {
-    min-width: 460px;
+    /* Eliminar el min-width fijo que forzaba scroll innecesario */
+    min-width: 0;
+    width: 100%;
+    font-size: 12px;
   }
-  /* Stat cards: texto más compacto en móvil */
-  .stat-card {
-    padding: 12px 14px;
-    gap: 10px;
+  th, td {
+    padding: 8px 10px !important;
+    white-space: nowrap;
   }
-  .stat-value { font-size: 1.35rem; }
-  .stat-label { font-size: 0.72rem; }
-  .stat-icon {
-    width: 36px;
-    height: 36px;
-    font-size: 1rem;
-    border-radius: 8px;
+  /* Columnas con texto largo: truncar con ellipsis */
+  td .truncate,
+  td[data-col="receptor"],
+  td[data-col="descripcion"] {
+    max-width: 120px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    display: block;
   }
 
-  /* ── Modales: full width en móvil ── */
+  /* Stat cards */
+  .stat-card { padding: 12px 14px; gap: 10px; }
+  .stat-value { font-size: 1.35rem; }
+  .stat-label { font-size: 0.72rem; }
+  .stat-icon  { width: 36px; height: 36px; font-size: 1rem; border-radius: 8px; }
+
+  /* Modales: full width */
   .modal {
     width: calc(100vw - 16px) !important;
     max-height: calc(100dvh - 24px) !important;
     border-radius: 12px;
   }
-  .modal-body {
-    padding: 14px 14px !important;
-  }
+  .modal-body { padding: 14px !important; }
 
-  /* ── Formularios de emisión: 1 columna ── */
-  .form-grid {
-    grid-template-columns: 1fr !important;
-  }
-  .form-row {
-    flex-direction: column !important;
-  }
+  /* Formularios de emisión: 1 columna */
+  .form-grid          { grid-template-columns: 1fr !important; }
+  .form-row           { flex-direction: column !important; }
   .field-half,
-  .field-third {
-    width: 100% !important;
-  }
+  .field-third        { width: 100% !important; }
 
-  /* ── Botones en footer de modal/topbar ── */
-  .topbar-actions {
-    gap: 6px;
-  }
-  .topbar-actions .btn {
-    font-size: .78rem;
-    padding: 5px 10px;
-  }
+  /* Botones topbar */
+  .topbar-actions     { gap: 6px; }
+  .topbar-actions .btn { font-size: .78rem; padding: 5px 10px; }
 }
