@@ -76,7 +76,7 @@ export function ExtensionPrivacidadPage() {
   return (
     <div style={s.page}>
       {/* ── Header ── */}
-      <div style={{ textAlign: 'center', padding: '64px 20px 48px' }}>
+      <div style={{ textAlign: 'center', padding: 'clamp(32px, 7vw, 64px) 20px clamp(20px, 4vw, 48px)' }}>
         <div style={s.badge}>
           <span style={{ fontSize: 16 }}>🔒</span>
           Política de Privacidad — iFactu_Conta

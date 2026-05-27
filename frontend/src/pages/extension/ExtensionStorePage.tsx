@@ -69,7 +69,7 @@ export function ExtensionStorePage() {
     <div style={s.page}>
 
       {/* ── Hero ── */}
-      <div style={{ textAlign: 'center', padding: '72px 20px 48px' }}>
+      <div style={{ textAlign: 'center', padding: 'clamp(36px, 8vw, 72px) 20px clamp(24px, 5vw, 48px)' }}>
         <div style={{ display: 'inline-flex', alignItems: 'center', gap: 10, background: 'rgba(99,102,241,.15)', border: '1px solid rgba(99,102,241,.3)', borderRadius: 99, padding: '6px 16px', marginBottom: 24 }}>
           <span style={{ fontSize: 18 }}>🧩</span>
           <span style={{ fontSize: 13, fontWeight: 600, color: '#a5b4fc' }}>Extensión Chrome para Contadores</span>
@@ -86,7 +86,7 @@ export function ExtensionStorePage() {
         </p>
 
         {/* Features */}
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))', gap: 10, maxWidth: 700, margin: '0 auto 56px', textAlign: 'left' }}>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: 10, maxWidth: 700, margin: '0 auto 32px', textAlign: 'left' }}>
           {FEATURES.map((f, i) => (
             <div key={i} style={{ display: 'flex', alignItems: 'flex-start', gap: 8, fontSize: 13, color: '#cbd5e1' }}>
               <span>{f}</span>
@@ -217,7 +217,7 @@ export function ExtensionStorePage() {
         {/* Footer */}
         <div style={{ textAlign: 'center', marginTop: 48, color: '#64748b', fontSize: 13, display: 'flex', flexDirection: 'column', gap: 10, alignItems: 'center' }}>
           {/* Logo N1CO */}
-          <div style={{ display: 'flex', alignItems: 'center', gap: 8, color: '#94a3b8' }}>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', flexWrap: 'wrap', gap: 6, color: '#94a3b8' }}>
             <span>🔒 Pago seguro procesado por</span>
             <img
               src="https://n1co.shop/n1co-logo.png"
