@@ -314,20 +314,16 @@ export function Inventario() {
                   <input className="form-control" {...register('descripcion')} />
                 </div>
                 <div className="form-row">
-                  {!esServicio && (
-                    <div className="form-group">
-                      <label className="form-label">Stock actual</label>
-                      <input className="form-control" type="number" step="0.0001"
-                        {...register('stockActual', { valueAsNumber: true })} />
-                    </div>
-                  )}
-                  {!esServicio && (
-                    <div className="form-group">
-                      <label className="form-label">Costo unitario</label>
-                      <input className="form-control" type="number" step="0.0001"
-                        {...register('costoUnitario', { valueAsNumber: true })} />
-                    </div>
-                  )}
+                  <div className="form-group" style={{ display: esServicio ? 'none' : undefined }}>
+                    <label className="form-label">Stock actual</label>
+                    <input className="form-control" type="number" step="0.0001"
+                      {...register('stockActual', { valueAsNumber: true })} />
+                  </div>
+                  <div className="form-group" style={{ display: esServicio ? 'none' : undefined }}>
+                    <label className="form-label">Costo unitario</label>
+                    <input className="form-control" type="number" step="0.0001"
+                      {...register('costoUnitario', { valueAsNumber: true })} />
+                  </div>
                   <div className="form-group">
                     <label className="form-label">Precio venta</label>
                     <input className="form-control" type="number" step="0.01"
