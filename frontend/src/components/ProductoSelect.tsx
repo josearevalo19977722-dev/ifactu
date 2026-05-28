@@ -183,12 +183,16 @@ export function ProductoSelect({ onSelect, placeholder = 'Buscar producto...' }:
                           ${Number(p.precioVenta || 0).toFixed(2)}
                         </td>
                         <td style={{ ...td, textAlign: 'right' }}>
-                          <span style={{
-                            color: (p.stockActual ?? 0) > 0 ? '#10b981' : '#ef4444',
-                            fontWeight: 600,
-                          }}>
-                            {p.stockActual ?? 0}
-                          </span>
+                          {p.tipoItem === 2 ? (
+                            <span style={{ color: '#64748b', fontWeight: 500 }}>—</span>
+                          ) : (
+                            <span style={{
+                              color: (p.stockActual ?? 0) > 0 ? '#10b981' : '#ef4444',
+                              fontWeight: 600,
+                            }}>
+                              {p.stockActual ?? 0}
+                            </span>
+                          )}
                         </td>
                         <td style={{ ...td, textAlign: 'center' }}>
                           <button
