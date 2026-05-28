@@ -124,13 +124,12 @@ export function Inventario() {
   const abrirEditar = (p: Producto) => { reset(p); setGuardarError(null); setModal(p); };
 
   const onGuardar = (d: any) => {
-    // Buscar la descripción de la unidad seleccionada
     const unitObj = UNIDADES_MEDIDA.find(u => u.codigo === Number(d.uniMedidaMh));
-    if (unitObj) {
-      d.unidad = unitObj.descripcion;
-    }
+    if (unitObj) d.unidad = unitObj.descripcion;
     d.uniMedidaMh = Number(d.uniMedidaMh);
     d.tipoItem = Number(d.tipoItem);
+    // Código vacío → null para no violar constraint UNIQUE ('' no es NULL en Postgres)
+    if (!d.codigo?.trim()) d.codigo = null;
     guardarMut.mutate({ ...d, id: (modal as any).id });
   };
 

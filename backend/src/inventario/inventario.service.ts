@@ -28,6 +28,8 @@ export class InventarioService {
 
   async crearProducto(dto: Partial<Producto>, empresaId?: string): Promise<Producto> {
     if (!dto.nombre?.trim()) throw new BadRequestException('El nombre es requerido');
+    // Código vacío → null para no violar constraint UNIQUE ('' !== NULL en Postgres)
+    if (dto.codigo !== undefined && !dto.codigo?.trim()) dto.codigo = null;
     return this.prodRepo.save(this.prodRepo.create({ ...dto, empresaId: empresaId ?? dto.empresaId ?? null }));
   }
 
@@ -64,6 +66,7 @@ export class InventarioService {
 
   async actualizar(id: string, dto: Partial<Producto>, empresaId?: string): Promise<Producto> {
     await this.obtener(id, empresaId);
+    if (dto.codigo !== undefined && !dto.codigo?.trim()) dto.codigo = null;
     await this.prodRepo.update(id, dto);
     return this.obtener(id);
   }
