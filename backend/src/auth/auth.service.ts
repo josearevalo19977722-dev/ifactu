@@ -365,7 +365,7 @@ export class AuthService implements OnModuleInit {
     return { ok: true };
   }
 
-  /** Crea o RE-SETEA el usuario superadmin maestro de la plataforma */
+  /** Crea el usuario superadmin maestro si no existe. NO resetea la contraseña si ya existe. */
   async initAdmin() {
     const adminEmail = 'superadmin@nexa.com';
     const exists = await this.usuarioRepo.findOne({ where: { email: adminEmail } });
@@ -379,12 +379,9 @@ export class AuthService implements OnModuleInit {
         rol: RolUsuario.SUPERADMIN,
       });
     } else {
-      this.logger.log(
-        `Superusuario ${adminEmail} ya existe. Asegurando rol y reseteando contraseña...`,
-      );
-      const passwordHash = await bcrypt.hash('SuperAdmin1234', 10);
+      // Solo asegurar rol y estado activo — NO tocar la contraseña
+      this.logger.log(`Superusuario ${adminEmail} ya existe. Verificando rol...`);
       await this.usuarioRepo.update(exists.id, {
-        passwordHash,
         activo: true,
         rol: RolUsuario.SUPERADMIN,
       });
