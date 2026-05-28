@@ -202,7 +202,7 @@ export function NuevoCf() {
                           {...register(`items.${index}.cantidad`, { valueAsNumber: true })}
                           onChange={(e) => { setValue(`items.${index}.cantidad`, Number(e.target.value)); recalcular(index); }}
                         />
-                        {stockMap[index] !== undefined && Number(items[index]?.cantidad) > stockMap[index] && (
+                        {stockMap[index] !== undefined && Number(items[index]?.tipoItem) !== 2 && Number(items[index]?.cantidad) > stockMap[index] && (
                           <span style={{ color: '#ef4444', fontSize: 12, marginTop: 2, display: 'block' }}>
                             Stock disponible: {stockMap[index]}
                           </span>

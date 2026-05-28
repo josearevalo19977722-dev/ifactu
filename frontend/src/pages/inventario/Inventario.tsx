@@ -129,7 +129,7 @@ export function Inventario() {
   };
 
   const valorInventario = productos.reduce((s, p) => s + Number(p.stockActual) * Number(p.costoUnitario), 0);
-  const sinStock = productos.filter(p => Number(p.stockActual) <= 0).length;
+  const sinStock = productos.filter(p => p.tipoItem !== 2 && Number(p.stockActual) <= 0).length;
 
   return (
     <div className="page">
@@ -219,14 +219,16 @@ export function Inventario() {
                     <td>{p.unidad}</td>
                     <td style={{
                       textAlign: 'right', fontWeight: 700,
-                      color: Number(p.stockActual) <= 0 ? '#ef4444' : Number(p.stockActual) < 5 ? '#f59e0b' : '#10b981',
+                      color: p.tipoItem === 2 ? '#64748b'
+                        : Number(p.stockActual) <= 0 ? '#ef4444'
+                        : Number(p.stockActual) < 5 ? '#f59e0b' : '#10b981',
                     }}>
-                      {fmtN(p.stockActual, 2)}
+                      {p.tipoItem === 2 ? '—' : fmtN(p.stockActual, 2)}
                     </td>
-                    <td className="monto">{fmt(p.costoUnitario)}</td>
+                    <td className="monto">{p.tipoItem === 2 ? '—' : fmt(p.costoUnitario)}</td>
                     <td className="monto">{p.precioVenta ? fmt(p.precioVenta) : '—'}</td>
                     <td className="monto" style={{ fontWeight: 600 }}>
-                      {fmt(Number(p.stockActual) * Number(p.costoUnitario))}
+                      {p.tipoItem === 2 ? '—' : fmt(Number(p.stockActual) * Number(p.costoUnitario))}
                     </td>
                     <td>
                       <div style={{ display: 'flex', gap: 4 }}>

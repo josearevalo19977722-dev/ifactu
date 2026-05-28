@@ -260,7 +260,7 @@ export function NuevaFse() {
                       <input className="form-control" type="number" step="0.01" min="0"
                         {...register(`items.${idx}.cantidad`, { valueAsNumber: true })}
                         onBlur={() => recalcular(idx)} />
-                      {stockMap[idx] !== undefined && Number(items[idx]?.cantidad) > stockMap[idx] && (
+                      {stockMap[idx] !== undefined && Number(items[idx]?.tipoItem) !== 2 && Number(items[idx]?.cantidad) > stockMap[idx] && (
                         <span style={{ color: '#ef4444', fontSize: 12, marginTop: 2, display: 'block' }}>
                           Stock disponible: {stockMap[idx]}
                         </span>
