@@ -87,12 +87,18 @@ export function Inventario() {
   const tipoItemWatch = watch('tipoItem');
   const esServicio = Number(tipoItemWatch) === 2;
 
+  const [guardarError, setGuardarError] = useState<string | null>(null);
   const guardarMut = useMutation({
     mutationFn: (d: Partial<Producto>) =>
       d.id ? api.patch(`/inventario/productos/${d.id}`, d) : api.post('/inventario/productos', d),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ['inventario-productos'] });
+      setGuardarError(null);
       setModal(null);
+    },
+    onError: (err: any) => {
+      const msg = err?.response?.data?.message ?? err?.message ?? 'Error desconocido';
+      setGuardarError(Array.isArray(msg) ? msg.join(', ') : String(msg));
     },
   });
 
@@ -114,8 +120,8 @@ export function Inventario() {
     },
   });
 
-  const abrirNuevo  = () => { reset(VACIO_PROD); setModal(VACIO_PROD); };
-  const abrirEditar = (p: Producto) => { reset(p); setModal(p); };
+  const abrirNuevo  = () => { reset(VACIO_PROD); setGuardarError(null); setModal(VACIO_PROD); };
+  const abrirEditar = (p: Producto) => { reset(p); setGuardarError(null); setModal(p); };
 
   const onGuardar = (d: any) => {
     // Buscar la descripción de la unidad seleccionada
@@ -332,6 +338,11 @@ export function Inventario() {
                 </div>
               </form>
             </div>
+            {guardarError && (
+              <div style={{ padding: '8px 20px', color: '#ef4444', fontSize: 13, background: '#fee2e2', borderTop: '1px solid #fca5a5' }}>
+                ⚠️ {guardarError}
+              </div>
+            )}
             <div style={{ padding: '16px 20px', display: 'flex', gap: 8, borderTop: '1px solid var(--border)' }}>
               <button type="submit" form="form-prod" className="btn btn-primary" disabled={guardarMut.isPending}>
                 {guardarMut.isPending ? 'Guardando...' : 'Guardar'}
