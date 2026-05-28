@@ -37,6 +37,10 @@ export class Producto {
   @Column({ default: true })
   activo: boolean;
 
+  /** Empresa propietaria del producto — aísla el inventario por tenant */
+  @Column({ nullable: true, type: 'varchar' })
+  empresaId: string | null;
+
   /** Código de unidad de medida según catálogo del MH (e.g. 59 para Unidad) */
   @Column({ type: 'int', default: 59 })
   uniMedidaMh: number;

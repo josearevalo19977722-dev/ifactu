@@ -104,6 +104,7 @@ export class ComprasService {
         items,
         compra.id,
         compra.fechaEmision,
+        optsInventario.empresaId ?? undefined,
       );
     }
 

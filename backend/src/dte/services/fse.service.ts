@@ -108,6 +108,7 @@ export class FseService {
           itemsParaInventario,
           saved.id,
           fecEmi,
+          empresaId,
         ).catch(err => console.error('[FSE] Error sumando stock:', err.message));
       }
     } catch (err) {

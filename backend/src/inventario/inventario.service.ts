@@ -26,14 +26,16 @@ export class InventarioService {
 
   // ── Productos ────────────────────────────────────────────────────────────────
 
-  async crearProducto(dto: Partial<Producto>): Promise<Producto> {
+  async crearProducto(dto: Partial<Producto>, empresaId?: string): Promise<Producto> {
     if (!dto.nombre?.trim()) throw new BadRequestException('El nombre es requerido');
-    return this.prodRepo.save(this.prodRepo.create(dto));
+    return this.prodRepo.save(this.prodRepo.create({ ...dto, empresaId: empresaId ?? dto.empresaId ?? null }));
   }
 
-  async listar(params: { q?: string; page?: number; limit?: number; bajoStock?: boolean }) {
-    const { q, page = 1, limit = 30, bajoStock } = params;
+  async listar(params: { q?: string; page?: number; limit?: number; bajoStock?: boolean; empresaId?: string }) {
+    const { q, page = 1, limit = 30, bajoStock, empresaId } = params;
     const qb = this.prodRepo.createQueryBuilder('p').where('p.activo = true');
+
+    if (empresaId) qb.andWhere('p."empresaId" = :empresaId', { empresaId });
 
     if (q) {
       const term = `%${q.toLowerCase()}%`;
@@ -52,31 +54,36 @@ export class InventarioService {
       .getManyAndCount();
   }
 
-  async obtener(id: string): Promise<Producto> {
-    const p = await this.prodRepo.findOne({ where: { id } });
+  async obtener(id: string, empresaId?: string): Promise<Producto> {
+    const where: any = { id };
+    if (empresaId) where.empresaId = empresaId;
+    const p = await this.prodRepo.findOne({ where });
     if (!p) throw new NotFoundException('Producto no encontrado');
     return p;
   }
 
-  async actualizar(id: string, dto: Partial<Producto>): Promise<Producto> {
-    await this.obtener(id);
+  async actualizar(id: string, dto: Partial<Producto>, empresaId?: string): Promise<Producto> {
+    await this.obtener(id, empresaId);
     await this.prodRepo.update(id, dto);
     return this.obtener(id);
   }
 
-  async desactivar(id: string): Promise<Producto> {
-    return this.actualizar(id, { activo: false });
+  async desactivar(id: string, empresaId?: string): Promise<Producto> {
+    return this.actualizar(id, { activo: false }, empresaId);
   }
 
-  /** Busca por nombre exacto (case-insensitive). Si no existe, lo crea. */
-  async buscarOCrear(nombre: string, unidad = 'UND'): Promise<Producto> {
+  /** Busca por nombre exacto (case-insensitive) dentro del tenant. Si no existe, lo crea. */
+  async buscarOCrear(nombre: string, unidad = 'UND', empresaId?: string): Promise<Producto> {
     const norm = nombre.trim();
-    const existe = await this.prodRepo
+    const qb = this.prodRepo
       .createQueryBuilder('p')
-      .where('LOWER(p.nombre) = :n', { n: norm.toLowerCase() })
-      .getOne();
+      .where('LOWER(p.nombre) = :n', { n: norm.toLowerCase() });
+
+    if (empresaId) qb.andWhere('p."empresaId" = :empresaId', { empresaId });
+
+    const existe = await qb.getOne();
     if (existe) return existe;
-    return this.crearProducto({ nombre: norm, unidad });
+    return this.crearProducto({ nombre: norm, unidad }, empresaId);
   }
 
   // ── Movimientos ──────────────────────────────────────────────────────────────
@@ -153,16 +160,18 @@ export class InventarioService {
   /**
    * Descuenta stock por cada ítem de un DTE que tenga código de producto registrado.
    * Los ítems sin código o de tipo Servicio (tipoItem=2) se omiten silenciosamente.
-   * Se llama después de guardar el DTE (en cualquier estado: PENDIENTE, CONTINGENCIA).
    */
   async descontarStockDte(
     items: Array<{ codigo?: string | null; cantidad: number; descripcion: string; tipoItem?: number }>,
     dteId: string,
     fecha: string,
+    empresaId?: string,
   ): Promise<void> {
     for (const item of items) {
-      if (!item.codigo || item.tipoItem === 2) continue; // Servicio o sin código → omitir
-      const prod = await this.prodRepo.findOne({ where: { codigo: item.codigo, activo: true } });
+      if (!item.codigo || item.tipoItem === 2) continue;
+      const where: any = { codigo: item.codigo, activo: true };
+      if (empresaId) where.empresaId = empresaId;
+      const prod = await this.prodRepo.findOne({ where });
       if (!prod) continue;
       try {
         await this.registrarSalida({
@@ -173,7 +182,6 @@ export class InventarioService {
           descripcion: `Venta DTE — ${item.descripcion}`,
         });
       } catch (err) {
-        // Stock insuficiente u otro error: registrar en log pero no interrumpir la emisión
         console.warn(`[StockDte] No se pudo descontar stock de "${item.codigo}": ${err.message}`);
       }
     }
@@ -183,8 +191,9 @@ export class InventarioService {
     productoId: string;
     stockNuevo: number;
     descripcion?: string;
+    empresaId?: string;
   }): Promise<MovimientoInventario> {
-    const prod = await this.obtener(opts.productoId);
+    const prod = await this.obtener(opts.productoId, opts.empresaId);
     const stockNuevo = n(opts.stockNuevo);
     const diff = n(stockNuevo - Number(prod.stockActual));
 
@@ -213,21 +222,17 @@ export class InventarioService {
 
   // ── Procesamiento masivo desde compra JSON ───────────────────────────────────
 
-  /**
-   * Recibe los ítems del cuerpoDocumento de un DTE,
-   * busca o crea cada producto y registra ENTRADAs.
-   * Devuelve un resumen de lo procesado.
-   */
   async procesarItemsCompra(
     items: ItemCompra[],
     compraId: string,
     fecha: string,
+    empresaId?: string,
   ): Promise<{ procesados: number; productos: { nombre: string; cantidad: number; stock: number }[] }> {
     const resultado: { nombre: string; cantidad: number; stock: number }[] = [];
 
     for (const item of items) {
       if (!item.descripcion || item.cantidad <= 0) continue;
-      const prod = await this.buscarOCrear(item.descripcion, item.unidad ?? 'UND');
+      const prod = await this.buscarOCrear(item.descripcion, item.unidad ?? 'UND', empresaId);
       const mov = await this.registrarEntrada({
         productoId: prod.id,
         cantidad: item.cantidad,

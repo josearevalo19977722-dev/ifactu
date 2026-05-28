@@ -130,6 +130,7 @@ export class CcfService {
       dto.items.map(i => ({ codigo: i.codigo, cantidad: i.cantidad, descripcion: i.descripcion, tipoItem: i.tipoItem })),
       saved.id,
       fecEmi,
+      empresaId,
     ).catch(err => console.error('[CCF] Error descontando stock:', err.message));
 
     if (saved.estado === EstadoDte.RECIBIDO) {

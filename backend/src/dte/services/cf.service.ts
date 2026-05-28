@@ -124,7 +124,8 @@ export class CfService {
         this.inventario.descontarStockDte(
           dto.items.map(i => ({ codigo: i.codigo, cantidad: i.cantidad, descripcion: i.descripcion, tipoItem: i.tipoItem })),
           saved.id,
-          fecEmi
+          fecEmi,
+          empresaId,
         ).catch(err => this.logger.error('Error stock:', err.message));
 
         this.notificacion.programar({
