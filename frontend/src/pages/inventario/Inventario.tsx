@@ -83,7 +83,9 @@ export function Inventario() {
   const totalPages = Math.ceil(total / 30);
   const [movimientos] = movData ?? [[]];
 
-  const { register, handleSubmit, reset, setValue } = useForm<Partial<Producto>>({ defaultValues: VACIO_PROD });
+  const { register, handleSubmit, reset, setValue, watch } = useForm<Partial<Producto>>({ defaultValues: VACIO_PROD });
+  const tipoItemWatch = watch('tipoItem');
+  const esServicio = Number(tipoItemWatch) === 2;
 
   const guardarMut = useMutation({
     mutationFn: (d: Partial<Producto>) =>
@@ -273,10 +275,14 @@ export function Inventario() {
                     <label className="form-label">Tipo de ítem</label>
                     <select 
                       className="form-control" 
-                      {...register('tipoItem', { 
+                      {...register('tipoItem', {
                         required: true,
                         onChange: (e) => {
-                          if (e.target.value === "2") setValue('uniMedidaMh', 59);
+                          if (e.target.value === "2") {
+                            setValue('uniMedidaMh', 59);
+                            setValue('stockActual', 0);
+                            setValue('costoUnitario', 0);
+                          }
                         }
                       })}
                     >
@@ -306,16 +312,20 @@ export function Inventario() {
                   <input className="form-control" {...register('descripcion')} />
                 </div>
                 <div className="form-row">
-                  <div className="form-group">
-                    <label className="form-label">Stock actual</label>
-                    <input className="form-control" type="number" step="0.0001"
-                      {...register('stockActual', { valueAsNumber: true })} />
-                  </div>
-                  <div className="form-group">
-                    <label className="form-label">Costo unitario</label>
-                    <input className="form-control" type="number" step="0.0001"
-                      {...register('costoUnitario', { valueAsNumber: true })} />
-                  </div>
+                  {!esServicio && (
+                    <div className="form-group">
+                      <label className="form-label">Stock actual</label>
+                      <input className="form-control" type="number" step="0.0001"
+                        {...register('stockActual', { valueAsNumber: true })} />
+                    </div>
+                  )}
+                  {!esServicio && (
+                    <div className="form-group">
+                      <label className="form-label">Costo unitario</label>
+                      <input className="form-control" type="number" step="0.0001"
+                        {...register('costoUnitario', { valueAsNumber: true })} />
+                    </div>
+                  )}
                   <div className="form-group">
                     <label className="form-label">Precio venta</label>
                     <input className="form-control" type="number" step="0.01"
