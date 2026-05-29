@@ -363,4 +363,6 @@ export const ACTIVIDADES_ECONOMICAS: ActividadEconomica[] = [
   { codigo: '96030', descripcion: 'Pompas fúnebres y actividades conexas' },
   { codigo: '96040', descripcion: 'Actividades de bienestar físico' },
   { codigo: '96090', descripcion: 'Otras actividades de servicios personales' },
+  { codigo: '96092', descripcion: 'Servicios n.c.p. (No Clasificados Previamente)' },
+  { codigo: '95299', descripcion: 'Otros servicios y reparaciones n.c.p.' },
 ];
