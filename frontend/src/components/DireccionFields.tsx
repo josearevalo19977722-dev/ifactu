@@ -46,11 +46,13 @@ export function DireccionFields({
       <div className="field">
         <label>Departamento *</label>
         <select
-          {...register(fieldDepartamento, { required: true })}
-          onChange={() => {
-            setDistrito('');
-            setValue(fieldMunicipio, '', { shouldDirty: true });
-          }}
+          {...register(fieldDepartamento, {
+            required: true,
+            onChange: () => {
+              setDistrito('');
+              setValue(fieldMunicipio, '', { shouldDirty: true });
+            },
+          })}
         >
           <option value="">Seleccionar...</option>
           {DEPARTAMENTOS.map((d) => (
@@ -64,11 +66,11 @@ export function DireccionFields({
       <div className="field">
         <label>Municipio *</label>
         <select
-          {...register(fieldMunicipio, { required: true })}
+          {...register(fieldMunicipio, {
+            required: true,
+            onChange: () => setDistrito(''),
+          })}
           disabled={!deptoSeleccionado}
-          onChange={() => {
-            setDistrito('');
-          }}
         >
           <option value="">Seleccionar...</option>
           {municipios.map((m) => (
