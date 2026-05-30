@@ -122,6 +122,7 @@ export class ReceptorCcfDto {
   telefono?: string;
 
   @IsOptional()
+  @Transform(({ value }) => value?.trim() || null)
   @IsEmail()
   @MaxLength(100)
   correo?: string;

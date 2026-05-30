@@ -47,7 +47,7 @@ export class ReceptorRetencionDto {
   @IsString() @IsNotEmpty() direccionMunicipio: string;
   @IsString() @IsNotEmpty() direccionComplemento: string;
   @IsOptional() @IsString() telefono?: string;
-  @IsOptional() @IsEmail() correo?: string;
+  @IsOptional() @Transform(({ value }) => value?.trim() || null) @IsEmail() correo?: string;
 }
 
 export class CreateRetencionDto {

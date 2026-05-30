@@ -1,4 +1,4 @@
-import { Type } from 'class-transformer';
+import { Transform, Type } from 'class-transformer';
 import { IsArray, IsEmail, IsIn, IsNotEmpty, IsNumber, IsOptional, IsString, MaxLength, Min, ValidateNested } from 'class-validator';
 
 export class ItemFseDto {
@@ -30,7 +30,7 @@ export class ReceptorFseDto {
   @IsString() @IsNotEmpty() direccionMunicipio: string;
   @IsString() @IsNotEmpty() direccionComplemento: string;
   @IsOptional() @IsString() telefono?: string;
-  @IsOptional() @IsEmail() correo?: string;
+  @IsOptional() @Transform(({ value }) => value?.trim() || null) @IsEmail() correo?: string;
 }
 
 export class CreateFseDto {
