@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useForm } from 'react-hook-form';
 import { ActividadSelect } from '../../components/ActividadSelect';
+import { DireccionFields } from '../../components/DireccionFields';
 import { PAISES } from '../../catalogs/paises';
 
 import apiClient from '../../api/apiClient';
@@ -52,7 +53,7 @@ export function Contactos() {
   const [contactos, total] = data ?? [[], 0];
   const totalPages = Math.ceil(total / 20);
 
-  const { register, handleSubmit, reset, setValue, watch } = useForm<Contacto>({ defaultValues: VACIO });
+  const { register, handleSubmit, reset, setValue, watch, getValues } = useForm<Contacto>({ defaultValues: VACIO });
 
   const guardarMut = useMutation({
     mutationFn: (d: Contacto) =>
@@ -268,6 +269,16 @@ export function Contactos() {
                     <input className="form-control" {...register('nombrePais')} placeholder="Nombre completo" />
                   </div>
                 </div>
+                <DireccionFields
+                  fieldDepartamento="direccionDepartamento"
+                  fieldMunicipio="direccionMunicipio"
+                  fieldComplemento="direccionComplemento"
+                  register={register}
+                  setValue={setValue}
+                  getValues={getValues}
+                  watch={watch}
+                  defaultDepartamento={watch('direccionDepartamento') ?? undefined}
+                />
                 <div className="form-group">
                   <label className="form-label">Notas</label>
                   <textarea className="form-control" rows={2} {...register('notas')} />
