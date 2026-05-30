@@ -220,7 +220,14 @@ export function Inventario() {
                 ) : productos.map(p => (
                   <tr key={p.id} style={{ opacity: p.activo ? 1 : 0.5 }}>
                     <td className="mono" style={{ fontSize: 11 }}>{p.codigo || '—'}</td>
-                    <td style={{ fontWeight: 500 }}>{p.nombre}</td>
+                    <td style={{ fontWeight: 500 }}>
+                      {p.nombre}
+                      {p.descripcion && (
+                        <div style={{ fontSize: 11, color: 'var(--text-secondary)', fontWeight: 400, marginTop: 2 }}>
+                          {p.descripcion}
+                        </div>
+                      )}
+                    </td>
                     <td>{p.unidad}</td>
                     <td style={{
                       textAlign: 'right', fontWeight: 700,
