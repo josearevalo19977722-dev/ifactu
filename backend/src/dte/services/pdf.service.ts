@@ -203,34 +203,44 @@ export class PdfService {
       // ══════════════════════════════════════════════════════════════════════
       const sectionY = doc.y + 2;
       const colW     = (W - 10) / 2;
-      const boxH     = 100;
 
-      const row = (l: string, v: string, y: number, x: number, maxW: number) => {
-        doc.fontSize(7).font('Helvetica-Bold').fillColor('#0f172a')
-          .text(`${l}: `, x, y, { continued: true, width: maxW });
-        doc.font('Helvetica').text(v || '—', { width: maxW - doc.widthOfString(`${l}: `) });
-        return doc.y;
+      // Helper para calcular altura real de una fila con texto largo
+      const rowHeight = (label: string, value: string, maxW: number): number => {
+        const labelW = doc.fontSize(7).font('Helvetica-Bold').widthOfString(`${label}: `);
+        const lines  = doc.font('Helvetica').heightOfString(value || '—', { width: maxW - labelW });
+        return Math.max(10, lines + 2);
       };
 
-      // Emisor
+      // Emisor — calcular altura dinámica
+      const emLines: [string, string][] = [
+        ['Nombre', empresa.nombreLegal],
+        ...(empresa.nombreComercial ? [['Comercial', empresa.nombreComercial] as [string,string]] : []),
+        ['NIT', empresa.nit], ['NRC', empresa.nrc],
+        ['Actividad', empresa.descActividad],
+        ['Dirección', empresa.complemento],
+        ['Teléfono', empresa.telefono],
+      ];
+      const emBoxH = emLines.reduce((h, [l, v]) => h + rowHeight(l, v, colW - 12), 8);
+
       doc.rect(30, sectionY, colW, 12).fill(blueColor);
       doc.fillColor('white').font('Helvetica-Bold').fontSize(7.5)
         .text('EMISOR', 35, sectionY + 2.5);
-      doc.rect(30, sectionY + 12, colW, boxH).stroke(borderCol);
+      doc.rect(30, sectionY + 12, colW, emBoxH).stroke(borderCol);
       doc.fillColor('#0f172a').font('Helvetica').fontSize(7);
       let emY2 = sectionY + 16;
       const eRow = (l: string, v: string) => {
+        if (!v) return;
         doc.font('Helvetica-Bold').text(`${l}: `, 35, emY2, { continued: true });
-        doc.font('Helvetica').text(v || '—', { width: colW - 12, lineBreak: false });
-        emY2 += 10;
+        doc.font('Helvetica').text(v, { width: colW - 12 });
+        emY2 = doc.y + 1;
       };
-      eRow('Nombre',           empresa.nombreLegal);
+      eRow('Nombre',    empresa.nombreLegal);
       if (empresa.nombreComercial) eRow('Comercial', empresa.nombreComercial);
-      eRow('NIT',              empresa.nit);
-      eRow('NRC',              empresa.nrc);
-      eRow('Actividad',        empresa.descActividad);
-      eRow('Dirección',        empresa.complemento);
-      eRow('Teléfono',         empresa.telefono);
+      eRow('NIT',       empresa.nit);
+      eRow('NRC',       empresa.nrc);
+      eRow('Actividad', empresa.descActividad);
+      eRow('Dirección', empresa.complemento);
+      eRow('Teléfono',  empresa.telefono);
 
       // Receptor
       const rec = esFse
@@ -239,25 +249,44 @@ export class PdfService {
       const tipoDocLabels: Record<string, string> = {
         '13': 'DUI', '36': 'NIT', '37': 'Pasaporte', '02': 'Carné Extr.', '03': 'Carné Res.',
       };
+
+      // Receptor — calcular altura dinámica
+      const condLabels2: Record<number, string> = { 1: 'CONTADO', 2: 'CRÉDITO', 3: 'OTRO' };
+      const formaPago2 = condLabels2[json?.resumen?.condicionOperacion] ?? 'CONTADO';
+      const recLines: [string, string][] = [
+        ['Nombre', rec.nombre || 'Consumidor Final'],
+        ...(rec.numDocumento ? [[tipoDocLabels[rec.tipoDocumento] ?? 'Documento', rec.numDocumento] as [string,string]] : []),
+        ...(rec.nit && !esFse ? [['NIT', rec.nit] as [string,string]] : []),
+        ...(rec.nrc ? [['NRC', rec.nrc] as [string,string]] : []),
+        ...(rec.codActividad ? [['Actividad', `${rec.codActividad}${rec.descActividad ? ' - ' + rec.descActividad : ''}`] as [string,string]] : []),
+        ...(rec.direccion?.complemento ? [['Dirección', rec.direccion.complemento] as [string,string]] : []),
+        ...(rec.correo ? [['Correo', rec.correo] as [string,string]] : []),
+        ...(rec.telefono ? [['Teléfono', rec.telefono] as [string,string]] : []),
+        ['Forma de pago', formaPago2],
+      ];
+      const recBoxH = recLines.reduce((h, [l, v]) => h + rowHeight(l, v, colW - 12), 8);
+      const boxH = Math.max(emBoxH, recBoxH);
+
       const recX = 30 + colW + 10;
       doc.rect(recX, sectionY, colW, 12).fill(blueColor);
       doc.fillColor('white').font('Helvetica-Bold').fontSize(7.5)
         .text(esFse ? 'SUJETO EXCLUIDO' : 'RECEPTOR', recX + 5, sectionY + 2.5);
       doc.rect(recX, sectionY + 12, colW, boxH).stroke(borderCol);
+      // Re-dibujar caja emisor con la misma altura máxima
+      doc.rect(30, sectionY + 12, colW, boxH).stroke(borderCol);
       doc.fillColor('#0f172a').font('Helvetica').fontSize(7);
       let reY2 = sectionY + 16;
       const rRow = (l: string, v: string) => {
         if (!v) return;
         doc.font('Helvetica-Bold').text(`${l}: `, recX + 5, reY2, { continued: true });
-        doc.font('Helvetica').text(v, { width: colW - 12, lineBreak: false });
-        reY2 += 10;
+        doc.font('Helvetica').text(v, { width: colW - 12 });
+        reY2 = doc.y + 1;
       };
       rRow('Nombre', rec.nombre || 'Consumidor Final');
       if (esFse) {
         rRow('Tipo Doc.', tipoDocLabels[rec.tipoDocumento] ?? rec.tipoDocumento ?? '—');
         rRow('N° Documento', rec.numDocumento);
       } else {
-        // Mostrar DUI si tipoDocumento=13, NIT si =36, o numDocumento genérico
         if (rec.numDocumento) {
           const docLabel = tipoDocLabels[rec.tipoDocumento] ?? 'Documento';
           rRow(docLabel, rec.numDocumento);
@@ -269,11 +298,7 @@ export class PdfService {
       if (rec.direccion?.complemento) rRow('Dirección', rec.direccion.complemento);
       if (rec.correo)   rRow('Correo',   rec.correo);
       if (rec.telefono) rRow('Teléfono', rec.telefono);
-
-      // Forma de pago (condición de operación)
-      const condLabels: Record<number, string> = { 1: 'CONTADO', 2: 'CRÉDITO', 3: 'OTRO' };
-      const formaPago = condLabels[json?.resumen?.condicionOperacion] ?? 'CONTADO';
-      rRow('Forma de pago', formaPago);
+      rRow('Forma de pago', formaPago2);
 
       doc.y = sectionY + 12 + boxH + 6;
 
