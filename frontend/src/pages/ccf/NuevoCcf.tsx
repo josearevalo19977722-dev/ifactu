@@ -32,7 +32,7 @@ export function NuevoCcf() {
   const [stockMap, setStockMap] = useState<Record<number, number>>({});
   const [pendingData, setPendingData] = useState<CreateCcfPayload | null>(null);
   const { marcarDelCatalogo, checkGuardarCliente, clienteNuevoModal, setClienteNuevoModal, marcarGuardado } = useGuardarCliente();
-  const { register, control, handleSubmit, watch, setValue, getValues } =
+  const { register, control, handleSubmit, watch, setValue, getValues, formState: { errors } } =
     useForm<CreateCcfPayload>({
       defaultValues: {
         condicionOperacion: 1,
@@ -65,7 +65,9 @@ export function NuevoCcf() {
 
   const onClienteSelect = (c: Cliente) => {
     setValue('receptor.nombre', c.nombre);
-    setValue('receptor.nit', c.nit || '');
+    // Fallback: si nit está vacío pero tipoDocumento=36 (NIT), usar numDocumento
+    const nitValor = c.nit || (c.tipoDocumento === '36' ? c.numDocumento : '') || '';
+    setValue('receptor.nit', nitValor);
     setValue('receptor.nrc', c.nrc || '');
     setValue('receptor.correo', c.correo || '');
     setValue('receptor.telefono', c.telefono || '');
@@ -156,7 +158,18 @@ export function NuevoCcf() {
                 </div>
                 <div className="field">
                   <label>NIT *</label>
-                  <input {...register('receptor.nit', { required: true })} placeholder="0000-000000-000-0" />
+                  <input
+                    {...register('receptor.nit', {
+                      required: 'NIT es requerido',
+                      validate: v => /^\d{14}$/.test((v || '').replace(/[-\s]/g, '')) || 'NIT debe tener exactamente 14 dígitos (usa el número del pie de la tarjeta NRC)',
+                    })}
+                    placeholder="00000000000000"
+                  />
+                  {(errors as any)?.receptor?.nit && (
+                    <span style={{ color: '#ef4444', fontSize: 12 }}>
+                      {(errors as any).receptor.nit.message}
+                    </span>
+                  )}
                 </div>
                 <div className="field">
                   <label>NRC {esGranContribuyente ? '*' : ''}</label>

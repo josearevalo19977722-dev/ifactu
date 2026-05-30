@@ -11,6 +11,8 @@ interface Props {
   getValues: UseFormGetValues<any>;
   watch: UseFormWatch<any>;
   defaultDepartamento?: string;
+  /** Si es false los campos de depto/municipio/complemento no son requeridos. Default: true */
+  required?: boolean;
 }
 
 export function DireccionFields({
@@ -21,6 +23,7 @@ export function DireccionFields({
   setValue,
   getValues,
   watch,
+  required = true,
 }: Props) {
   // Usar watch para que los selects reaccionen a setValue externo (ej: cargar cliente del catálogo)
   const deptoSeleccionado = watch(fieldDepartamento) || '';
@@ -47,7 +50,7 @@ export function DireccionFields({
         <label>Departamento *</label>
         <select
           {...register(fieldDepartamento, {
-            required: true,
+            required,
             onChange: () => {
               setDistrito('');
               setValue(fieldMunicipio, '', { shouldDirty: true });
@@ -67,7 +70,7 @@ export function DireccionFields({
         <label>Municipio *</label>
         <select
           {...register(fieldMunicipio, {
-            required: true,
+            required,
             onChange: () => setDistrito(''),
           })}
           disabled={!deptoSeleccionado}
@@ -113,7 +116,7 @@ export function DireccionFields({
       <div className="field field-full">
         <label>Complemento dirección *</label>
         <input
-          {...register(fieldComplemento, { required: true })}
+          {...register(fieldComplemento, { required })}
           placeholder="Calle, Avenida, Col., N°..."
         />
       </div>

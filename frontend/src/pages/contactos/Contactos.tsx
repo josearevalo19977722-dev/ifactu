@@ -278,6 +278,7 @@ export function Contactos() {
                   getValues={getValues}
                   watch={watch}
                   defaultDepartamento={watch('direccionDepartamento') ?? undefined}
+                  required={false}
                 />
                 <div className="form-group">
                   <label className="form-label">Notas</label>

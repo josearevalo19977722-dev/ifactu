@@ -1,4 +1,4 @@
-import { Type } from 'class-transformer';
+import { Transform, Type } from 'class-transformer';
 import { IsArray, IsEmail, IsNotEmpty, IsNumber, IsOptional, IsString, Min, ValidateNested } from 'class-validator';
 
 export class ItemDonacionDto {
@@ -52,7 +52,7 @@ export class DonatarioDto {
   @IsString() @IsNotEmpty() codPuntoVentaMH: string;
 
   @IsOptional() @IsString() telefono?: string;
-  @IsOptional() @IsEmail() correo?: string;
+  @IsOptional() @Transform(({ value }) => value?.trim() || null) @IsEmail() correo?: string;
 }
 
 export class CreateDonacionDto {
