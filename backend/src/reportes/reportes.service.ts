@@ -669,8 +669,12 @@ export class ReportesService {
       const ctrlInterno = '';
       // G: Nº Documento = codigoGeneracion sin guiones (DTE) | numDoc para no-DTE
       const numDoc = esDte ? limpia(c.codigoGeneracion ?? '') : (c.numeroControl ?? '');
-      // H: NIT o NRC del proveedor (sin guiones; NIT tiene prioridad)
-      const nitProv = limpia(c.proveedorNit ?? c.proveedorNrc ?? '');
+      // H: NIT o NRC | U: DUI — son mutuamente excluyentes (manual V14)
+      // DUI tiene 9 dígitos; NIT tiene 14. Si el identificador guardado es un
+      // DUI (persona natural), va en col U y H queda vacío.
+      const rawId = limpia(c.proveedorNit ?? c.proveedorNrc ?? '');
+      const esDuiProv = rawId.length === 9;
+      const nitProv  = esDuiProv ? '' : rawId;
       // I: Nombre del proveedor
       const nombreProv = c.proveedorNombre ?? '';
       // J: Internaciones Exentas (no aplica a compras locales)
@@ -695,8 +699,8 @@ export class ReportesService {
       const creditoFiscal = fmtN(c.ivaCredito);
       // T: Total Compras
       const totalCompras = fmtN(c.totalCompra);
-      // U: DUI del proveedor (vacío — contribuyentes tienen NIT/NRC)
-      const duiProv = '';
+      // U: DUI del proveedor (solo para personas naturales con 9 dígitos)
+      const duiProv = esDuiProv ? rawId : '';
       // V: Tipo de Operación Renta (1=Gravada) — vigente desde enero 2025
       const tipoOp = '1';
       // W: Tipo de Gasto Renta (2=Gastos de Administración) — ajustar según empresa
