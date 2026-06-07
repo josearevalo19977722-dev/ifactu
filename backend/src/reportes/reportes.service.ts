@@ -122,7 +122,8 @@ export class ReportesService {
     private readonly comprasService: ComprasService,
   ) {}
 
-  // Obtener DTEs de un mes/año para un tipo dado, filtrados por empresa y ambiente producción
+  // Obtener DTEs de un mes/año para un tipo dado, filtrados por empresa y ambiente producción.
+  // Solo incluye RECIBIDO y CONTINGENCIA — rechazados/pendientes/anulados no se reportan.
   private async getDtesMes(tipos: string[], mes: number, anio: number, empresaId: string): Promise<Dte[]> {
     const desde = `${anio}-${String(mes).padStart(2,'0')}-01`;
     const hasta = new Date(anio, mes, 0); // último día del mes
@@ -133,7 +134,7 @@ export class ReportesService {
       .where('dte.tipoDte IN (:...tipos)', { tipos })
       .andWhere('dte.fechaEmision >= :desde', { desde })
       .andWhere('dte.fechaEmision <= :hasta', { hasta: hastaStr })
-      .andWhere("dte.estado != 'ANULADO'")
+      .andWhere("dte.estado IN ('RECIBIDO', 'CONTINGENCIA')")
       .andWhere('dte.empresaId = :empresaId', { empresaId })
       .andWhere("dte.ambiente = '01'")
       .orderBy('dte.fechaEmision', 'ASC')
