@@ -651,71 +651,79 @@ export class ReportesService {
     const compras = await this.comprasService.getComprasMes(mes, anio, empresaId);
     const lines: string[] = [];
 
+    // ─── Estructura Anexo 3 F-07 V14 — 21 columnas (A-U) ─────────────────────
+    // Ref: Manual Usuario F-07 V14 sección V "Detalle de Compras"
+    // Columnas Q,R,S,T vigentes desde Febrero 2024 (colocar 0 para periodos anteriores)
+
     for (const c of compras) {
       const esDte   = !!c.codigoGeneracion;
       const esOtros = ['12', '13'].includes(c.tipoDte); // Decl. Mercancías / Mandamiento
 
       // A: Fecha DD/MM/AAAA
       const fecha = fmtFecha(c.fechaEmision);
-      // B: Clase (4=DTE, 3=Otros tipo 12/13, 1=Impreso)
+      // B: Clase (4=DTE, 3=Otros tipo 12/13, 1=Impreso por Imprenta)
       const clase = esDte ? '4' : (esOtros ? '3' : '1');
-      // C: Tipo de documento (03=CCF, 05=NC, 06=ND, 12=Decl.Mercancías)
+      // C: Tipo de documento (03=CCF, 05=NC, 06=ND, 12=Decl.Mercancías, 13=Mandamiento)
       const tipo = c.tipoDte;
-      // D: Nº Resolución = numeroControl sin guiones (DTE) | numeroDoc para no-DTE
-      const resolucion = esDte ? limpia(c.numeroControl ?? '') : (c.numeroControl ?? '');
-      // E: Nº Serie = sello de recepción (DTE) | vacío para no-DTE
-      const serie = esDte ? ((c as any).selloRecepcion ?? '') : '';
-      // F: Control Interno = vacío para DTE
-      const ctrlInterno = '';
-      // G: Nº Documento = codigoGeneracion sin guiones (DTE) | numDoc para no-DTE
-      const numDoc = esDte ? limpia(c.codigoGeneracion ?? '') : (c.numeroControl ?? '');
-      // H: NIT o NRC | U: DUI — son mutuamente excluyentes (manual V14)
-      // DUI tiene 9 dígitos; NIT tiene 14. Si el identificador guardado es un
-      // DUI (persona natural), va en col U y H queda vacío.
-      const rawId = limpia(c.proveedorNit ?? c.proveedorNrc ?? '');
+
+      // D: Número de documento — codigoGeneracion sin guiones para DTE (desde nov 2022)
+      //    Para documentos no-DTE: número de control del documento
+      const numDoc = esDte
+        ? limpia(c.codigoGeneracion ?? '')
+        : (c.numeroControl ?? '');
+
+      // E: NIT o NRC del proveedor | P: DUI — son mutuamente excluyentes
+      // Si el identificador tiene 9 dígitos = DUI → E vacío, DUI va en P
+      const rawId     = limpia(c.proveedorNit ?? c.proveedorNrc ?? '');
       const esDuiProv = rawId.length === 9;
-      const nitProv  = esDuiProv ? '' : rawId;
-      // I: Nombre del proveedor
+      const nitProv   = esDuiProv ? '' : rawId;
+
+      // F: Nombre, razón social o denominación del proveedor
       const nombreProv = c.proveedorNombre ?? '';
-      // J: Internaciones Exentas (no aplica a compras locales)
+
+      // G: Compras internas exentas y/o no sujetas (combinadas en una sola columna)
+      const compIntExenta = fmtN((c.compraExenta ?? 0) + (c.compraNoSujeta ?? 0));
+      // H: Internaciones exentas y/o no sujetas (Decl. Mercancías — 0 para compras locales)
       const internExenta = '0.00';
-      // K: Internaciones Gravadas (no aplica)
-      const internGravada = '0.00';
-      // L: Crédito Fiscal por Internaciones (no aplica)
-      const creditoIntern = '0.00';
-      // M: Importaciones Exentas (no aplica)
+      // I: Importaciones exentas y/o no sujetas (Mandamiento — 0 para compras locales)
       const importExenta = '0.00';
-      // N: Importaciones Gravadas (no aplica)
-      const importGravada = '0.00';
-      // O: Crédito Fiscal por Importaciones (no aplica)
-      const creditoImport = '0.00';
-      // P: Compras Internas Exentas
-      const compExenta = fmtN(c.compraExenta);
-      // Q: Compras Internas No Sujetas
-      const compNoSuj = fmtN(c.compraNoSujeta);
-      // R: Compras Internas Gravadas
-      const compGravada = fmtN(c.compraGravada);
-      // S: Crédito Fiscal (IVA deducible)
+      // J: Compras internas gravadas (BASE sin IVA)
+      const compIntGravada = fmtN(c.compraGravada);
+      // K: Internaciones gravadas de bienes (0 para compras locales)
+      const internGravada = '0.00';
+      // L: Importaciones gravadas de bienes (0 para compras locales)
+      const importGravadaBienes = '0.00';
+      // M: Importaciones gravadas de servicios (Mandamiento — 0 para compras locales)
+      const importGravadaServ = '0.00';
+      // N: Crédito fiscal = 13% de (J+K+L+M)
       const creditoFiscal = fmtN(c.ivaCredito);
-      // T: Total Compras
-      const totalCompras = fmtN(c.totalCompra);
-      // U: DUI del proveedor (solo para personas naturales con 9 dígitos)
+      // O: Total de compras = G+H+I+J+K+L+M (suma de columnas SIN IVA)
+      const totalCompras = fmtN(
+        (c.compraExenta ?? 0) + (c.compraNoSujeta ?? 0) + (c.compraGravada ?? 0),
+      );
+      // P: DUI del proveedor (solo personas naturales, 9 dígitos, desde enero 2022)
       const duiProv = esDuiProv ? rawId : '';
-      // V: Tipo de Operación Renta (1=Gravada) — vigente desde enero 2025
-      const tipoOp = '1';
-      // W: Tipo de Gasto Renta (2=Gastos de Administración) — ajustar según empresa
-      const tipoGasto = '2';
-      // X: Número de Anexo = 3
+
+      // Q: Tipo de Operación (1=Gravada, 2=No Gravada, 3=Excluido, 4=Mixta)
+      const tipoOp   = '1';
+      // R: Clasificación (1=Costo, 2=Gasto)
+      const clasif   = '2';
+      // S: Sector (1=Industria, 2=Comercio, 3=Agropecuaria, 4=Servicios)
+      const sector   = '2';
+      // T: Tipo de Costo/Gasto (1=GtosVenta, 2=GtosAdmin, 3=GtosFin, 4=CostoImp,
+      //    5=CostoInterno, 6=CIF, 7=ManoObra, 9=No deducible/Inst.Pública)
+      const tipoCosto = '2';
+      // U: Número de Anexo = 3
       const numAnexo = '3';
 
       lines.push(csvLn([
-        fecha, clase, tipo, resolucion, serie, ctrlInterno, numDoc,
+        fecha, clase, tipo, numDoc,
         nitProv, nombreProv,
-        internExenta, internGravada, creditoIntern,
-        importExenta, importGravada, creditoImport,
-        compExenta, compNoSuj, compGravada,
-        creditoFiscal, totalCompras, duiProv,
-        tipoOp, tipoGasto, numAnexo,
+        compIntExenta, internExenta, importExenta,
+        compIntGravada, internGravada, importGravadaBienes, importGravadaServ,
+        creditoFiscal, totalCompras,
+        duiProv,
+        tipoOp, clasif, sector, tipoCosto, numAnexo,
       ]));
     }
 
