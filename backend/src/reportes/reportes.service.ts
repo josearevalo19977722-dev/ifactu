@@ -27,14 +27,19 @@ function limpia(v: string | null | undefined): string {
   return (v ?? '').replace(/[-\s]/g, '');
 }
 
-/** Construye una línea CSV escapando comas/comillas */
+/**
+ * Construye una línea CSV con separador PUNTO Y COMA (;)
+ * El portal Hacienda F-07 exige ";" — manual sección II c) indica
+ * configurar el "Separador de listas" a punto y coma en Windows.
+ */
 function csvLn(fields: (string | number | null | undefined)[]): string {
   return fields.map(f => {
     const s = String(f ?? '');
-    return s.includes(',') || s.includes('"') || s.includes('\n')
+    // Escapar campos que contengan ; " o saltos de línea
+    return s.includes(';') || s.includes('"') || s.includes('\n')
       ? `"${s.replace(/"/g, '""')}"`
       : s;
-  }).join(',');
+  }).join(';');
 }
 
 const MESES = ['Enero','Febrero','Marzo','Abril','Mayo','Junio',
