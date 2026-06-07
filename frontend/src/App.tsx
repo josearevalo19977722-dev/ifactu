@@ -42,6 +42,7 @@ import {
 } from './routes/lazyPages';
 import { ImpersonacionBanner } from './components/ImpersonacionBanner';
 import { DteLimiteProvider } from './components/DteLimiteProvider';
+import { PuntoDeVentaModal } from './components/PuntoDeVentaModal';
 import './App.css';
 
 const queryClient = new QueryClient({
@@ -60,6 +61,7 @@ function AppLayout() {
   const { usuario, logout, isAdmin, isSuperAdmin, misEmpresas, cambiarEmpresa } = useAuth();
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [empresaMenuOpen, setEmpresaMenuOpen] = useState(false);
+  const [pdvOpen, setPdvOpen] = useState(false);
 
   // Cierra la sidebar al cambiar de ruta (clic en NavLink en móvil)
   const closeSidebar = () => setSidebarOpen(false);
@@ -128,6 +130,21 @@ function AppLayout() {
         </div>
 
         <nav className="sidebar-nav" aria-label="Navegación principal" onClick={closeSidebar}>
+
+          {/* ── Punto de Venta (acceso rápido, solo no-admin y no-contador) ── */}
+          {!isSuperAdmin && usuario.rol !== 'CONTADOR' && (
+            <div className="nav-group">
+              <button
+                className="pdv-sidebar-btn"
+                onClick={e => { e.stopPropagation(); setSidebarOpen(false); setPdvOpen(true); }}
+              >
+                <span className="nav-icon" aria-hidden>🖥️</span>
+                <span>Punto de Venta</span>
+                <span className="pdv-sidebar-badge">Rápido</span>
+              </button>
+            </div>
+          )}
+
           <div className="nav-group">
             <p className="nav-label">Documentos</p>
             <NavLink to="/" end>
@@ -362,6 +379,14 @@ function AppLayout() {
 
       <ImpersonacionBanner />
       <DteLimiteProvider />
+      {/* ── Modal Punto de Venta ── */}
+      {pdvOpen && (
+        <PuntoDeVentaModal
+          tiposHabilitados={empresaPerfil?.tiposDteHabilitados}
+          onClose={() => setPdvOpen(false)}
+        />
+      )}
+
       <main className="content">
         <Suspense fallback={<RouteFallback />}>
           <Routes>

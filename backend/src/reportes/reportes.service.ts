@@ -7,9 +7,13 @@ import * as ExcelJS from 'exceljs';
 
 // ─── helpers CSV F-07 ────────────────────────────────────────────────────────
 
-/** YYYY-MM-DD → DD/MM/AAAA */
+/** YYYY-MM-DD (o ISO timestamp) → DD/MM/AAAA */
 function fmtFecha(fecha: string): string {
-  const [y, m, d] = fecha.split('-');
+  // Strip timestamp si viene con hora (ej: "2026-01-15T00:00:00.000Z")
+  const s = String(fecha).split('T')[0].trim();
+  // Si no tiene formato YYYY-MM-DD reconocible, devolver tal cual
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(s)) return s;
+  const [y, m, d] = s.split('-');
   return `${d}/${m}/${y}`;
 }
 
@@ -408,7 +412,7 @@ export class ReportesService {
 
     cf.forEach((dte, i) => {
       const r = resumen(dte); const rec = receptor(dte);
-      const row = wsCf.addRow([i+1, dte.fechaEmision, dte.numeroControl,
+      const row = wsCf.addRow([i+1, fmtFecha(dte.fechaEmision), dte.numeroControl,
         rec.nombre ?? 'Consumidor Final', r.totalExenta||null, r.totalGravada||null, r.totalIva||null]);
       dataRow(row, i%2===1);
       [5,6,7].forEach(c => { const cell=row.getCell(c); if(cell.value!==null) cell.numFmt='"$"#,##0.00'; });
@@ -427,7 +431,7 @@ export class ReportesService {
     ccf.forEach((dte, i) => {
       const r = resumen(dte); const rec = receptor(dte);
       const row = wsCcf.addRow([i+1, TIPOS[dte.tipoDte]??dte.tipoDte,
-        dte.fechaEmision, dte.numeroControl, rec.nit??'',
+        fmtFecha(dte.fechaEmision), dte.numeroControl, rec.nit??'',
         rec.nombre??dte.receptorNombre??'', r.totalGravada||null, r.totalIva||null]);
       dataRow(row, i%2===1);
       [7,8].forEach(c => { const cell=row.getCell(c); if(cell.value!==null) cell.numFmt='"$"#,##0.00'; });
@@ -442,7 +446,7 @@ export class ReportesService {
       headerStyle(wsRet, wsRet.addRow(['#','Fecha','N° Control','Receptor','IVA Retenido']));
       reten.forEach((dte, i) => {
         const rec = receptor(dte);
-        const row = wsRet.addRow([i+1, dte.fechaEmision, dte.numeroControl,
+        const row = wsRet.addRow([i+1, fmtFecha(dte.fechaEmision), dte.numeroControl,
           rec.nombre??dte.receptorNombre??'', n(dte.totalPagar)]);
         dataRow(row, i%2===1);
         row.getCell(5).numFmt = '"$"#,##0.00';

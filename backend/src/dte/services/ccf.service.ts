@@ -312,7 +312,7 @@ export class CcfService {
         condicionOperacion: dto.condicionOperacion || 1,
         pagos: dto.pagos.map((p) => ({
           codigo: p.codigo,
-          montoPago: p.montoPago,
+          montoPago: r2(p.montoPago), // r2 garantiza exactamente 2 decimales
           referencia: p.referencia || null,
           plazo: p.plazo || null,
           periodo: p.periodo || null,

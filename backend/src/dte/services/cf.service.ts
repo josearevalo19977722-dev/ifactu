@@ -312,13 +312,13 @@ export class CfService {
         pagos: (dto.pagos && dto.pagos.length > 0)
           ? dto.pagos.map((p, idx) => ({
               codigo:     p.codigo,
-              // Si montoPago viene en 0 o vacío, usar totalPagar en el primer pago
-              montoPago:  (p.montoPago && p.montoPago > 0) ? p.montoPago : (idx === 0 ? totalPagar : 0),
+              // r2() garantiza exactamente 2 decimales — evita floats como 37.300000000000004
+              montoPago:  r2((p.montoPago && p.montoPago > 0) ? p.montoPago : (idx === 0 ? totalPagar : 0)),
               referencia: p.referencia || null,
               plazo:      p.plazo      || null,
               periodo:    p.periodo    || null,
             }))
-          : [{ codigo: '01', montoPago: totalPagar, referencia: null, plazo: null, periodo: null }],
+          : [{ codigo: '01', montoPago: r2(totalPagar), referencia: null, plazo: null, periodo: null }],
         numPagoElectronico: dto.numPagoElectronico || null,
       },
       extension: null,
