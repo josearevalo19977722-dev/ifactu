@@ -682,7 +682,8 @@ export class ReportesService {
       const nombreProv = c.proveedorNombre ?? '';
 
       // G: Compras internas exentas y/o no sujetas (combinadas en una sola columna)
-      const compIntExenta = fmtN((c.compraExenta ?? 0) + (c.compraNoSujeta ?? 0));
+      // Usar n() para forzar conversión a number — TypeORM puede devolver strings desde la DB
+      const compIntExenta = fmtN(n(c.compraExenta) + n(c.compraNoSujeta));
       // H: Internaciones exentas y/o no sujetas (Decl. Mercancías — 0 para compras locales)
       const internExenta = '0.00';
       // I: Importaciones exentas y/o no sujetas (Mandamiento — 0 para compras locales)
@@ -698,9 +699,7 @@ export class ReportesService {
       // N: Crédito fiscal = 13% de (J+K+L+M)
       const creditoFiscal = fmtN(c.ivaCredito);
       // O: Total de compras = G+H+I+J+K+L+M (suma de columnas SIN IVA)
-      const totalCompras = fmtN(
-        (c.compraExenta ?? 0) + (c.compraNoSujeta ?? 0) + (c.compraGravada ?? 0),
-      );
+      const totalCompras = fmtN(n(c.compraExenta) + n(c.compraNoSujeta) + n(c.compraGravada));
       // P: DUI del proveedor (solo personas naturales, 9 dígitos, desde enero 2022)
       const duiProv = esDuiProv ? rawId : '';
 
