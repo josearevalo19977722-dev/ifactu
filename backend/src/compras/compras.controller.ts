@@ -130,6 +130,18 @@ export class ComprasController {
     res.end(buf);
   }
 
+  /**
+   * Compras del mes con ivaCredito que difiere en más de $0.10 del 13% esperado.
+   * El frontend F-07 muestra una advertencia cuando este listado no está vacío.
+   */
+  @Get('alertas')
+  alertasIva(
+    @Query('mes') mes: string, @Query('anio') anio: string,
+    @Req() req: Request,
+  ) {
+    return this.svc.getAlertasCompras(Number(mes), Number(anio), (req.user as any).empresaId);
+  }
+
   @Get(':id')
   obtener(@Param('id') id: string) { return this.svc.obtener(id); }
 
@@ -140,4 +152,17 @@ export class ComprasController {
 
   @Patch(':id/anular')
   anular(@Param('id') id: string) { return this.svc.anular(id); }
+
+  /**
+   * Agrega o actualiza las observaciones de una compra.
+   * El contador puede escribir aquí "Verificar con proveedor", "DTE anulado",
+   * "Pendiente NC", etc.
+   */
+  @Patch(':id/observaciones')
+  setObservaciones(
+    @Param('id') id: string,
+    @Body() body: { observaciones: string },
+  ) {
+    return this.svc.actualizar(id, { observaciones: body.observaciones ?? null });
+  }
 }

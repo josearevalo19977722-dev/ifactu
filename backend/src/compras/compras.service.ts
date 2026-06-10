@@ -167,6 +167,48 @@ export class ComprasService {
       .getManyAndCount();
   }
 
+  /**
+   * Detecta compras REGISTRADAS cuyo ivaCredito difiere en más de $0.10
+   * del 13% esperado sobre la compraGravada.
+   *
+   * Causas típicas:
+   *  - El proveedor emitió el DTE con un IVA incorrecto
+   *  - La compra fue registrada manualmente con un valor equivocado
+   *  - El DTE fue anulado por el proveedor y corresponde eliminarla / registrar NC
+   *
+   * Nota: compras 100% exentas/no sujetas (compraGravada = 0) se omiten
+   * porque no tienen crédito fiscal y la validación no aplica.
+   */
+  async getAlertasCompras(mes: number, anio: number, empresaId?: string) {
+    const compras = await this.getComprasMes(mes, anio, empresaId);
+    return compras
+      .filter(c => {
+        const base = n(Number(c.compraGravada));
+        if (base === 0) return false;          // exenta/noSujeta — no aplica
+        const ivaEsperado = n(base * 0.13);
+        const ivaReal     = n(Number(c.ivaCredito));
+        return Math.abs(ivaEsperado - ivaReal) > 0.10;
+      })
+      .map(c => {
+        const base        = n(Number(c.compraGravada));
+        const ivaEsperado = n(base * 0.13);
+        const ivaReal     = n(Number(c.ivaCredito));
+        return {
+          id:               c.id,
+          fechaEmision:     c.fechaEmision,
+          tipoDte:          c.tipoDte,
+          proveedorNombre:  c.proveedorNombre,
+          proveedorNit:     c.proveedorNit,
+          codigoGeneracion: c.codigoGeneracion,
+          compraGravada:    base,
+          ivaCredito:       ivaReal,
+          ivaEsperado,
+          diferencia:       n(Math.abs(ivaEsperado - ivaReal)),
+          observaciones:    c.observaciones ?? null,
+        };
+      });
+  }
+
   async resumenMes(mes: number, anio: number, empresaId?: string) {
     const desde = `${anio}-${String(mes).padStart(2,'0')}-01`;
     const ultimo = new Date(anio, mes, 0).getDate();
@@ -179,10 +221,17 @@ export class ComprasService {
     if (empresaId) qb.andWhere('"c"."empresaId" = :empresaId', { empresaId });
     const compras = await qb.getMany();
 
+    // Calcular alertas de IVA (se incluyen en el resumen para el frontend)
+    const alertasIva = compras.filter(c => {
+      const base = n(Number(c.compraGravada));
+      if (base === 0) return false;
+      return Math.abs(n(base * 0.13) - n(Number(c.ivaCredito))) > 0.10;
+    });
+
     // NC recibida (tipo 05): el proveedor te devuelve dinero → RESTA el crédito fiscal
     // ND recibida (tipo 06): el proveedor te cobra más → SUMA al crédito (normal)
     // CCF (tipo 03): compra normal → SUMA
-    return compras.reduce((acc, c) => {
+    const totales = compras.reduce((acc, c) => {
       const esNC  = c.tipoDte === '05';
       const signo = esNC ? -1 : 1;
       return {
@@ -198,6 +247,23 @@ export class ComprasService {
       };
     }, { cantidad: 0, compraExenta: 0, compraNoSuj: 0, compraGravada: 0,
          ivaCredito: 0, total: 0, cantidadNC: 0, ivaNC: 0 });
+
+    return {
+      ...totales,
+      // Alertas de consistencia: compras donde ivaCredito ≠ 13% de compraGravada
+      // El contador debe revisar estas antes de presentar el F-07
+      alertasIva: alertasIva.map(c => ({
+        id:              c.id,
+        fechaEmision:    c.fechaEmision,
+        proveedorNombre: c.proveedorNombre,
+        codigoGeneracion: c.codigoGeneracion,
+        compraGravada:   n(Number(c.compraGravada)),
+        ivaCredito:      n(Number(c.ivaCredito)),
+        ivaEsperado:     n(n(Number(c.compraGravada)) * 0.13),
+        diferencia:      n(Math.abs(n(Number(c.compraGravada)) * 0.13 - n(Number(c.ivaCredito)))),
+        observaciones:   c.observaciones ?? null,
+      })),
+    };
   }
 
   async obtener(id: string): Promise<Compra> {

@@ -52,6 +52,15 @@ export class Compra {
   @Column({ nullable: true, type: 'varchar' })
   descripcion: string | null;
 
+  /**
+   * Notas del contador sobre esta compra (ej: "verificar con proveedor",
+   * "DTE anulado por emisor — pendiente NC").
+   * Se usa también para marcar compras que requieren revisión antes
+   * de incluirse en el F-07.
+   */
+  @Column({ nullable: true, type: 'text' })
+  observaciones: string | null;
+
   /** Ítems del cuerpoDocumento del DTE (cuando viene de importación JSON) */
   @Column({ nullable: true, type: 'jsonb' })
   itemsJson: any[] | null;
