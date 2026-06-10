@@ -189,11 +189,16 @@ export class ReportesService {
   }
 
   async resumenMes(mes: number, anio: number, empresaId: string) {
-    const [cf, ccf, reten] = await Promise.all([
-      this.getDtesMes(['01'], mes, anio, empresaId),
-      this.getDtesMes(['03','05','06'], mes, anio, empresaId),
-      this.getDtesMes(['07'], mes, anio, empresaId),
+    const [cf, allCcf, reten] = await Promise.all([
+      this.getDtesMes(['01'],          mes, anio, empresaId),
+      this.getDtesMes(['03','05','06'],mes, anio, empresaId),
+      this.getDtesMes(['07'],          mes, anio, empresaId),
     ]);
+
+    // Separar CCF, NC emitidas y ND emitidas para cálculo correcto
+    const ccfFacturas = allCcf.filter(d => d.tipoDte === '03');
+    const ncEmitidas  = allCcf.filter(d => d.tipoDte === '05');
+    const ndEmitidas  = allCcf.filter(d => d.tipoDte === '06');
 
     const sumar = (dtes: Dte[]) => dtes.reduce((acc, d) => {
       const r = resumen(d);
@@ -207,18 +212,51 @@ export class ReportesService {
       };
     }, { cantidad: 0, exenta: 0, noSuj: 0, gravada: 0, iva: 0, total: 0 });
 
-    const compras = await this.comprasService.resumenMes(mes, anio, empresaId);
-    const debitoFiscal  = n(sumar(cf).iva + sumar(ccf).iva);
+    const sumCf  = sumar(cf);
+    const sumCcf = sumar(ccfFacturas);
+    const sumNC  = sumar(ncEmitidas);
+    const sumND  = sumar(ndEmitidas);
+
+    // Bug fix 1 — CF: IVA = bruto × 13/113 (alinea con cálculo del portal y evita
+    //             diferencia de $0.15 por suma de IVAs individuales redondeados)
+    const ivaCf = n(sumCf.gravada * 13 / 113);
+
+    // Bug fix 2 — CCF/NC/ND: NC emitidas RESTAN del débito
+    //             (devolviste dinero al cliente → reduce lo que debes al fisco)
+    const ivaCcfNeto = n(sumCcf.iva + sumND.iva - sumNC.iva);
+
+    const compras       = await this.comprasService.resumenMes(mes, anio, empresaId);
+    const debitoFiscal  = n(ivaCf + ivaCcfNeto);
     const creditoFiscal = compras.ivaCredito;
     const ivaPagar      = n(debitoFiscal - creditoFiscal);
 
     return {
       mes, anio, nombreMes: MESES[mes - 1],
-      cf:   { ...sumar(cf),   filas: cf.map(d => filaResumen(d))   },
-      ccf:  { ...sumar(ccf),  filas: ccf.map(d => filaResumen(d))  },
+      cf:   { ...sumCf,  filas: cf.map(d => filaResumen(d))          },
+      ccf:  { ...sumar(allCcf), filas: allCcf.map(d => filaResumen(d)) }, // total combinado para tablas
+      // Desglose para pantalla F-07
+      ccfDetalle: {
+        facturas:  { ...sumCcf, filas: ccfFacturas.map(d => filaResumen(d)) },
+        ncEmitidas:{ ...sumNC,  filas: ncEmitidas.map(d => filaResumen(d))  },
+        ndEmitidas:{ ...sumND,  filas: ndEmitidas.map(d => filaResumen(d))  },
+        ivaDebito: ivaCcfNeto,
+      },
       reten:{ cantidad: reten.length, total: reten.reduce((s,d) => s + n(d.totalPagar), 0) },
       compras,
-      f07: { debitoFiscal, creditoFiscal, ivaPagar },
+      f07: {
+        debitoFiscal,
+        creditoFiscal,
+        ivaPagar,
+        // Desglose completo para que el frontend muestre breakdown
+        desglose: {
+          ivaCf,
+          ivaCcf:      sumCcf.iva,
+          ivaNC:       sumNC.iva,   // NC emitidas (resta débito)
+          ivaND:       sumND.iva,   // ND emitidas (suma débito)
+          creditoBruto:            n(compras.ivaCredito + compras.ivaNC),
+          ivaNCCompras:            compras.ivaNC,  // NC recibidas (resta crédito)
+        },
+      },
     };
   }
 
@@ -365,11 +403,15 @@ export class ReportesService {
   // ── Excel Anexo F-07 ────────────────────────────────────────────────────
 
   async excelAnexoF07(mes: number, anio: number, empresaId: string): Promise<Buffer> {
-    const [cf, ccf, reten] = await Promise.all([
-      this.getDtesMes(['01'], mes, anio, empresaId),
-      this.getDtesMes(['03','05','06'], mes, anio, empresaId),
-      this.getDtesMes(['07'], mes, anio, empresaId),
+    const [cf, allCcf, reten] = await Promise.all([
+      this.getDtesMes(['01'],          mes, anio, empresaId),
+      this.getDtesMes(['03','05','06'],mes, anio, empresaId),
+      this.getDtesMes(['07'],          mes, anio, empresaId),
     ]);
+
+    const ccfFacturas = allCcf.filter(d => d.tipoDte === '03');
+    const ncEmitidas  = allCcf.filter(d => d.tipoDte === '05');
+    const ndEmitidas  = allCcf.filter(d => d.tipoDte === '06');
 
     const wb = new ExcelJS.Workbook();
     wb.creator = 'Sistema DTE El Salvador';
@@ -379,29 +421,54 @@ export class ReportesService {
     // ── Hoja 1: Resumen F-07 ──────────────────────────────────────────────
     const wsRes = wb.addWorksheet('Resumen F-07');
     titulo(wsRes, `ANEXO F-07 — ${mesNombre} ${anio}`, 4);
-    wsRes.columns = [{ width: 35 },{ width: 15 },{ width: 15 },{ width: 15 }];
+    wsRes.columns = [{ width: 38 },{ width: 15 },{ width: 15 },{ width: 15 }];
 
     wsRes.addRow([]);
     const hRes = wsRes.addRow(['Concepto','Operaciones','Monto Base','IVA']);
     headerStyle(wsRes, hRes);
 
-    const sumCf  = cf.reduce((a,d)  => { const r=resumen(d); return { g: a.g+r.totalGravada, e: a.e+r.totalExenta, iva: a.iva+r.totalIva, t: a.t+r.totalPagar }; }, {g:0,e:0,iva:0,t:0});
-    const sumCcf = ccf.reduce((a,d) => { const r=resumen(d); return { g: a.g+r.totalGravada, e: a.e+r.totalExenta, iva: a.iva+r.totalIva, t: a.t+r.totalPagar }; }, {g:0,e:0,iva:0,t:0});
+    const s = (dtes: Dte[]) => dtes.reduce(
+      (a,d) => { const r=resumen(d); return { g:a.g+r.totalGravada, e:a.e+r.totalExenta, iva:a.iva+r.totalIva, t:a.t+r.totalPagar }; },
+      {g:0,e:0,iva:0,t:0},
+    );
+    const sumCf  = s(cf);
+    const sumCcf = s(ccfFacturas);
+    const sumNC  = s(ncEmitidas);
+    const sumND  = s(ndEmitidas);
     const sumRet = reten.reduce((a,d) => a + n(d.totalPagar), 0);
 
-    const filas = [
-      ['Ventas a Consumidores Finales (CF)',  cf.length,  sumCf.g,  sumCf.iva],
-      ['Ventas a Contribuyentes (CCF/NC/ND)', ccf.length, sumCcf.g, sumCcf.iva],
-      ['Total Ventas Gravadas', cf.length+ccf.length, sumCf.g+sumCcf.g, sumCf.iva+sumCcf.iva],
-      ['Total Ventas Exentas',  '',  sumCf.e+sumCcf.e, ''],
-      ['IVA Retenido (tipo 07)', reten.length, sumRet, ''],
-      ['Débito Fiscal Total', '', '', sumCf.iva+sumCcf.iva],
+    // CF: IVA = bruto × 13/113; CCF neto = CCF + ND - NC
+    const ivaCf       = n(sumCf.g * 13 / 113);
+    const ivaCcfNeto  = n(sumCcf.iva + sumND.iva - sumNC.iva);
+    const debitoTotal = n(ivaCf + ivaCcfNeto);
+
+    // Datos de compras para el resumen Excel
+    const comprasXls = await this.comprasService.resumenMes(mes, anio, empresaId);
+    const creditoFiscal = comprasXls.ivaCredito;
+    const ivaPagar      = n(debitoTotal - creditoFiscal);
+
+    const filas: (string|number|null)[][] = [
+      ['DÉBITO FISCAL',                           '',                  '',                             ''],
+      ['  Ventas a Consumidores Finales (CF)',     cf.length,           n(sumCf.g/1.13),               ivaCf],
+      ['  Ventas a Contribuyentes (CCF)',          ccfFacturas.length,  sumCcf.g,                      sumCcf.iva],
+      ['  (-) Notas de Crédito emitidas (NC)',     ncEmitidas.length,   ncEmitidas.length ? -sumNC.g : null, ncEmitidas.length ? -sumNC.iva : null],
+      ['  (+) Notas de Débito emitidas (ND)',      ndEmitidas.length,   ndEmitidas.length ? sumND.g : null,  ndEmitidas.length ? sumND.iva : null],
+      ['  Débito Fiscal Total',                    '',                  '',                            debitoTotal],
+      ['', '', '', ''],
+      ['CRÉDITO FISCAL (COMPRAS)',                 '',                  '',                            ''],
+      ['  Compras CCF recibidas',                  comprasXls.cantidad - comprasXls.cantidadNC, comprasXls.compraGravada + comprasXls.ivaNC, n(comprasXls.ivaCredito + comprasXls.ivaNC)],
+      ['  (-) Notas de Crédito recibidas (NC)',    comprasXls.cantidadNC, comprasXls.cantidadNC ? -(comprasXls.ivaNC / 0.13) : null, comprasXls.cantidadNC ? -comprasXls.ivaNC : null],
+      ['  Crédito Fiscal Total',                   '',                  '',                            creditoFiscal],
+      ['', '', '', ''],
+      ['IVA A PAGAR',                              '',                  '',                            ivaPagar],
+      ['IVA Retenido (tipo 07)',                   reten.length,        sumRet,                        ''],
     ];
 
     filas.forEach((f, i) => {
       const row = wsRes.addRow(f);
-      dataRow(row, i % 2 === 1);
-      if (i === 2) totalsRow(row);
+      const isSection = f[1] === '' && f[2] === '' && f[3] === '';
+      if (!isSection) dataRow(row, i % 2 === 1);
+      if (f[0] === '  Débito Fiscal Total' || f[0] === 'IVA A PAGAR') totalsRow(row);
       [3,4].forEach(c => {
         const cell = row.getCell(c);
         if (typeof cell.value === 'number') cell.numFmt = '"$"#,##0.00';
@@ -415,12 +482,13 @@ export class ReportesService {
       {width:6},{width:12},{width:32},{width:28},{width:13},{width:13},{width:13},
     ];
     wsCf.addRow([]);
-    headerStyle(wsCf, wsCf.addRow(['#','Fecha','N° Control','Receptor','Exenta','Gravada','IVA']));
+    headerStyle(wsCf, wsCf.addRow(['#','Fecha','N° Control','Receptor','Exenta','Gravada (bruto)','IVA (13/113)']));
 
     cf.forEach((dte, i) => {
       const r = resumen(dte); const rec = receptor(dte);
       const row = wsCf.addRow([i+1, fmtFecha(dte.fechaEmision), dte.numeroControl,
-        rec.nombre ?? 'Consumidor Final', r.totalExenta||null, r.totalGravada||null, r.totalIva||null]);
+        rec.nombre ?? 'Consumidor Final', r.totalExenta||null, r.totalGravada||null,
+        r.totalGravada ? n(r.totalGravada * 13/113) : null]);
       dataRow(row, i%2===1);
       [5,6,7].forEach(c => { const cell=row.getCell(c); if(cell.value!==null) cell.numFmt='"$"#,##0.00'; });
     });
@@ -432,14 +500,22 @@ export class ReportesService {
       {width:6},{width:8},{width:12},{width:32},{width:18},{width:28},{width:13},{width:13},
     ];
     wsCcf.addRow([]);
-    headerStyle(wsCcf, wsCcf.addRow(['#','Tipo','Fecha','N° Control','NIT','Nombre','Gravada','IVA']));
+    headerStyle(wsCcf, wsCcf.addRow(['#','Tipo','Fecha','N° Control','NIT','Nombre','Base','IVA','Efecto']));
     const TIPOS: Record<string,string> = {'03':'CCF','05':'NC','06':'ND'};
 
-    ccf.forEach((dte, i) => {
-      const r = resumen(dte); const rec = receptor(dte);
-      const row = wsCcf.addRow([i+1, TIPOS[dte.tipoDte]??dte.tipoDte,
+    allCcf.forEach((dte, i) => {
+      const r   = resumen(dte); const rec = receptor(dte);
+      const esNC = dte.tipoDte === '05';
+      // NC resta al débito → mostrar en negativo para que el contador lo identifique
+      const signo = esNC ? -1 : 1;
+      const row = wsCcf.addRow([
+        i+1, TIPOS[dte.tipoDte]??dte.tipoDte,
         fmtFecha(dte.fechaEmision), dte.numeroControl, rec.nit??'',
-        rec.nombre??dte.receptorNombre??'', r.totalGravada||null, r.totalIva||null]);
+        rec.nombre??dte.receptorNombre??'',
+        r.totalGravada||null,
+        r.totalIva ? signo * r.totalIva : null,
+        esNC ? '(resta débito)' : '',
+      ]);
       dataRow(row, i%2===1);
       [7,8].forEach(c => { const cell=row.getCell(c); if(cell.value!==null) cell.numFmt='"$"#,##0.00'; });
     });

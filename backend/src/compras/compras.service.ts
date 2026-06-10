@@ -179,14 +179,25 @@ export class ComprasService {
     if (empresaId) qb.andWhere('"c"."empresaId" = :empresaId', { empresaId });
     const compras = await qb.getMany();
 
-    return compras.reduce((acc, c) => ({
-      cantidad:      acc.cantidad + 1,
-      compraExenta:  n(acc.compraExenta  + Number(c.compraExenta)),
-      compraNoSuj:   n(acc.compraNoSuj   + Number(c.compraNoSujeta)),
-      compraGravada: n(acc.compraGravada + Number(c.compraGravada)),
-      ivaCredito:    n(acc.ivaCredito    + Number(c.ivaCredito)),
-      total:         n(acc.total         + Number(c.totalCompra)),
-    }), { cantidad: 0, compraExenta: 0, compraNoSuj: 0, compraGravada: 0, ivaCredito: 0, total: 0 });
+    // NC recibida (tipo 05): el proveedor te devuelve dinero → RESTA el crédito fiscal
+    // ND recibida (tipo 06): el proveedor te cobra más → SUMA al crédito (normal)
+    // CCF (tipo 03): compra normal → SUMA
+    return compras.reduce((acc, c) => {
+      const esNC  = c.tipoDte === '05';
+      const signo = esNC ? -1 : 1;
+      return {
+        cantidad:      acc.cantidad + 1,
+        compraExenta:  n(acc.compraExenta  + signo * Number(c.compraExenta)),
+        compraNoSuj:   n(acc.compraNoSuj   + signo * Number(c.compraNoSujeta)),
+        compraGravada: n(acc.compraGravada + signo * Number(c.compraGravada)),
+        ivaCredito:    n(acc.ivaCredito    + signo * Number(c.ivaCredito)),
+        total:         n(acc.total         + signo * Number(c.totalCompra)),
+        // Desglose NC para mostrar en pantalla F-07
+        cantidadNC:    acc.cantidadNC + (esNC ? 1 : 0),
+        ivaNC:         n(acc.ivaNC    + (esNC ? Number(c.ivaCredito) : 0)),
+      };
+    }, { cantidad: 0, compraExenta: 0, compraNoSuj: 0, compraGravada: 0,
+         ivaCredito: 0, total: 0, cantidadNC: 0, ivaNC: 0 });
   }
 
   async obtener(id: string): Promise<Compra> {
