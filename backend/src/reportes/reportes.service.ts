@@ -456,7 +456,9 @@ export class ReportesService {
       ['  Débito Fiscal Total',                    '',                  '',                            debitoTotal],
       ['', '', '', ''],
       ['CRÉDITO FISCAL (COMPRAS)',                 '',                  '',                            ''],
-      ['  Compras CCF recibidas',                  comprasXls.cantidad - comprasXls.cantidadNC, comprasXls.compraGravada + comprasXls.ivaNC, n(comprasXls.ivaCredito + comprasXls.ivaNC)],
+      // Monto Base = BRUTO antes de NC = neto + base_NC; base_NC = ivaNC / 0.13
+      // IVA       = BRUTO antes de NC = neto + ivaNC
+      ['  Compras CCF recibidas',                  comprasXls.cantidad - comprasXls.cantidadNC, n(comprasXls.compraGravada + comprasXls.ivaNC / 0.13), n(comprasXls.ivaCredito + comprasXls.ivaNC)],
       ['  (-) Notas de Crédito recibidas (NC)',    comprasXls.cantidadNC, comprasXls.cantidadNC ? -(comprasXls.ivaNC / 0.13) : null, comprasXls.cantidadNC ? -comprasXls.ivaNC : null],
       ['  Crédito Fiscal Total',                   '',                  '',                            creditoFiscal],
       ['', '', '', ''],
@@ -570,8 +572,11 @@ export class ReportesService {
       const numDoc = limpia(dte.codigoGeneracion);
       // G: Control Interno → vacío para DTE
       const ctrlInterno = '';
-      // H: NIT o NRC del cliente (sin guiones); NIT tiene prioridad
-      const nitCliente = limpia(rec.nit ?? rec.nrc ?? '');
+      // H: NIT o NRC del cliente | Q: DUI — mutuamente excluyentes (igual que Anexo 3)
+      // Si el identificador tiene 9 dígitos = DUI → col H vacío, DUI va en col Q
+      const rawNitClient  = limpia(rec.nit ?? rec.nrc ?? '');
+      const esDuiCliente  = rawNitClient.length === 9;
+      const nitCliente    = esDuiCliente ? '' : rawNitClient;
       // I: Nombre / Razón Social
       const nombre = rec.nombre ?? dte.receptorNombre ?? '';
       // J: Ventas Exentas
@@ -588,8 +593,8 @@ export class ReportesService {
       const debitoTerceros = '0.00';
       // P: Total Ventas = exenta + noSuj + gravada + IVA
       const totalVentas = fmtN(r.totalExenta + r.totalNoSuj + r.totalGravada + r.totalIva);
-      // Q: DUI del cliente → vacío (contribuyentes tienen NIT, no DUI)
-      const dui = '';
+      // Q: DUI del cliente (solo si receptor es persona natural con DUI de 9 dígitos)
+      const dui = esDuiCliente ? rawNitClient : '';
       // R: Tipo Operación Renta (1=Gravada) — vigente desde enero 2025
       const tipoOp = '1';
       // S: Tipo Ingreso Renta (3=Actividades Comerciales)

@@ -36,8 +36,8 @@ function parsearJsonDte(raw: any): DteParsed {
   const compraExenta: number  = n(res.totalExenta  ?? res.montoExento  ?? 0);
   const compraNoSujeta: number = n(res.totalNoSuj  ?? res.montoNoSujeto ?? 0);
   const compraGravada: number = n(res.totalGravada ?? res.montoGravado  ?? 0);
-  // IVA: algunas versiones usan totalIva, otras ivaPercibido
-  const ivaCredito: number    = n(res.totalIva ?? res.ivaPercibido ?? res.ivaRetenido ?? n(compraGravada * 0.13));
+  // IVA: CCF almacena IVA en tributos[0].valor, CF en totalIva, otras variantes en ivaPercibido/ivaRetenido
+  const ivaCredito: number    = n(res.totalIva ?? res.tributos?.[0]?.valor ?? res.ivaPercibido ?? res.ivaRetenido ?? n(compraGravada * 0.13));
   const totalCompra: number   = n(res.totalPagar ?? res.montoTotalOperacion ?? (compraExenta + compraNoSujeta + compraGravada + ivaCredito));
 
   if (!proveedorNombre) {
