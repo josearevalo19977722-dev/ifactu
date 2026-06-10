@@ -1,6 +1,6 @@
 import { BrowserRouter, Routes, Route, NavLink, Navigate } from 'react-router-dom';
 import { Suspense, useState, useEffect } from 'react';
-import { QueryClient, QueryClientProvider, useQuery } from '@tanstack/react-query';
+import { QueryClient, QueryClientProvider, useQuery, useQueryClient } from '@tanstack/react-query';
 import { AuthProvider, useAuth } from './context/AuthContext';
 import { ToastProvider } from './context/ToastContext';
 import apiClient from './api/apiClient';
@@ -59,6 +59,7 @@ function RouteFallback() {
 
 function AppLayout() {
   const { usuario, logout, isAdmin, isSuperAdmin, misEmpresas, cambiarEmpresa } = useAuth();
+  const qc = useQueryClient();
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [empresaMenuOpen, setEmpresaMenuOpen] = useState(false);
   const [pdvOpen, setPdvOpen] = useState(false);
@@ -362,7 +363,7 @@ function AppLayout() {
               </div>
               <button
                 type="button"
-                onClick={logout}
+                onClick={() => { qc.clear(); logout(); }}
                 style={{ background: 'none', border: 'none', color: '#64748b', cursor: 'pointer', fontSize: 16 }}
                 aria-label="Cerrar sesión"
               >

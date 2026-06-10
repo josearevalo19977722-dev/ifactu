@@ -1,12 +1,14 @@
 import { useState } from 'react';
 import { isAxiosError } from 'axios';
 import { useNavigate } from 'react-router-dom';
+import { useQueryClient } from '@tanstack/react-query';
 import { useAuth } from '../../context/AuthContext';
 import { API_BASE } from '../../api/apiClient';
 
 export function Login() {
   const { login, pendingEmpresas, selectEmpresa, cancelarSeleccion } = useAuth();
   const navigate = useNavigate();
+  const qc = useQueryClient();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
@@ -19,7 +21,10 @@ export function Login() {
     setLoading(true);
     try {
       await login(email, password);
-      // Si no hay pendingEmpresas, login fue exitoso → navegar
+      // Limpiar caché de sesión anterior para que la nueva sesión
+      // no herede datos de otra empresa/usuario
+      qc.clear();
+      // Si no hay pendingEmpresas, login fue exitoso → AppLayout redirige al /
       // Si hay pendingEmpresas, el componente mostrará el selector (no navegar aún)
     } catch (err: unknown) {
       if (import.meta.env.DEV) console.error('Login error', err);
@@ -50,6 +55,9 @@ export function Login() {
     setSelectingLoading(empresaId);
     try {
       await selectEmpresa(empresaId);
+      // Limpiar caché antes de entrar: el CONTADOR pudo haber trabajado antes
+      // con otra empresa en la misma pestaña (o la sesión anterior dejó datos)
+      qc.clear();
       navigate('/');
     } catch {
       setError('Error al seleccionar empresa. Intenta de nuevo.');
