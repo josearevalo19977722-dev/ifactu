@@ -83,20 +83,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   // Cuando el usuario es CONTADOR, cargar lista de sus empresas
   useEffect(() => {
     if (usuario?.rol === 'CONTADOR' && token) {
-      console.log('[AuthCtx] cargando mis-empresas, rol=', usuario.rol, 'userId=', usuario.id);
       axios.get(`${API}/auth/mis-empresas`, {
         headers: { Authorization: `Bearer ${token}` },
-      })
-        .then(r => {
-          console.log('[AuthCtx] mis-empresas response:', r.data);
-          setMisEmpresas(r.data);
-        })
-        .catch(err => {
-          console.error('[AuthCtx] mis-empresas error:', err?.response?.status, err?.message);
-          setMisEmpresas([]);
-        });
+      }).then(r => setMisEmpresas(r.data)).catch(() => setMisEmpresas([]));
     } else {
-      console.log('[AuthCtx] mis-empresas skip: rol=', usuario?.rol, 'token=', !!token);
       setMisEmpresas([]);
     }
   }, [usuario?.id, token]);

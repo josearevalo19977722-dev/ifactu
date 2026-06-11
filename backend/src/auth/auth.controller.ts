@@ -27,14 +27,14 @@ export class AuthController {
   @Post('cambiar-empresa')
   @UseGuards(JwtAuthGuard)
   cambiarEmpresa(@Request() req: any, @Body() body: { empresaId: string }) {
-    return this.authService.cambiarEmpresa(req.user.sub, body.empresaId);
+    return this.authService.cambiarEmpresa(req.user.id, body.empresaId);
   }
 
   /** Contador logueado: obtener lista de sus empresas */
   @Get('mis-empresas')
   @UseGuards(JwtAuthGuard)
   misEmpresas(@Request() req: any) {
-    return this.authService.empresasDeContador(req.user.sub);
+    return this.authService.empresasDeContador(req.user.id);
   }
 
   /**
