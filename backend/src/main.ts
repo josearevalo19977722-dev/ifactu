@@ -4,7 +4,8 @@ import { AppModule } from './app.module';
 import { AuthService } from './auth/auth.service';
 
 async function bootstrap() {
-  const app = await NestFactory.create(AppModule);
+  // rawBody: necesario para verificar firmas HMAC de webhooks (N1CO)
+  const app = await NestFactory.create(AppModule, { rawBody: true });
 
   const isProd = process.env.NODE_ENV === 'production';
   const allowedOrigin = process.env.FRONTEND_URL ?? '*';

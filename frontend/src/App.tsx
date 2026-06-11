@@ -40,6 +40,7 @@ import {
   ExtensionLicenciaPage,
   ExtensionLicenciasAdmin,
   ExtensionStorePage,
+  ExtensionCuentaPage,
   ExtensionPrivacidadPage,
 } from './routes/lazyPages';
 import { ImpersonacionBanner } from './components/ImpersonacionBanner';
@@ -548,6 +549,7 @@ function App() {
               <Routes>
                 <Route path="/login" element={<LoginRoute />} />
                 <Route path="/extension" element={<ExtensionStorePage />} />
+                <Route path="/extension/cuenta" element={<ExtensionCuentaPage />} />
                 <Route path="/privacidad-extension" element={<ExtensionPrivacidadPage />} />
                 <Route path="/consultar/:id" element={<ConsultaPublicaPage />} />
                 <Route path="/verificar/:codigoGeneracion" element={<VerificarDte />} />

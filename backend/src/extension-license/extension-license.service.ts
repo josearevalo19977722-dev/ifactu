@@ -10,6 +10,8 @@ import { randomBytes } from 'crypto';
 import { ExtensionLicense } from './extension-license.entity';
 import { LicenseDevice } from './license-device.entity';
 import { ExtensionPlanConfig } from './extension-plan-config.entity';
+import { ExtensionPago } from './extension-pago.entity';
+import { EmailService } from '../notifications/email.service';
 
 /** Respuesta que consume la extensión en GET /extension/validate */
 export interface ValidarResult {
@@ -19,20 +21,40 @@ export interface ValidarResult {
   plan?: string;
   plan_nombre?: string;
   origen?: string;
-  max_dtes_mes?: number;
+  /** null = ilimitado */
+  max_dtes_mes?: number | null;
   dtes_usados_mes?: number;
   fecha_fin?: string | null;
+  /** Features del plan (la extensión puede usarlas o quedarse con sus defaults) */
+  max_cuentas_correo?: number | null;
+  f07?: boolean;
+  excel?: boolean;
   error?: string;
 }
 
 const PLAN_NOMBRES: Record<string, string> = {
+  basico:     'Básico',
+  pro:        'Pro',
+  ilimitado:  'Ilimitado',
+  ifactu:     'iFactu (incluido)',
+  // Legacy — licencias vendidas con el esquema anterior
   free:       'Gratuito',
   monthly:    'Mensual',
   annual:     'Anual',
   lifetime_1: 'Vitalicio (1 equipo)',
   lifetime_2: 'Vitalicio (2 equipos)',
   lifetime_5: 'Vitalicio (5 equipos)',
-  ifactu:     'iFactu (incluido)',
+};
+
+/**
+ * Features por plan cuando no hay registro en extension_plan_config
+ * (fallback que coincide con lo hardcodeado en la extensión).
+ */
+const PLAN_FEATURES_DEFAULT: Record<string, { cuentas: number; f07: boolean; excel: boolean }> = {
+  basico:    { cuentas: 1, f07: false, excel: false },
+  pro:       { cuentas: 3, f07: true,  excel: true },
+  ilimitado: { cuentas: 0, f07: true,  excel: true },
+  ifactu:    { cuentas: 0, f07: true,  excel: true },
 };
 
 @Injectable()
@@ -46,6 +68,9 @@ export class ExtensionLicenseService {
     private readonly deviceRepo: Repository<LicenseDevice>,
     @InjectRepository(ExtensionPlanConfig)
     private readonly planRepo: Repository<ExtensionPlanConfig>,
+    @InjectRepository(ExtensionPago)
+    private readonly pagoRepo: Repository<ExtensionPago>,
+    private readonly emailService: EmailService,
   ) {}
 
   // ── Helpers ────────────────────────────────────────────────────────────────
@@ -115,6 +140,11 @@ export class ExtensionLicenseService {
     // Reiniciar contador si es nuevo mes
     const licActualizada = await this.resetearContadorSiNuevoMes(lic);
 
+    // Features del plan: config en BD > fallback hardcodeado > defaults básicos
+    const planCfg  = await this.planRepo.findOne({ where: { tipo: licActualizada.plan } }).catch(() => null);
+    const fallback = PLAN_FEATURES_DEFAULT[licActualizada.plan];
+    const cuentas  = planCfg?.maxCuentasCorreo ?? fallback?.cuentas ?? 1;
+
     return {
       valid:           true,
       nombre:          licActualizada.nombre   ?? undefined,
@@ -122,9 +152,13 @@ export class ExtensionLicenseService {
       plan:            licActualizada.plan,
       plan_nombre:     PLAN_NOMBRES[licActualizada.plan] ?? licActualizada.plan,
       origen:          licActualizada.origen,
-      max_dtes_mes:    licActualizada.maxDtesMes,
+      // null = ilimitado (la extensión espera null, no 0)
+      max_dtes_mes:    licActualizada.maxDtesMes > 0 ? licActualizada.maxDtesMes : null,
       dtes_usados_mes: licActualizada.dtesUsadosMes,
       fecha_fin:       licActualizada.expiresAt?.toISOString() ?? null,
+      max_cuentas_correo: cuentas > 0 ? cuentas : null,
+      f07:             planCfg?.incluyeF07   ?? fallback?.f07   ?? false,
+      excel:           planCfg?.incluyeExcel ?? fallback?.excel ?? false,
     };
   }
 
@@ -260,9 +294,9 @@ export class ExtensionLicenseService {
     expiresAt?: Date;
     usuarioId?: string;
   }): Promise<ExtensionLicense> {
-    const plan       = dto.plan ?? (dto.origen === 'n1co' ? 'monthly' : 'ifactu');
+    const plan       = dto.plan ?? (dto.origen === 'n1co' ? 'basico' : 'ifactu');
     const planCfg    = await this.planRepo.findOne({ where: { tipo: plan } }).catch(() => null);
-    const maxDtesMes = dto.maxDtesMes ?? planCfg?.maxDtesMes ?? 200;
+    const maxDtesMes = dto.maxDtesMes ?? planCfg?.maxDtesMes ?? 150;
 
     // Si se vincula a un usuario existente, revocar su licencia anterior para evitar duplicados
     if (dto.usuarioId) {
@@ -371,13 +405,65 @@ export class ExtensionLicenseService {
     return { url, plan };
   }
 
+  // ── Consulta pública de cuenta (panel del comprador externo) ──────────────
+
+  /**
+   * Devuelve el detalle de la licencia + historial de pagos.
+   * Requiere clave Y email coincidente, para que la clave sola
+   * (p. ej. compartida en un screenshot) no exponga el historial.
+   */
+  async consultarCuenta(clave: string, email: string): Promise<{
+    ok: boolean;
+    error?: string;
+    licencia?: any;
+    pagos?: { fecha: Date; plan: string | null; monto: number | null; orderCode: string }[];
+  }> {
+    if (!clave || !email) return { ok: false, error: 'Clave y correo son requeridos' };
+
+    const lic = await this.buscarPorClave(clave);
+    if (!lic || (lic.email ?? '').trim().toLowerCase() !== email.trim().toLowerCase()) {
+      return { ok: false, error: 'Clave o correo incorrectos' };
+    }
+
+    const licActualizada = await this.resetearContadorSiNuevoMes(lic);
+    const planCfg = await this.planRepo.findOne({ where: { tipo: licActualizada.plan } }).catch(() => null);
+    const pagos = await this.pagoRepo.find({
+      where: { licenseId: lic.id },
+      order: { createdAt: 'DESC' },
+      take: 24,
+    });
+
+    return {
+      ok: true,
+      licencia: {
+        plan:          licActualizada.plan,
+        planNombre:    PLAN_NOMBRES[licActualizada.plan] ?? licActualizada.plan,
+        nombre:        licActualizada.nombre,
+        activa:        licActualizada.activa,
+        maxDtesMes:    licActualizada.maxDtesMes > 0 ? licActualizada.maxDtesMes : null,
+        dtesUsadosMes: licActualizada.dtesUsadosMes,
+        expiresAt:     licActualizada.expiresAt,
+        maxCuentasCorreo: planCfg ? (planCfg.maxCuentasCorreo > 0 ? planCfg.maxCuentasCorreo : null) : null,
+        incluyeF07:    planCfg?.incluyeF07   ?? false,
+        incluyeExcel:  planCfg?.incluyeExcel ?? false,
+      },
+      pagos: pagos.map(p => ({
+        fecha:     p.createdAt,
+        plan:      p.planTipo,
+        monto:     p.monto != null ? Number(p.monto) : null,
+        orderCode: p.orderCode,
+      })),
+    };
+  }
+
   // ── Webhook N1CO — activar licencia al confirmar pago ─────────────────────
 
   async procesarPagoN1co(payload: any): Promise<void> {
     const orderCode: string = payload.orderCode ?? payload.code ?? '';
     const status: string    = (payload.status ?? payload.orderStatus ?? '').toLowerCase();
-    const email: string     = payload.customerEmail ?? payload.email ?? payload.buyerEmail ?? '';
+    const email: string     = (payload.customerEmail ?? payload.email ?? payload.buyerEmail ?? '').trim().toLowerCase();
     const nombre: string    = payload.customerName  ?? payload.name  ?? '';
+    const monto: number | null = Number(payload.amount ?? payload.total ?? payload.totalAmount) || null;
     const planN1coId: number | undefined = payload.planId ?? payload.plan?.id;
 
     this.logger.log(`[ExtensionWebhook] orderCode=${orderCode} status=${status} email=${email}`);
@@ -392,48 +478,93 @@ export class ExtensionLicenseService {
       return;
     }
 
+    // Idempotencia: si este orderCode ya fue procesado, no hacer nada
+    if (orderCode) {
+      const yaExiste = await this.pagoRepo.findOne({ where: { orderCode } });
+      if (yaExiste) {
+        this.logger.log(`[ExtensionWebhook] orderCode=${orderCode} ya procesado, ignorando reintento`);
+        return;
+      }
+    }
+
     // Buscar qué plan le corresponde según el planId de N1CO
-    let plan = await this.planRepo.findOne({ where: { n1coPlanId: planN1coId } }).catch(() => null);
+    const plan = await this.planRepo.findOne({ where: { n1coPlanId: planN1coId } }).catch(() => null);
 
     // Si hay licencia previa activa para este email, renovarla/extenderla
     const licExistente = await this.repo.findOne({ where: { email, activa: true, origen: 'n1co' } });
 
+    let lic: ExtensionLicense;
+    const esRenovacion = !!licExistente;
+
     if (licExistente) {
       // Extender o actualizar la licencia existente
       if (plan) {
-        licExistente.plan      = plan.tipo;
+        licExistente.plan       = plan.tipo;
         licExistente.maxDtesMes = plan.maxDtesMes;
       }
       licExistente.n1coOrderCode = orderCode;
-      licExistente.expiresAt     = this.calcularExpiracion(plan?.tipo);
-      await this.repo.save(licExistente);
-      this.logger.log(`[ExtensionWebhook] Licencia renovada para ${email} — plan=${plan?.tipo}`);
+      licExistente.expiresAt     = this.calcularExpiracion(plan?.tipo ?? licExistente.plan);
+      lic = await this.repo.save(licExistente);
+      this.logger.log(`[ExtensionWebhook] Licencia renovada para ${email} — plan=${lic.plan}`);
     } else {
       // Crear nueva licencia
-      const nuevaLic = this.repo.create({
-        apiKey:       this.generarApiKey(),
-        origen:       'n1co',
-        activa:       true,
-        plan:         plan?.tipo ?? 'monthly',
-        maxDtesMes:   plan?.maxDtesMes ?? 200,
-        expiresAt:    this.calcularExpiracion(plan?.tipo),
-        nombre:       nombre || null,
-        email,
-        usuarioId:    null,
-        n1coOrderCode: orderCode,
+      lic = await this.repo.save(
+        this.repo.create({
+          apiKey:        this.generarApiKey(),
+          origen:        'n1co',
+          activa:        true,
+          plan:          plan?.tipo ?? 'basico',
+          maxDtesMes:    plan?.maxDtesMes ?? 150,
+          expiresAt:     this.calcularExpiracion(plan?.tipo ?? 'basico'),
+          nombre:        nombre || null,
+          email,
+          usuarioId:     null,
+          n1coOrderCode: orderCode,
+        }),
+      );
+      this.logger.log(`[ExtensionWebhook] Nueva licencia creada para ${email} — plan=${lic.plan}`);
+    }
+
+    // Registrar el pago (historial + marca de idempotencia)
+    if (orderCode) {
+      await this.pagoRepo.save(
+        this.pagoRepo.create({
+          licenseId: lic.id,
+          orderCode,
+          planTipo:  lic.plan,
+          monto,
+          email,
+          nombre:    nombre || null,
+          payload,
+        }),
+      ).catch(err =>
+        this.logger.error(`[ExtensionWebhook] No se pudo registrar el pago ${orderCode}: ${err.message}`),
+      );
+    }
+
+    // Enviar la clave por correo (en renovación sirve de recibo/recordatorio)
+    try {
+      await this.emailService.enviarClaveLicencia({
+        destinatario: email,
+        nombre:       nombre || lic.nombre,
+        apiKey:       lic.apiKey,
+        planNombre:   PLAN_NOMBRES[lic.plan] ?? lic.plan,
+        fechaFin:     lic.expiresAt,
+        esRenovacion,
       });
-      await this.repo.save(nuevaLic);
-      this.logger.log(`[ExtensionWebhook] Nueva licencia creada para ${email} — plan=${plan?.tipo} apiKey=${nuevaLic.apiKey}`);
+    } catch {
+      // Ya quedó logueado en EmailService; la licencia existe y el superadmin
+      // puede reenviar la clave desde el panel si hiciera falta.
     }
   }
 
   private calcularExpiracion(planTipo?: string): Date | null {
-    if (!planTipo || planTipo.startsWith('lifetime')) return null; // sin vencimiento
+    if (!planTipo || planTipo.startsWith('lifetime')) return null; // sin vencimiento (legacy)
     const now = new Date();
     if (planTipo === 'annual') {
       return new Date(now.setFullYear(now.getFullYear() + 1));
     }
-    // monthly por defecto: 31 días
+    // basico / pro / ilimitado / monthly: ciclo mensual de 31 días
     return new Date(Date.now() + 31 * 24 * 60 * 60 * 1000);
   }
 }

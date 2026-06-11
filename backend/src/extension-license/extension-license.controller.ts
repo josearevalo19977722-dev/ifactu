@@ -1,8 +1,11 @@
 import {
   Controller, Get, Post, Put, Patch, Delete, Query, Param, Body,
-  UseGuards, Request, BadRequestException, Res,
+  UseGuards, Request, BadRequestException, Res, Req,
+  UnauthorizedException, RawBodyRequest,
 } from '@nestjs/common';
-import { Response } from 'express';
+import { ConfigService } from '@nestjs/config';
+import { Response, Request as ExpressRequest } from 'express';
+import { createHmac, timingSafeEqual } from 'crypto';
 import { ExtensionLicenseService } from './extension-license.service';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 import { RolesGuard, Roles } from '../auth/roles.guard';
@@ -10,7 +13,10 @@ import { RolUsuario } from '../usuarios/usuario.entity';
 
 @Controller()
 export class ExtensionLicenseController {
-  constructor(private readonly svc: ExtensionLicenseService) {}
+  constructor(
+    private readonly svc: ExtensionLicenseService,
+    private readonly config: ConfigService,
+  ) {}
 
   // ══════════════════════════════════════════════════════════════════════════
   // Endpoints públicos (sin auth) — usados directamente por la extensión
@@ -51,6 +57,16 @@ export class ExtensionLicenseController {
   }
 
   /**
+   * POST /api/extension/mi-cuenta
+   * Consulta pública del estado de la licencia (panel del comprador externo).
+   * Body: { clave, email } — ambos deben coincidir.
+   */
+  @Post('extension/mi-cuenta')
+  async miCuenta(@Body() body: { clave: string; email: string }) {
+    return this.svc.consultarCuenta(body.clave ?? '', body.email ?? '');
+  }
+
+  /**
    * GET /api/extension/planes
    * Lista los planes disponibles para la página pública de compra.
    */
@@ -77,11 +93,36 @@ export class ExtensionLicenseController {
   /**
    * POST /api/extension/webhook/n1co
    * Recibe la notificación de pago de N1CO y activa/crea la licencia.
-   * Comparte lógica HMAC con el webhook de billing si es necesario.
+   * Verifica firma HMAC-SHA256 (mismo esquema que el webhook de billing).
    */
   @Post('extension/webhook/n1co')
-  async webhookN1co(@Body() payload: any) {
-    await this.svc.procesarPagoN1co(payload);
+  async webhookN1co(@Req() req: RawBodyRequest<ExpressRequest>) {
+    const secret = this.config.get<string>('N1CO_WEBHOOK_SECRET');
+
+    if (secret) {
+      const sigHeader =
+        (req.headers as any)['x-n1co-signature'] ??
+        (req.headers as any)['x-signature'] ??
+        (req.headers as any)['x-webhook-signature'];
+
+      if (!sigHeader) throw new UnauthorizedException('Webhook sin firma');
+
+      const rawBody: Buffer = (req as any).rawBody ?? Buffer.from(JSON.stringify((req as any).body));
+      const expected = createHmac('sha256', secret).update(rawBody).digest('hex');
+      const received = sigHeader.toString().replace(/^sha256=/, '');
+
+      try {
+        const expectedBuf = Buffer.from(expected, 'hex');
+        const receivedBuf = Buffer.from(received, 'hex');
+        if (expectedBuf.length !== receivedBuf.length || !timingSafeEqual(expectedBuf, receivedBuf)) {
+          throw new UnauthorizedException('Firma de webhook inválida');
+        }
+      } catch {
+        throw new UnauthorizedException('Firma de webhook inválida');
+      }
+    }
+
+    await this.svc.procesarPagoN1co((req as any).body);
     return { ok: true };
   }
 

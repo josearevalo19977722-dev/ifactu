@@ -93,6 +93,9 @@ export const ExtensionStorePage = lazy(() =>
 export const ExtensionLicenciasAdmin = lazy(() =>
   import('../pages/admin/ExtensionLicenciasAdmin').then(m => ({ default: m.ExtensionLicenciasAdmin })),
 );
+export const ExtensionCuentaPage = lazy(() =>
+  import('../pages/extension/ExtensionCuentaPage').then(m => ({ default: m.ExtensionCuentaPage })),
+);
 export const ExtensionPrivacidadPage = lazy(() =>
   import('../pages/extension/ExtensionPrivacidadPage').then(m => ({ default: m.ExtensionPrivacidadPage })),
 );

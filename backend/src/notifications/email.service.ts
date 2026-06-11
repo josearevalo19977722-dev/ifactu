@@ -208,4 +208,102 @@ export class EmailService {
       this.logger.error(`Error enviando email a ${destinatario}: ${(err as Error).message}`);
     }
   }
+
+  /**
+   * Envía la clave de licencia de la extensión iFactu_Conta al comprador
+   * tras confirmarse el pago en N1CO.
+   */
+  async enviarClaveLicencia(params: {
+    destinatario: string;
+    nombre?: string | null;
+    apiKey: string;
+    planNombre: string;
+    fechaFin?: Date | null;
+    esRenovacion?: boolean;
+  }): Promise<void> {
+    const { destinatario, nombre, apiKey, planNombre, fechaFin, esRenovacion } = params;
+
+    // Clave con guiones: A3F7-9B2E-4C1D-8E6A
+    const claveFmt = apiKey.replace(/-/g, '').replace(/(.{4})(?=.)/g, '$1-');
+    const from = this.config.get('SMTP_FROM', this.config.get('SMTP_USER', 'noreply@facturacion.sv'));
+    const vence = fechaFin
+      ? new Date(fechaFin).toLocaleDateString('es-SV', { day: 'numeric', month: 'long', year: 'numeric' })
+      : null;
+
+    try {
+      await this.transporter.sendMail({
+        from: `"iFactu_Conta" <${from}>`,
+        to: destinatario,
+        subject: esRenovacion
+          ? `Tu plan ${planNombre} de iFactu_Conta fue renovado`
+          : `Tu clave de licencia iFactu_Conta — Plan ${planNombre}`,
+        html: `<!DOCTYPE html>
+<html lang="es">
+<head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1"></head>
+<body style="margin:0;padding:0;background:#f3f4f6;font-family:Arial,Helvetica,sans-serif;">
+<table width="100%" cellpadding="0" cellspacing="0" style="background:#f3f4f6;padding:32px 16px;">
+  <tr><td align="center">
+    <table width="600" cellpadding="0" cellspacing="0" style="max-width:600px;width:100%;border-radius:12px;overflow:hidden;box-shadow:0 4px 24px rgba(0,0,0,0.10);">
+
+      <tr>
+        <td style="background:#0f172a;padding:28px 32px;">
+          <div style="color:#ffffff;font-size:20px;font-weight:700;">iFactu_Conta</div>
+          <div style="color:rgba(255,255,255,0.75);font-size:13px;margin-top:4px;">
+            ${esRenovacion ? 'Renovación confirmada' : 'Compra confirmada'} &mdash; Plan ${planNombre}
+          </div>
+        </td>
+      </tr>
+
+      <tr>
+        <td style="background:#ffffff;padding:32px;">
+          <p style="margin:0 0 8px;font-size:15px;color:#111827;">Hola${nombre ? ` <strong>${nombre}</strong>` : ''},</p>
+          <p style="margin:0 0 24px;font-size:14px;color:#374151;">
+            ${esRenovacion
+              ? `Tu plan <strong>${planNombre}</strong> fue renovado correctamente. Tu clave de licencia sigue siendo la misma:`
+              : `¡Gracias por tu compra! Esta es tu clave de licencia para activar la extensión:`}
+          </p>
+
+          <table width="100%" cellpadding="0" cellspacing="0" style="margin-bottom:24px;">
+            <tr><td align="center" style="background:#f0f4ff;border:2px dashed #1a56db;border-radius:10px;padding:20px;">
+              <div style="font-family:monospace;font-size:24px;font-weight:800;letter-spacing:3px;color:#1a56db;">${claveFmt}</div>
+            </td></tr>
+          </table>
+
+          <p style="margin:0 0 6px;font-size:14px;font-weight:700;color:#111827;">Cómo activarla:</p>
+          <ol style="margin:0 0 24px;padding-left:20px;font-size:13px;color:#374151;line-height:1.8;">
+            <li>Abre la extensión <strong>iFactu_Conta</strong> en Chrome</li>
+            <li>Entra a <strong>Opciones → Licencia</strong></li>
+            <li>Pega la clave y presiona <strong>Activar</strong></li>
+          </ol>
+
+          ${vence ? `
+          <table width="100%" cellpadding="0" cellspacing="0" style="background:#fffbeb;border:1px solid #fde68a;border-radius:8px;">
+            <tr><td style="padding:12px 16px;font-size:13px;color:#92400e;">
+              <strong>Vigencia:</strong> tu plan está activo hasta el <strong>${vence}</strong>.
+            </td></tr>
+          </table>` : ''}
+        </td>
+      </tr>
+
+      <tr>
+        <td style="background:#f9fafb;padding:20px 32px;border-top:1px solid #e5e7eb;">
+          <p style="margin:0;font-size:12px;color:#9ca3af;text-align:center;">
+            ¿Dudas o problemas con tu licencia? Escríbenos a jsolution.sv@gmail.com<br>
+            Este es un mensaje automático, por favor no respondas a este correo.
+          </p>
+        </td>
+      </tr>
+
+    </table>
+  </td></tr>
+</table>
+</body>
+</html>`,
+      });
+      this.logger.log(`Clave de licencia enviada a ${destinatario} (plan ${planNombre})`);
+    } catch (err) {
+      this.logger.error(`Error enviando clave de licencia a ${destinatario}: ${(err as Error).message}`);
+      throw err; // el caller decide si reintentar
+    }
+  }
 }

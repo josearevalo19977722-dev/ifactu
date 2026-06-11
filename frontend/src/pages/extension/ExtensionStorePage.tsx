@@ -10,10 +10,17 @@ interface Plan {
   precio: number;
   maxDtesMes: number;
   maxDispositivos: number;
+  maxCuentasCorreo: number;
+  incluyeF07: boolean;
+  incluyeExcel: boolean;
   paymentLinkUrl: string | null;
 }
 
 const ICONOS: Record<string, string> = {
+  basico:    '📦',
+  pro:       '🚀',
+  ilimitado: '♾️',
+  // Legacy
   monthly:    '📅',
   annual:     '🗓️',
   lifetime_1: '♾️',
@@ -21,7 +28,7 @@ const ICONOS: Record<string, string> = {
   lifetime_5: '♾️',
 };
 
-const POPULAR = 'annual'; // plan destacado
+const POPULAR = 'pro'; // plan destacado
 
 const FEATURES = [
   '📥 Descarga DTEs automáticamente desde Gmail',
@@ -177,16 +184,22 @@ export function ExtensionStorePage() {
                     ${Number(plan.precio).toFixed(2)}
                   </span>
                   <span style={{ fontSize: 13, color: '#64748b', marginLeft: 6 }}>
-                    {plan.tipo === 'monthly' ? '/ mes' : plan.tipo === 'annual' ? '/ año' : 'pago único'}
+                    {plan.tipo === 'annual' ? '/ año' : esVitalicio ? 'pago único' : '/ mes'}
                   </span>
                 </div>
 
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginBottom: 24, fontSize: 13, color: '#cbd5e1' }}>
                   <div>📄 {plan.maxDtesMes === 0 ? 'DTEs ilimitados' : `${plan.maxDtesMes} DTEs/mes`}</div>
+                  <div>📧 {plan.maxCuentasCorreo === 0
+                    ? 'Cuentas de correo ilimitadas'
+                    : `${plan.maxCuentasCorreo} cuenta${plan.maxCuentasCorreo > 1 ? 's' : ''} de correo`}</div>
+                  <div style={{ color: plan.incluyeF07 ? '#86efac' : '#475569' }}>
+                    {plan.incluyeF07 ? '✅' : '✖️'} Anexo F-07
+                  </div>
+                  <div style={{ color: plan.incluyeExcel ? '#86efac' : '#475569' }}>
+                    {plan.incluyeExcel ? '✅' : '✖️'} Exportación a Excel
+                  </div>
                   <div>🖥️ {plan.maxDispositivos} {plan.maxDispositivos === 1 ? 'equipo' : 'equipos'}</div>
-                  <div>✅ Gmail</div>
-                  {esVitalicio && <div style={{ color: '#86efac' }}>♾️ Sin suscripción mensual</div>}
-                  {plan.tipo === 'annual' && <div style={{ color: '#86efac' }}>💰 Ahorra vs plan mensual</div>}
                 </div>
 
                 <button
@@ -214,6 +227,53 @@ export function ExtensionStorePage() {
             );
           })}
         </div>
+
+        {/* ── Tabla comparativa ── */}
+        {planes.length > 1 && (
+          <div style={{ marginTop: 56, overflowX: 'auto' }}>
+            <h2 style={{ textAlign: 'center', fontSize: 22, fontWeight: 800, marginBottom: 20 }}>
+              Compara los planes
+            </h2>
+            <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13, minWidth: 480 }}>
+              <thead>
+                <tr>
+                  <th style={{ textAlign: 'left', padding: '10px 14px', color: '#94a3b8', fontWeight: 600 }}></th>
+                  {planes.map(p => (
+                    <th key={p.tipo} style={{
+                      textAlign: 'center', padding: '10px 14px', fontWeight: 800, fontSize: 14,
+                      color: p.tipo === POPULAR ? '#a5b4fc' : '#f8fafc',
+                    }}>
+                      {ICONOS[p.tipo] ?? '📦'} {p.nombre}
+                    </th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody>
+                {([
+                  ['Precio', (p: Plan) => `$${Number(p.precio).toFixed(2)}/mes`],
+                  ['DTEs por mes', (p: Plan) => p.maxDtesMes === 0 ? 'Ilimitados' : String(p.maxDtesMes)],
+                  ['Cuentas de correo', (p: Plan) => p.maxCuentasCorreo === 0 ? 'Ilimitadas' : String(p.maxCuentasCorreo)],
+                  ['Anexo F-07', (p: Plan) => p.incluyeF07 ? '✅' : '—'],
+                  ['Exportación a Excel', (p: Plan) => p.incluyeExcel ? '✅' : '—'],
+                  ['Equipos', (p: Plan) => String(p.maxDispositivos)],
+                ] as [string, (p: Plan) => string][]).map(([label, fn], i) => (
+                  <tr key={label} style={{ background: i % 2 === 0 ? 'rgba(255,255,255,.03)' : 'transparent' }}>
+                    <td style={{ padding: '10px 14px', color: '#cbd5e1', fontWeight: 600 }}>{label}</td>
+                    {planes.map(p => (
+                      <td key={p.tipo} style={{
+                        textAlign: 'center', padding: '10px 14px',
+                        color: p.tipo === POPULAR ? '#e0e7ff' : '#94a3b8',
+                        background: p.tipo === POPULAR ? 'rgba(99,102,241,.08)' : 'transparent',
+                      }}>
+                        {fn(p)}
+                      </td>
+                    ))}
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
 
         {/* Footer */}
         <div style={{ textAlign: 'center', marginTop: 48, color: '#64748b', fontSize: 13, display: 'flex', flexDirection: 'column', gap: 10, alignItems: 'center' }}>
@@ -244,6 +304,10 @@ export function ExtensionStorePage() {
               style={{ color: '#818cf8' }}
             >
               Instala la extensión →
+            </a>
+            {' · '}
+            <a href="/extension/cuenta" style={{ color: '#818cf8' }}>
+              Consulta tu licencia →
             </a>
           </div>
           <div style={{ color: '#475569' }}>

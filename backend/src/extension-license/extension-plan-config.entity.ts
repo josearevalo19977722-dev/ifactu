@@ -4,12 +4,13 @@ import { Entity, PrimaryColumn, Column, UpdateDateColumn } from 'typeorm';
  * Catálogo de planes disponibles para comprar la extensión iFactu_Conta.
  * Similar a PlanConfig del módulo billing, pero específico para la extensión.
  *
- * Planes estándar:
- *   monthly     — mensual recurrente
- *   annual      — anual prepago
- *   lifetime_1  — vitalicio 1 equipo
- *   lifetime_2  — vitalicio 2 equipos
- *   lifetime_5  — vitalicio 5 equipos
+ * Planes vigentes (mensuales):
+ *   basico    — 150 DTEs/mes | 1 cuenta correo | sin F-07 | sin Excel
+ *   pro       — 500 DTEs/mes | 3 cuentas       | F-07 ✓   | Excel ✓
+ *   ilimitado — sin límites  | todo incluido
+ *
+ * Legacy (desactivados, licencias viejas siguen funcionando):
+ *   monthly / annual / lifetime_1 / lifetime_2 / lifetime_5
  */
 @Entity('extension_plan_config')
 export class ExtensionPlanConfig {
@@ -34,6 +35,18 @@ export class ExtensionPlanConfig {
   /** Máximo de dispositivos simultáneos */
   @Column({ type: 'int', default: 1 })
   maxDispositivos: number;
+
+  /** Máximo de cuentas de correo monitoreadas (0 = ilimitado) */
+  @Column({ type: 'int', default: 1 })
+  maxCuentasCorreo: number;
+
+  /** Incluye generación del anexo F-07 */
+  @Column({ type: 'boolean', default: false })
+  incluyeF07: boolean;
+
+  /** Incluye exportación a Excel */
+  @Column({ type: 'boolean', default: false })
+  incluyeExcel: boolean;
 
   /** N1CO plan ID (null = requiere configuración antes de vender) */
   @Column({ type: 'int', nullable: true })
