@@ -933,30 +933,29 @@ export class ReportesService {
 
       // ── Encabezado empresa + título ─────────────────────────────
       if (empresa) {
-        // Línea superior: nombre legal + nombre comercial
-        const nombreEmp = empresa.nombreComercial
-          ? `${empresa.nombreLegal}  (${empresa.nombreComercial})`
-          : empresa.nombreLegal;
+        // Nombre: solo muestra comercial entre paréntesis si es distinto al legal
+        const nombreEmp = empresa.nombreComercial &&
+          empresa.nombreComercial.trim().toLowerCase() !== empresa.nombreLegal.trim().toLowerCase()
+            ? `${empresa.nombreLegal}  (${empresa.nombreComercial})`
+            : empresa.nombreLegal;
         doc.fontSize(11).font('Helvetica-Bold').fillColor('#111')
            .text(nombreEmp, LX, y, { width: PW });
         y += 14;
-        // NIT / NRC / correo / teléfono en una línea
+        // NIT / NRC / Email / Tel — sin emojis (Helvetica no los soporta)
         const meta = [
           `NIT: ${empresa.nit}`,
           `NRC: ${empresa.nrc}`,
-          empresa.correo   ? `✉ ${empresa.correo}`   : null,
-          empresa.telefono ? `✆ ${empresa.telefono}` : null,
-        ].filter(Boolean).join('   ·   ');
+          empresa.correo   ? `Email: ${empresa.correo}`   : null,
+          empresa.telefono ? `Tel: ${empresa.telefono}` : null,
+        ].filter(Boolean).join('   |   ');
         doc.fontSize(7.5).font('Helvetica').fillColor('#444').text(meta, LX, y, { width: PW });
         y += 12;
-        // Dirección
-        const dir = [empresa.complemento, empresa.municipio, empresa.departamento]
-          .filter(Boolean).join(', ');
-        if (dir) {
-          doc.fontSize(7.5).font('Helvetica').fillColor('#666').text(dir, LX, y, { width: PW });
+        // Dirección: solo complemento (municipio/departamento son codigos MH, no texto legible)
+        if (empresa.complemento) {
+          doc.fontSize(7.5).font('Helvetica').fillColor('#666')
+             .text(`Direccion: ${empresa.complemento}`, LX, y, { width: PW });
           y += 12;
         }
-        // Línea separadora
         doc.moveTo(LX, y).lineTo(LX + PW, y).strokeColor('#94a3b8').lineWidth(0.5).stroke();
         y += 8;
       }
@@ -1111,24 +1110,24 @@ export class ReportesService {
 
       // ── Encabezado empresa + título ─────────────────────────────
       if (empresa) {
-        const nombreEmp = empresa.nombreComercial
-          ? `${empresa.nombreLegal}  (${empresa.nombreComercial})`
-          : empresa.nombreLegal;
+        const nombreEmp = empresa.nombreComercial &&
+          empresa.nombreComercial.trim().toLowerCase() !== empresa.nombreLegal.trim().toLowerCase()
+            ? `${empresa.nombreLegal}  (${empresa.nombreComercial})`
+            : empresa.nombreLegal;
         doc.fontSize(11).font('Helvetica-Bold').fillColor('#111')
            .text(nombreEmp, LX, y, { width: PW });
         y += 14;
         const meta = [
           `NIT: ${empresa.nit}`,
           `NRC: ${empresa.nrc}`,
-          empresa.correo   ? `✉ ${empresa.correo}`   : null,
-          empresa.telefono ? `✆ ${empresa.telefono}` : null,
-        ].filter(Boolean).join('   ·   ');
+          empresa.correo   ? `Email: ${empresa.correo}`   : null,
+          empresa.telefono ? `Tel: ${empresa.telefono}` : null,
+        ].filter(Boolean).join('   |   ');
         doc.fontSize(7.5).font('Helvetica').fillColor('#444').text(meta, LX, y, { width: PW });
         y += 12;
-        const dir = [empresa.complemento, empresa.municipio, empresa.departamento]
-          .filter(Boolean).join(', ');
-        if (dir) {
-          doc.fontSize(7.5).font('Helvetica').fillColor('#666').text(dir, LX, y, { width: PW });
+        if (empresa.complemento) {
+          doc.fontSize(7.5).font('Helvetica').fillColor('#666')
+             .text(`Direccion: ${empresa.complemento}`, LX, y, { width: PW });
           y += 12;
         }
         doc.moveTo(LX, y).lineTo(LX + PW, y).strokeColor('#94a3b8').lineWidth(0.5).stroke();
@@ -1138,7 +1137,7 @@ export class ReportesService {
          .text(`REPORTE DE COMPRAS — ${nombreMes.toUpperCase()} ${anio}`, LX, y, { width: PW });
       y += 14;
       doc.fontSize(8).font('Helvetica').fillColor('#555')
-         .text(`Generado: ${new Date().toLocaleDateString('es-SV', { dateStyle: 'long' })}  ·  Total registros: ${compras.length}`, LX, y, { width: PW });
+         .text(`Generado: ${new Date().toLocaleDateString('es-SV', { dateStyle: 'long' })}  |  Total registros: ${compras.length}`, LX, y, { width: PW });
       y += 16;
 
       drawSectionBanner(`COMPRAS DEL PERÍODO — ${compras.length} registro(s)`);
