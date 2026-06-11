@@ -15,11 +15,25 @@ RUN npm run build
 FROM nginx:alpine
 COPY --from=builder /app/dist /usr/share/nginx/html
 
-# Configuración nginx para SPA (React Router)
+# Configuración nginx para SPA (React Router) con cache correcto
 RUN echo 'server { \
     listen 80; \
     root /usr/share/nginx/html; \
     index index.html; \
+    \
+    # index.html NUNCA se cachea — siempre sirve el build más reciente \
+    location = /index.html { \
+        add_header Cache-Control "no-cache, no-store, must-revalidate"; \
+        add_header Pragma "no-cache"; \
+        add_header Expires "0"; \
+    } \
+    \
+    # Assets con hash de contenido (JS/CSS) pueden cachearse 1 año \
+    location /assets/ { \
+        add_header Cache-Control "public, max-age=31536000, immutable"; \
+    } \
+    \
+    # SPA fallback para React Router \
     location / { \
         try_files $uri $uri/ /index.html; \
     } \
