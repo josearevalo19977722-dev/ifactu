@@ -821,7 +821,7 @@ export class ReportesService {
     const nombreMes = MESES[mes - 1];
 
     return new Promise<Buffer>((resolve, reject) => {
-      const doc = new PDFDocument({ size: 'LETTER', layout: 'landscape',
+      const doc = new PDFDocument({ size: 'A4', layout: 'landscape',
         margins: { top: 36, bottom: 36, left: 36, right: 36 },
         info: { Title: `Ventas ${nombreMes} ${anio}`, Author: 'iFactu' } });
       const chunks: Buffer[] = [];
@@ -830,16 +830,17 @@ export class ReportesService {
       doc.on('error', reject);
 
       // ── layout ─────────────────────────────────────────────────
-      // Letter landscape usable: 792 - 72 = 720pt
-      const PW = 720;
+      // A4 landscape usable: 841.89 - 72 = 769pt
+      const PW = 769;
       const LX = 36;
       const ROW_H = 15;
       const HDR_H = 17;
 
-      // Columns: #, Fecha, Tipo, N° Control (sin prefijo DTE-XX-), Cód.Gen(20chr), Receptor, NIT, Exenta, Gravada, IVA, Total
+      // Columns: #, Fecha, Tipo, N° Control (sin prefijo DTE-XX-), Cód.Gen (UUID completo), Receptor, NIT, Exenta, Gravada, IVA, Total
+      // Con A4 landscape (769pt) el UUID de 32 chars cabe en 165pt a font-7
       const COLS = [
-        { w: 20 }, { w: 52 }, { w: 26 }, { w: 113 }, { w: 88 },
-        { w: 120 }, { w: 68 }, { w: 50 }, { w: 54 }, { w: 46 }, { w: 55 },
+        { w: 18 }, { w: 52 }, { w: 26 }, { w: 122 }, { w: 165 },
+        { w: 118 }, { w: 70 }, { w: 46 }, { w: 52 }, { w: 46 }, { w: 54 },
       ];
       // compute x positions
       let cx = LX;
@@ -919,11 +920,8 @@ export class ReportesService {
       };
 
       const $v = (v: number) => v ? `$${v.toFixed(2)}` : '—';
-      const codG = (s: string | null) => {
-        if (!s) return '—';
-        const clean = s.replace(/-/g, '');
-        return clean.length > 20 ? clean.substring(0, 20) + '…' : clean;
-      };
+      // UUID sin guiones = 32 chars hex — cabe completo en la columna A4
+      const codG = (s: string | null) => s ? s.replace(/-/g, '') : '—';
       const tipoLabel = (t: string) => ({ '01':'CF','03':'CCF','05':'NC','06':'ND' }[t] ?? t);
 
       // ── Title ───────────────────────────────────────────────────
@@ -988,7 +986,7 @@ export class ReportesService {
     const nombreMes = MESES[mes - 1];
 
     return new Promise<Buffer>((resolve, reject) => {
-      const doc = new PDFDocument({ size: 'LETTER', layout: 'landscape',
+      const doc = new PDFDocument({ size: 'A4', layout: 'landscape',
         margins: { top: 36, bottom: 36, left: 36, right: 36 },
         info: { Title: `Compras ${nombreMes} ${anio}`, Author: 'iFactu' } });
       const chunks: Buffer[] = [];
@@ -996,13 +994,13 @@ export class ReportesService {
       doc.on('end',  () => resolve(Buffer.concat(chunks)));
       doc.on('error', reject);
 
-      const PW = 720; const LX = 36;
+      const PW = 769; const LX = 36;
       const ROW_H = 15; const HDR_H = 17;
 
-      // Columns: #, Fecha, Tipo, N° Control (sin DTE-XX-), Cód.Gen, Proveedor, NIT, Exenta, No Suj, Gravada, IVA, Total
+      // Columns: #, Fecha, Tipo, N° Control (sin DTE-XX-), Cód.Gen (UUID completo 32 chars), Proveedor, NIT, Exenta, No Suj, Gravada, IVA, Total
       const COLS = [
-        { w: 20 }, { w: 52 }, { w: 26 }, { w: 110 }, { w: 85 },
-        { w: 115 }, { w: 66 }, { w: 46 }, { w: 46 }, { w: 50 }, { w: 46 }, { w: 52 },
+        { w: 16 }, { w: 50 }, { w: 24 }, { w: 118 }, { w: 152 },
+        { w: 110 }, { w: 66 }, { w: 42 }, { w: 42 }, { w: 48 }, { w: 42 }, { w: 50 },
       ];
       let cx = LX; COLS.forEach(c => { (c as any).x = cx; cx += c.w; });
       const HEADS = ['#','Fecha','Tipo','N° Control','Cód. Generación','Proveedor','NIT / NRC','Exenta','No Suj.','Gravada','IVA','Total'];
@@ -1069,11 +1067,8 @@ export class ReportesService {
       };
 
       const $v = (v: number) => v ? `$${v.toFixed(2)}` : '—';
-      const codG = (s: string | null) => {
-        if (!s) return '—';
-        const clean = s.replace(/-/g, '');
-        return clean.length > 20 ? clean.substring(0, 20) + '…' : clean;
-      };
+      // UUID sin guiones = 32 chars hex — cabe completo en la columna A4
+      const codG = (s: string | null) => s ? s.replace(/-/g, '') : '—';
       const tipoLabel = (t: string) =>
         ({ '01':'CF','03':'CCF','05':'NC','06':'ND','11':'FEXE','14':'FSE' }[t] ?? t);
 
