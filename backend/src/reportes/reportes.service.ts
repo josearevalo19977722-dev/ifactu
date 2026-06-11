@@ -836,11 +836,11 @@ export class ReportesService {
       const ROW_H = 15;
       const HDR_H = 17;
 
-      // Columns: #, Fecha, Tipo, N° Control (sin prefijo DTE-XX-), Cód.Gen (UUID completo), Receptor, NIT, Exenta, Gravada, IVA, Total
-      // Con A4 landscape (769pt) el UUID de 32 chars cabe en 165pt a font-7
+      // Columns: #, Fecha, Tipo, N° Control (completo con prefijo DTE-XX-), Cód.Gen (UUID completo 32 chars), Receptor, NIT, Exenta, Gravada, IVA, Total
+      // Font data 6.5pt → 4.225pt/char → N°Control 31chars≈131pt, UUID 32chars≈135pt
       const COLS = [
-        { w: 18 }, { w: 52 }, { w: 26 }, { w: 122 }, { w: 165 },
-        { w: 118 }, { w: 70 }, { w: 46 }, { w: 52 }, { w: 46 }, { w: 54 },
+        { w: 16 }, { w: 50 }, { w: 24 }, { w: 140 }, { w: 148 },
+        { w: 115 }, { w: 68 }, { w: 44 }, { w: 50 }, { w: 44 }, { w: 52 },
       ];
       // compute x positions
       let cx = LX;
@@ -872,12 +872,12 @@ export class ReportesService {
 
       const cell = (col: number, text: string, opts: { bold?: boolean, size?: number, color?: string } = {}) => {
         const c = COLS[col] as any;
-        const sz = opts.size ?? 7;
+        const sz = opts.size ?? 6.5;  // 6.5pt: N°Control(31ch) y UUID(32ch) caben sin truncar
         doc.fontSize(sz)
            .font(opts.bold ? 'Helvetica-Bold' : 'Helvetica')
            .fillColor(opts.color ?? '#111111');
         const align = RIGHT_COLS.has(col) ? 'right' : 'left';
-        doc.text(trunc(String(text ?? ''), c.w, sz), c.x + 2, y + 2,
+        doc.text(trunc(String(text ?? ''), c.w, sz), c.x + 2, y + 3,
           { width: c.w - 4, lineBreak: false, ellipsis: false, align });
       };
 
@@ -942,7 +942,7 @@ export class ReportesService {
           tEx += r.totalExenta; tGr += r.totalGravada; tIva += r.totalIva; tTot += r.totalPagar;
           drawDataRow([
             String(i + 1), fmtFecha(d.fechaEmision), tipoLabel(d.tipoDte),
-            ctrlShort(d.numeroControl), codG(d.codigoGeneracion),
+            d.numeroControl ?? '—', codG(d.codigoGeneracion),
             (rec.nombre ?? d.receptorNombre ?? 'Consumidor Final').substring(0, 30),
             rec.nit ?? rec.dui ?? '—',
             $v(r.totalExenta), $v(r.totalGravada), $v(r.totalIva), $v(r.totalPagar),
@@ -963,7 +963,7 @@ export class ReportesService {
           tEx += r.totalExenta; tGr += r.totalGravada; tIva += r.totalIva; tTot += r.totalPagar;
           drawDataRow([
             String(i + 1), fmtFecha(d.fechaEmision), tipoLabel(d.tipoDte),
-            ctrlShort(d.numeroControl), codG(d.codigoGeneracion),
+            d.numeroControl ?? '—', codG(d.codigoGeneracion),
             (rec.nombre ?? d.receptorNombre ?? '').substring(0, 30),
             rec.nit ?? '—',
             $v(r.totalExenta), $v(r.totalGravada), $v(r.totalIva), $v(r.totalPagar),
@@ -997,10 +997,11 @@ export class ReportesService {
       const PW = 769; const LX = 36;
       const ROW_H = 15; const HDR_H = 17;
 
-      // Columns: #, Fecha, Tipo, N° Control (sin DTE-XX-), Cód.Gen (UUID completo 32 chars), Proveedor, NIT, Exenta, No Suj, Gravada, IVA, Total
+      // Columns: #, Fecha, Tipo, N° Control (completo), Cód.Gen (UUID 32 chars), Proveedor, NIT, Exenta, No Suj, Gravada, IVA, Total
+      // Font data 6.5pt → N°Control 31chars≈131pt, UUID 32chars≈135pt
       const COLS = [
-        { w: 16 }, { w: 50 }, { w: 24 }, { w: 118 }, { w: 152 },
-        { w: 110 }, { w: 66 }, { w: 42 }, { w: 42 }, { w: 48 }, { w: 42 }, { w: 50 },
+        { w: 16 }, { w: 50 }, { w: 24 }, { w: 140 }, { w: 145 },
+        { w: 110 }, { w: 66 }, { w: 40 }, { w: 40 }, { w: 48 }, { w: 40 }, { w: 50 },
       ];
       let cx = LX; COLS.forEach(c => { (c as any).x = cx; cx += c.w; });
       const HEADS = ['#','Fecha','Tipo','N° Control','Cód. Generación','Proveedor','NIT / NRC','Exenta','No Suj.','Gravada','IVA','Total'];
@@ -1025,10 +1026,10 @@ export class ReportesService {
 
       const cell = (col: number, text: string, opts: { bold?: boolean, size?: number, color?: string } = {}) => {
         const c = COLS[col] as any;
-        const sz = opts.size ?? 7;
+        const sz = opts.size ?? 6.5;  // 6.5pt: N°Control(31ch) y UUID(32ch) caben sin truncar
         doc.fontSize(sz).font(opts.bold ? 'Helvetica-Bold' : 'Helvetica').fillColor(opts.color ?? '#111');
         const align = RIGHT_COLS.has(col) ? 'right' : 'left';
-        doc.text(trunc(String(text ?? ''), c.w, sz), c.x + 2, y + 2,
+        doc.text(trunc(String(text ?? ''), c.w, sz), c.x + 2, y + 3,
           { width: c.w - 4, lineBreak: false, ellipsis: false, align });
       };
 
@@ -1097,7 +1098,7 @@ export class ReportesService {
           String(i + 1),
           fmtFecha(c.fechaEmision),
           tipoLabel(c.tipoDte),
-          ctrlShort(c.numeroControl),
+          c.numeroControl ?? '—',
           codG(c.codigoGeneracion),
           (c.proveedorNombre ?? '').substring(0, 28),
           c.proveedorNit ?? c.proveedorNrc ?? '—',
