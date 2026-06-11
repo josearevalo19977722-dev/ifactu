@@ -18,8 +18,9 @@ SET activo = FALSE
 WHERE tipo IN ('monthly', 'annual', 'lifetime_1', 'lifetime_2', 'lifetime_5');
 
 -- 3. Seed de los 3 planes nuevos (mensuales).
---    PRECIOS PROVISIONALES — ajustar desde el panel superadmin
---    junto con n1coPlanId y paymentLinkUrl antes de vender.
+--    PRECIOS PROVISIONALES Y NETOS (sin IVA) — la web les agrega 13%
+--    al mostrar. Ajustar desde el panel superadmin junto con
+--    n1coPlanId y paymentLinkUrl antes de vender.
 INSERT INTO extension_plan_config
   (tipo, nombre, descripcion, precio, "maxDtesMes", "maxDispositivos",
    "maxCuentasCorreo", "incluyeF07", "incluyeExcel", activo)

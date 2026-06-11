@@ -30,6 +30,10 @@ const ICONOS: Record<string, string> = {
 
 const POPULAR = 'pro'; // plan destacado
 
+/** IVA El Salvador — el precio configurado es neto, se muestra con IVA */
+const IVA = 0.13;
+const conIva = (precio: number) => Number(precio) * (1 + IVA);
+
 const FEATURES = [
   '📥 Descarga DTEs automáticamente desde Gmail',
   '📄 Soporte para CF, CCF, NRE, FSE y más tipos de DTE',
@@ -181,11 +185,14 @@ export function ExtensionStorePage() {
 
                 <div style={{ marginBottom: 20 }}>
                   <span style={{ fontSize: 36, fontWeight: 900, color: esPopular ? '#a5b4fc' : '#f8fafc' }}>
-                    ${Number(plan.precio).toFixed(2)}
+                    ${conIva(plan.precio).toFixed(2)}
                   </span>
                   <span style={{ fontSize: 13, color: '#64748b', marginLeft: 6 }}>
                     {plan.tipo === 'annual' ? '/ año' : esVitalicio ? 'pago único' : '/ mes'}
                   </span>
+                  <div style={{ fontSize: 11, color: '#64748b', marginTop: 4 }}>
+                    ${Number(plan.precio).toFixed(2)} + IVA (13%)
+                  </div>
                 </div>
 
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginBottom: 24, fontSize: 13, color: '#cbd5e1' }}>
@@ -250,7 +257,7 @@ export function ExtensionStorePage() {
               </thead>
               <tbody>
                 {([
-                  ['Precio', (p: Plan) => `$${Number(p.precio).toFixed(2)}/mes`],
+                  ['Precio (IVA incluido)', (p: Plan) => `$${conIva(p.precio).toFixed(2)}/mes`],
                   ['DTEs por mes', (p: Plan) => p.maxDtesMes === 0 ? 'Ilimitados' : String(p.maxDtesMes)],
                   ['Cuentas de correo', (p: Plan) => p.maxCuentasCorreo === 0 ? 'Ilimitadas' : String(p.maxCuentasCorreo)],
                   ['Anexo F-07', (p: Plan) => p.incluyeF07 ? '✅' : '—'],
