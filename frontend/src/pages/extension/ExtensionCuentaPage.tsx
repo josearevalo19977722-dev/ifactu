@@ -13,6 +13,7 @@ interface CuentaLicencia {
   maxCuentasCorreo: number | null;
   incluyeF07: boolean;
   incluyeExcel: boolean;
+  updates: boolean;
 }
 
 interface CuentaPago {
@@ -171,12 +172,25 @@ export function ExtensionCuentaPage() {
                 <div>📧 {licencia.maxCuentasCorreo == null ? 'Cuentas ilimitadas' : `${licencia.maxCuentasCorreo} cuenta${licencia.maxCuentasCorreo > 1 ? 's' : ''} de correo`}</div>
                 <div style={{ color: licencia.incluyeF07 ? '#86efac' : '#475569' }}>{licencia.incluyeF07 ? '✅' : '✖️'} Anexo F-07</div>
                 <div style={{ color: licencia.incluyeExcel ? '#86efac' : '#475569' }}>{licencia.incluyeExcel ? '✅' : '✖️'} Excel</div>
+                <div style={{ color: licencia.updates ? '#86efac' : '#475569' }}>
+                  {licencia.updates ? '✅' : '✖️'} Actualizaciones de por vida
+                </div>
                 <div>
                   📅 {licencia.expiresAt
                     ? `Vence: ${new Date(licencia.expiresAt).toLocaleDateString('es-SV', { day: 'numeric', month: 'short', year: 'numeric' })}`
                     : 'Sin vencimiento'}
                 </div>
               </div>
+
+              {!licencia.updates && licencia.activa && !vencida && (
+                <a href="/extension#updates" style={{
+                  display: 'block', textAlign: 'center', marginTop: 18, padding: '10px 0',
+                  borderRadius: 12, fontSize: 13, fontWeight: 700, textDecoration: 'none',
+                  color: '#6ee7b7', background: 'rgba(16,185,129,.1)', border: '1px solid rgba(16,185,129,.35)',
+                }}>
+                  🔄 Agregar actualizaciones de por vida →
+                </a>
+              )}
 
               {(vencida || !licencia.activa) && (
                 <a href="/extension" style={{

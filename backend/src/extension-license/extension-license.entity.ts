@@ -14,9 +14,17 @@ export class ExtensionLicense {
   @Column({ default: true })
   activa: boolean;
 
-  /** Tipo de plan: free | monthly | annual | lifetime_1 | lifetime_2 | lifetime_5 */
+  /** Tipo de plan: basico | pro | ilimitado | ifactu (+ legacy: free/monthly/annual/lifetime_*) */
   @Column({ type: 'varchar', default: 'free' })
   plan: string;
+
+  /**
+   * Add-on "Actualizaciones de por vida" ($5 pago único).
+   * Pegado a la licencia, no al plan: sobrevive a upgrades de plan.
+   * El plan ilimitado lo incluye sin costo.
+   */
+  @Column({ type: 'boolean', default: false })
+  updatesLifetime: boolean;
 
   /** Límite de DTEs que puede procesar por mes (0 = ilimitado) */
   @Column({ type: 'int', default: 200 })

@@ -220,8 +220,10 @@ export class EmailService {
     planNombre: string;
     fechaFin?: Date | null;
     esRenovacion?: boolean;
+    /** Compra del add-on "Actualizaciones de por vida" (la clave no cambia) */
+    esAddon?: boolean;
   }): Promise<void> {
-    const { destinatario, nombre, apiKey, planNombre, fechaFin, esRenovacion } = params;
+    const { destinatario, nombre, apiKey, planNombre, fechaFin, esRenovacion, esAddon } = params;
 
     // Clave con guiones: A3F7-9B2E-4C1D-8E6A
     const claveFmt = apiKey.replace(/-/g, '').replace(/(.{4})(?=.)/g, '$1-');
@@ -234,9 +236,11 @@ export class EmailService {
       await this.transporter.sendMail({
         from: `"iFactu_Conta" <${from}>`,
         to: destinatario,
-        subject: esRenovacion
-          ? `Tu plan ${planNombre} de iFactu_Conta fue renovado`
-          : `Tu clave de licencia iFactu_Conta — Plan ${planNombre}`,
+        subject: esAddon
+          ? 'Actualizaciones de por vida activadas — iFactu_Conta'
+          : esRenovacion
+            ? `Tu plan ${planNombre} de iFactu_Conta fue renovado`
+            : `Tu clave de licencia iFactu_Conta — Plan ${planNombre}`,
         html: `<!DOCTYPE html>
 <html lang="es">
 <head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1"></head>
@@ -249,7 +253,9 @@ export class EmailService {
         <td style="background:#0f172a;padding:28px 32px;">
           <div style="color:#ffffff;font-size:20px;font-weight:700;">iFactu_Conta</div>
           <div style="color:rgba(255,255,255,0.75);font-size:13px;margin-top:4px;">
-            ${esRenovacion ? 'Renovación confirmada' : 'Compra confirmada'} &mdash; Plan ${planNombre}
+            ${esAddon
+              ? 'Actualizaciones de por vida &mdash; Compra confirmada'
+              : `${esRenovacion ? 'Renovación confirmada' : 'Compra confirmada'} &mdash; Plan ${planNombre}`}
           </div>
         </td>
       </tr>
@@ -258,9 +264,11 @@ export class EmailService {
         <td style="background:#ffffff;padding:32px;">
           <p style="margin:0 0 8px;font-size:15px;color:#111827;">Hola${nombre ? ` <strong>${nombre}</strong>` : ''},</p>
           <p style="margin:0 0 24px;font-size:14px;color:#374151;">
-            ${esRenovacion
-              ? `Tu plan <strong>${planNombre}</strong> fue renovado correctamente. Tu clave de licencia sigue siendo la misma:`
-              : `¡Gracias por tu compra! Esta es tu clave de licencia para activar la extensión:`}
+            ${esAddon
+              ? `¡Gracias por tu compra! Las <strong>actualizaciones de por vida</strong> quedaron activadas en tu licencia. Recibirás todas las funciones nuevas y las adaptaciones a cambios de Hacienda sin pagar más, aunque cambies de plan. Tu clave sigue siendo la misma:`
+              : esRenovacion
+                ? `Tu plan <strong>${planNombre}</strong> fue renovado correctamente. Tu clave de licencia sigue siendo la misma:`
+                : `¡Gracias por tu compra! Esta es tu clave de licencia para activar la extensión:`}
           </p>
 
           <table width="100%" cellpadding="0" cellspacing="0" style="margin-bottom:24px;">
@@ -269,12 +277,13 @@ export class EmailService {
             </td></tr>
           </table>
 
+          ${esAddon ? '' : `
           <p style="margin:0 0 6px;font-size:14px;font-weight:700;color:#111827;">Cómo activarla:</p>
           <ol style="margin:0 0 24px;padding-left:20px;font-size:13px;color:#374151;line-height:1.8;">
             <li>Abre la extensión <strong>iFactu_Conta</strong> en Chrome</li>
             <li>Entra a <strong>Opciones → Licencia</strong></li>
             <li>Pega la clave y presiona <strong>Activar</strong></li>
-          </ol>
+          </ol>`}
 
           ${vence ? `
           <table width="100%" cellpadding="0" cellspacing="0" style="background:#fffbeb;border:1px solid #fde68a;border-radius:8px;">

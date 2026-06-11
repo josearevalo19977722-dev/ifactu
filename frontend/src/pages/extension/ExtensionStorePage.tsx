@@ -40,17 +40,21 @@ const FEATURES = [
   '🔍 Detecta y organiza adjuntos JSON + PDF en segundos',
   '🤖 Autopilot: escanea tu bandeja sin intervención manual',
   '🔒 Tus datos nunca salen de tu equipo',
-  '🔄 Actualizaciones incluidas',
+  '💳 Pago único — sin suscripciones ni cobros mensuales',
 ];
 
 export function ExtensionStorePage() {
   const [email, setEmail] = useState('');
   const [cargando, setCargando] = useState<string | null>(null);
 
-  const { data: planes = [], isLoading } = useQuery<Plan[]>({
+  const { data: todosLosPlanes = [], isLoading } = useQuery<Plan[]>({
     queryKey: ['extension-planes-publicos'],
     queryFn: () => apiClient.get('/extension/planes').then(r => r.data),
   });
+
+  // El add-on de actualizaciones viaja como pseudo-plan 'updates'
+  const planes = todosLosPlanes.filter(p => p.tipo !== 'updates');
+  const addon  = todosLosPlanes.find(p => p.tipo === 'updates') ?? null;
 
   const comprar = async (plan: Plan) => {
     if (!plan.paymentLinkUrl) {
@@ -147,7 +151,6 @@ export function ExtensionStorePage() {
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: 16, alignItems: 'start' }}>
           {planes.map(plan => {
             const esPopular = plan.tipo === POPULAR;
-            const esVitalicio = plan.tipo.startsWith('lifetime');
             return (
               <div
                 key={plan.tipo}
@@ -188,7 +191,7 @@ export function ExtensionStorePage() {
                     ${conIva(plan.precio).toFixed(2)}
                   </span>
                   <span style={{ fontSize: 13, color: '#64748b', marginLeft: 6 }}>
-                    {plan.tipo === 'annual' ? '/ año' : esVitalicio ? 'pago único' : '/ mes'}
+                    {plan.tipo === 'monthly' ? '/ mes' : plan.tipo === 'annual' ? '/ año' : 'pago único'}
                   </span>
                   <div style={{ fontSize: 11, color: '#64748b', marginTop: 4 }}>
                     ${Number(plan.precio).toFixed(2)} + IVA (13%)
@@ -207,6 +210,13 @@ export function ExtensionStorePage() {
                     {plan.incluyeExcel ? '✅' : '✖️'} Exportación a Excel
                   </div>
                   <div>🖥️ {plan.maxDispositivos} {plan.maxDispositivos === 1 ? 'equipo' : 'equipos'}</div>
+                  {plan.tipo === 'ilimitado' ? (
+                    <div style={{ color: '#86efac' }}>🔄 Actualizaciones de por vida incluidas</div>
+                  ) : addon ? (
+                    <div style={{ color: '#64748b' }}>
+                      🔄 Actualizaciones de por vida (+${conIva(addon.precio).toFixed(2)} opcional)
+                    </div>
+                  ) : null}
                 </div>
 
                 <button
@@ -257,12 +267,15 @@ export function ExtensionStorePage() {
               </thead>
               <tbody>
                 {([
-                  ['Precio (IVA incluido)', (p: Plan) => `$${conIva(p.precio).toFixed(2)}/mes`],
+                  ['Precio único (IVA incluido)', (p: Plan) => `$${conIva(p.precio).toFixed(2)}`],
                   ['DTEs por mes', (p: Plan) => p.maxDtesMes === 0 ? 'Ilimitados' : String(p.maxDtesMes)],
                   ['Cuentas de correo', (p: Plan) => p.maxCuentasCorreo === 0 ? 'Ilimitadas' : String(p.maxCuentasCorreo)],
                   ['Anexo F-07', (p: Plan) => p.incluyeF07 ? '✅' : '—'],
                   ['Exportación a Excel', (p: Plan) => p.incluyeExcel ? '✅' : '—'],
                   ['Equipos', (p: Plan) => String(p.maxDispositivos)],
+                  ['Actualizaciones de por vida', (p: Plan) =>
+                    p.tipo === 'ilimitado' ? '✅ Incluidas'
+                      : addon ? `Opcional +$${conIva(addon.precio).toFixed(2)}` : '—'],
                 ] as [string, (p: Plan) => string][]).map(([label, fn], i) => (
                   <tr key={label} style={{ background: i % 2 === 0 ? 'rgba(255,255,255,.03)' : 'transparent' }}>
                     <td style={{ padding: '10px 14px', color: '#cbd5e1', fontWeight: 600 }}>{label}</td>
@@ -282,6 +295,57 @@ export function ExtensionStorePage() {
           </div>
         )}
 
+        {/* ── Add-on: Actualizaciones de por vida ── */}
+        {addon && (
+          <div id="updates" style={{
+            marginTop: 56,
+            background: 'linear-gradient(160deg, rgba(16,185,129,.12), rgba(6,182,212,.08))',
+            border: '1px solid rgba(16,185,129,.35)',
+            borderRadius: 20,
+            padding: 'clamp(24px, 4vw, 36px)',
+            display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: 24,
+          }}>
+            <div style={{ flex: '1 1 320px' }}>
+              <div style={{ display: 'inline-flex', alignItems: 'center', gap: 8, background: 'rgba(16,185,129,.15)', border: '1px solid rgba(16,185,129,.3)', borderRadius: 99, padding: '4px 12px', marginBottom: 12 }}>
+                <span style={{ fontSize: 14 }}>🔄</span>
+                <span style={{ fontSize: 12, fontWeight: 700, color: '#6ee7b7' }}>ADD-ON · PAGO ÚNICO</span>
+              </div>
+              <h3 style={{ fontSize: 22, fontWeight: 800, margin: '0 0 10px' }}>Actualizaciones de por vida</h3>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 8, fontSize: 13, color: '#cbd5e1' }}>
+                <div>🏛️ <strong>Cuando Hacienda cambie la normativa</strong>, tu extensión se adapta sin pagar más</div>
+                <div>✨ Todas las funciones nuevas apenas salgan (nuevos tipos de DTE, mejoras del F-07…)</div>
+                <div>🔁 Se paga una sola vez y queda en tu licencia: <strong>si subes de plan, no se vuelve a cobrar</strong></div>
+                <div>💎 El plan Ilimitado ya las incluye gratis</div>
+              </div>
+            </div>
+            <div style={{ flex: '0 0 auto', textAlign: 'center', minWidth: 180 }}>
+              <div style={{ marginBottom: 4 }}>
+                <span style={{ fontSize: 34, fontWeight: 900, color: '#6ee7b7' }}>${conIva(addon.precio).toFixed(2)}</span>
+                <span style={{ fontSize: 13, color: '#64748b', marginLeft: 6 }}>una vez</span>
+              </div>
+              <div style={{ fontSize: 11, color: '#64748b', marginBottom: 14 }}>
+                ${Number(addon.precio).toFixed(2)} + IVA (13%)
+              </div>
+              <button
+                disabled={cargando === addon.tipo}
+                onClick={() => comprar(addon)}
+                style={{
+                  width: '100%', padding: '12px 24px', borderRadius: 12, border: 'none',
+                  cursor: cargando === addon.tipo ? 'wait' : 'pointer',
+                  fontSize: 14, fontWeight: 700, color: '#052e16',
+                  background: 'linear-gradient(90deg, #34d399, #22d3ee)',
+                  opacity: cargando === addon.tipo ? 0.7 : 1,
+                }}
+              >
+                {cargando === addon.tipo ? 'Redirigiendo…' : addon.paymentLinkUrl ? 'Agregar a mi licencia' : 'Próximamente'}
+              </button>
+              <div style={{ fontSize: 11, color: '#64748b', marginTop: 10, maxWidth: 200 }}>
+                Usa el mismo correo de tu compra para que se active automáticamente.
+              </div>
+            </div>
+          </div>
+        )}
+
         {/* Footer */}
         <div style={{ textAlign: 'center', marginTop: 48, color: '#64748b', fontSize: 13, display: 'flex', flexDirection: 'column', gap: 10, alignItems: 'center' }}>
           {/* Logo N1CO */}
@@ -297,7 +361,7 @@ export function ExtensionStorePage() {
               }}
             />
             <span style={{ display: 'none', fontWeight: 700, color: '#94a3b8', letterSpacing: 1 }}>N1CO</span>
-            <span style={{ color: '#475569' }}>· Cancela cuando quieras</span>
+            <span style={{ color: '#475569' }}>· Pago único, sin suscripciones</span>
           </div>
           <div>
             ¿Tienes preguntas? Escríbenos a{' '}

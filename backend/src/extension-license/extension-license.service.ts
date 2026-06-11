@@ -29,6 +29,8 @@ export interface ValidarResult {
   max_cuentas_correo?: number | null;
   f07?: boolean;
   excel?: boolean;
+  /** Add-on "Actualizaciones de por vida" activo (comprado o incluido en el plan) */
+  updates?: boolean;
   error?: string;
 }
 
@@ -159,6 +161,7 @@ export class ExtensionLicenseService {
       max_cuentas_correo: cuentas > 0 ? cuentas : null,
       f07:             planCfg?.incluyeF07   ?? fallback?.f07   ?? false,
       excel:           planCfg?.incluyeExcel ?? fallback?.excel ?? false,
+      updates:         this.tieneUpdates(licActualizada),
     };
   }
 
@@ -446,6 +449,7 @@ export class ExtensionLicenseService {
         maxCuentasCorreo: planCfg ? (planCfg.maxCuentasCorreo > 0 ? planCfg.maxCuentasCorreo : null) : null,
         incluyeF07:    planCfg?.incluyeF07   ?? false,
         incluyeExcel:  planCfg?.incluyeExcel ?? false,
+        updates:       this.tieneUpdates(licActualizada),
       },
       pagos: pagos.map(p => ({
         fecha:     p.createdAt,
@@ -490,6 +494,12 @@ export class ExtensionLicenseService {
     // Buscar qué plan le corresponde según el planId de N1CO
     const plan = await this.planRepo.findOne({ where: { n1coPlanId: planN1coId } }).catch(() => null);
 
+    // ── Add-on "Actualizaciones de por vida" ($5 único) ──────────────────────
+    if (plan?.tipo === 'updates') {
+      await this.procesarCompraAddon({ orderCode, email, nombre, monto, payload });
+      return;
+    }
+
     // Si hay licencia previa activa para este email, renovarla/extenderla
     const licExistente = await this.repo.findOne({ where: { email, activa: true, origen: 'n1co' } });
 
@@ -507,22 +517,28 @@ export class ExtensionLicenseService {
       lic = await this.repo.save(licExistente);
       this.logger.log(`[ExtensionWebhook] Licencia renovada para ${email} — plan=${lic.plan}`);
     } else {
+      // Si pagó el add-on de updates ANTES de comprar el plan, aplicarlo ahora
+      const addonPrevio = await this.pagoRepo.findOne({
+        where: { email, planTipo: 'updates' },
+      }).catch(() => null);
+
       // Crear nueva licencia
       lic = await this.repo.save(
         this.repo.create({
-          apiKey:        this.generarApiKey(),
-          origen:        'n1co',
-          activa:        true,
-          plan:          plan?.tipo ?? 'basico',
-          maxDtesMes:    plan?.maxDtesMes ?? 150,
-          expiresAt:     this.calcularExpiracion(plan?.tipo ?? 'basico'),
-          nombre:        nombre || null,
+          apiKey:          this.generarApiKey(),
+          origen:          'n1co',
+          activa:          true,
+          plan:            plan?.tipo ?? 'basico',
+          maxDtesMes:      plan?.maxDtesMes ?? 150,
+          updatesLifetime: !!addonPrevio,
+          expiresAt:       this.calcularExpiracion(plan?.tipo ?? 'basico'),
+          nombre:          nombre || null,
           email,
-          usuarioId:     null,
-          n1coOrderCode: orderCode,
+          usuarioId:       null,
+          n1coOrderCode:   orderCode,
         }),
       );
-      this.logger.log(`[ExtensionWebhook] Nueva licencia creada para ${email} — plan=${lic.plan}`);
+      this.logger.log(`[ExtensionWebhook] Nueva licencia creada para ${email} — plan=${lic.plan}${addonPrevio ? ' +updates' : ''}`);
     }
 
     // Registrar el pago (historial + marca de idempotencia)
@@ -558,13 +574,84 @@ export class ExtensionLicenseService {
     }
   }
 
+  /**
+   * Marca updatesLifetime=true en la licencia del comprador.
+   * El flag vive en la licencia (no en el plan): si después sube de
+   * Básico a Pro, las actualizaciones se conservan sin volver a cobrar.
+   */
+  private async procesarCompraAddon(dto: {
+    orderCode: string;
+    email: string;
+    nombre: string;
+    monto: number | null;
+    payload: any;
+  }): Promise<void> {
+    const lic = await this.repo.findOne({ where: { email: dto.email, activa: true } });
+
+    // Registrar el pago siempre (idempotencia + que no se pierda el dinero recibido)
+    if (dto.orderCode) {
+      await this.pagoRepo.save(
+        this.pagoRepo.create({
+          licenseId: lic?.id ?? null,
+          orderCode: dto.orderCode,
+          planTipo:  'updates',
+          monto:     dto.monto,
+          email:     dto.email,
+          nombre:    dto.nombre || null,
+          payload:   dto.payload,
+        }),
+      ).catch(err =>
+        this.logger.error(`[ExtensionWebhook] No se pudo registrar pago addon ${dto.orderCode}: ${err.message}`),
+      );
+    }
+
+    if (!lic) {
+      // Pagó el add-on sin tener licencia: queda registrado el pago para
+      // que el superadmin lo vincule manualmente (o se aplica solo cuando
+      // compre un plan con el mismo correo — ver flujo de creación).
+      this.logger.warn(`[ExtensionWebhook] Add-on pagado sin licencia previa para ${dto.email} (order=${dto.orderCode})`);
+      return;
+    }
+
+    if (lic.updatesLifetime) {
+      this.logger.log(`[ExtensionWebhook] ${dto.email} ya tenía updates de por vida, pago ${dto.orderCode} registrado`);
+      return;
+    }
+
+    lic.updatesLifetime = true;
+    await this.repo.save(lic);
+    this.logger.log(`[ExtensionWebhook] Updates de por vida activadas para ${dto.email}`);
+
+    try {
+      await this.emailService.enviarClaveLicencia({
+        destinatario: dto.email,
+        nombre:       dto.nombre || lic.nombre,
+        apiKey:       lic.apiKey,
+        planNombre:   PLAN_NOMBRES[lic.plan] ?? lic.plan,
+        fechaFin:     lic.expiresAt,
+        esAddon:      true,
+      });
+    } catch {
+      // Logueado en EmailService
+    }
+  }
+
   private calcularExpiracion(planTipo?: string): Date | null {
-    if (!planTipo || planTipo.startsWith('lifetime')) return null; // sin vencimiento (legacy)
+    // basico / pro / ilimitado son PAGO ÚNICO: no vencen.
+    // El límite mensual de DTEs se reinicia cada mes, pero la licencia es vitalicia.
+    if (!planTipo || ['basico', 'pro', 'ilimitado'].includes(planTipo) || planTipo.startsWith('lifetime')) {
+      return null;
+    }
+    // Legacy (esquema anterior por suscripción)
     const now = new Date();
     if (planTipo === 'annual') {
       return new Date(now.setFullYear(now.getFullYear() + 1));
     }
-    // basico / pro / ilimitado / monthly: ciclo mensual de 31 días
-    return new Date(Date.now() + 31 * 24 * 60 * 60 * 1000);
+    return new Date(Date.now() + 31 * 24 * 60 * 60 * 1000); // monthly: 31 días
+  }
+
+  /** El add-on de actualizaciones está activo si se compró o si el plan lo incluye */
+  private tieneUpdates(lic: ExtensionLicense): boolean {
+    return lic.updatesLifetime || ['ilimitado', 'ifactu'].includes(lic.plan);
   }
 }
