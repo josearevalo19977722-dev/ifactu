@@ -131,6 +131,46 @@ export class ReportesController {
     res.end(csv);
   }
 
+  /** PDF detallado de Ventas (CF + CCF/NC/ND) */
+  @Get('pdf-ventas')
+  async pdfVentas(
+    @Query('mes')  mes:  string,
+    @Query('anio') anio: string,
+    @Res() res: Response,
+    @Req() req: Request,
+  ) {
+    const buf  = await this.reportesService.pdfVentas(Number(mes), Number(anio), (req.user as any).empresaId);
+    const name = `ReporteVentas-${anio}-${mes.padStart(2,'0')}.pdf`;
+    res.set({
+      'Content-Type': 'application/pdf',
+      'Content-Disposition': `attachment; filename="${name}"`,
+      'Content-Length': buf.length,
+      'Cache-Control': 'no-store, no-cache, must-revalidate',
+      'Pragma': 'no-cache',
+    });
+    res.end(buf);
+  }
+
+  /** PDF detallado de Compras */
+  @Get('pdf-compras')
+  async pdfCompras(
+    @Query('mes')  mes:  string,
+    @Query('anio') anio: string,
+    @Res() res: Response,
+    @Req() req: Request,
+  ) {
+    const buf  = await this.reportesService.pdfCompras(Number(mes), Number(anio), (req.user as any).empresaId);
+    const name = `ReporteCompras-${anio}-${mes.padStart(2,'0')}.pdf`;
+    res.set({
+      'Content-Type': 'application/pdf',
+      'Content-Disposition': `attachment; filename="${name}"`,
+      'Content-Length': buf.length,
+      'Cache-Control': 'no-store, no-cache, must-revalidate',
+      'Pragma': 'no-cache',
+    });
+    res.end(buf);
+  }
+
   /** Anexo 3 — Compras → CSV Hacienda F-07 */
   @Get('csv-anexo3')
   async csvAnexo3(

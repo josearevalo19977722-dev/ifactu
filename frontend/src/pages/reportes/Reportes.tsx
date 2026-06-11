@@ -10,8 +10,8 @@ const MESES = ['Enero','Febrero','Marzo','Abril','Mayo','Junio',
                'Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre'];
 
 interface FilaCf {
-  fecha: string; control: string; nombre: string;
-  exenta: number; noSuj: number; gravada: number; iva: number; total: number; estado: string;
+  fecha: string; control: string; codigoGeneracion: string | null; tipoDte: string;
+  nombre: string; exenta: number; noSuj: number; gravada: number; iva: number; total: number; estado: string;
 }
 interface FilaCcf extends FilaCf { nit: string; }
 
@@ -161,6 +161,31 @@ export function Reportes() {
             <button className="btn btn-primary btn-sm" style={{ width: '100%' }}
               onClick={() => descargarArchivo(`/reportes/anexo-f07?${params}`, `AnexoF07-${anio}-${String(mes).padStart(2,'0')}.xlsx`)}>
               ↓ Descargar Anexo F-07
+            </button>
+          </div>
+
+          {/* PDF detallados */}
+          <div className="table-card" style={{ padding: 20, borderTop: '3px solid #ef4444' }}>
+            <div style={{ fontSize: 28, marginBottom: 8 }}>📄</div>
+            <div style={{ fontWeight: 700, marginBottom: 4 }}>Reporte Ventas PDF</div>
+            <div style={{ fontSize: 12, color: 'var(--text-muted)', marginBottom: 16 }}>
+              CF + CCF/NC/ND detallado<br/>N° control, cód. generación, total por operación
+            </div>
+            <button className="btn btn-sm" style={{ width: '100%', borderColor: '#ef4444', color: '#ef4444' }}
+              onClick={() => descargarArchivo(`/reportes/pdf-ventas?${params}`, `ReporteVentas-${anio}-${String(mes).padStart(2,'0')}.pdf`)}>
+              ↓ Descargar PDF Ventas
+            </button>
+          </div>
+
+          <div className="table-card" style={{ padding: 20, borderTop: '3px solid #10b981' }}>
+            <div style={{ fontSize: 28, marginBottom: 8 }}>📄</div>
+            <div style={{ fontWeight: 700, marginBottom: 4 }}>Reporte Compras PDF</div>
+            <div style={{ fontSize: 12, color: 'var(--text-muted)', marginBottom: 16 }}>
+              Todas las compras del período<br/>N° control, cód. generación, total por operación
+            </div>
+            <button className="btn btn-sm" style={{ width: '100%', borderColor: '#10b981', color: '#10b981' }}
+              onClick={() => descargarArchivo(`/reportes/pdf-compras?${params}`, `ReporteCompras-${anio}-${String(mes).padStart(2,'0')}.pdf`)}>
+              ↓ Descargar PDF Compras
             </button>
           </div>
         </div>

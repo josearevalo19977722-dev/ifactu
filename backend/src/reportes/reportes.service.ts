@@ -809,6 +809,284 @@ export class ReportesService {
 
     return lines.join('\r\n');
   }
+
+  // ── PDF Reporte Ventas ───────────────────────────────────────────────────
+
+  async pdfVentas(mes: number, anio: number, empresaId: string): Promise<Buffer> {
+    // eslint-disable-next-line @typescript-eslint/no-var-requires
+    const PDFDocument = require('pdfkit') as any;
+
+    const cf     = await this.getDtesMes(['01'],           mes, anio, empresaId);
+    const allCcf = await this.getDtesMes(['03','05','06'], mes, anio, empresaId);
+    const nombreMes = MESES[mes - 1];
+
+    return new Promise<Buffer>((resolve, reject) => {
+      const doc = new PDFDocument({ size: 'LETTER', layout: 'landscape',
+        margins: { top: 36, bottom: 36, left: 36, right: 36 },
+        info: { Title: `Ventas ${nombreMes} ${anio}`, Author: 'iFactu' } });
+      const chunks: Buffer[] = [];
+      doc.on('data', (c: Buffer) => chunks.push(c));
+      doc.on('end',  () => resolve(Buffer.concat(chunks)));
+      doc.on('error', reject);
+
+      // ── layout ─────────────────────────────────────────────────
+      // Letter landscape usable: 792 - 72 = 720pt
+      const PW = 720;
+      const LX = 36;
+      const ROW_H = 13;
+      const HDR_H = 16;
+
+      // Columns: #, Fecha, Tipo, N° Control, Cód.Gen(20chr), Receptor, NIT, Exenta, Gravada, IVA, Total
+      const COLS = [
+        { w: 20 }, { w: 52 }, { w: 26 }, { w: 113 }, { w: 88 },
+        { w: 120 }, { w: 68 }, { w: 50 }, { w: 54 }, { w: 46 }, { w: 55 },
+      ];
+      // compute x positions
+      let cx = LX;
+      COLS.forEach(c => { (c as any).x = cx; cx += c.w; });
+      const HEADS = ['#','Fecha','Tipo','N° Control','Cód. Generación','Receptor / Nombre','NIT / DUI','Exenta','Gravada','IVA','Total'];
+      const RIGHT_COLS = new Set([7,8,9,10]);
+
+      let y = 36;
+
+      const checkPage = () => {
+        if (y > 565) { doc.addPage(); y = 36; }
+      };
+
+      const cell = (col: number, text: string, opts: { bold?: boolean, size?: number, color?: string } = {}) => {
+        const c = COLS[col] as any;
+        doc.fontSize(opts.size ?? 7)
+           .font(opts.bold ? 'Helvetica-Bold' : 'Helvetica')
+           .fillColor(opts.color ?? '#111111');
+        const align = RIGHT_COLS.has(col) ? 'right' : 'left';
+        doc.text(String(text ?? ''), c.x + 2, y + 2, { width: c.w - 4, lineBreak: false, align });
+      };
+
+      const drawHLine = (color = '#e2e8f0', lw = 0.3) =>
+        doc.moveTo(LX, y).lineTo(LX + PW, y).strokeColor(color).lineWidth(lw).stroke();
+
+      const drawColHeaders = () => {
+        doc.rect(LX, y, PW, HDR_H).fill('#dbeafe');
+        HEADS.forEach((h, i) => cell(i, h, { bold: true, size: 7, color: '#1e3a8a' }));
+        y += HDR_H;
+        drawHLine('#93c5fd', 0.5);
+      };
+
+      const drawSectionBanner = (text: string) => {
+        doc.rect(LX, y, PW, 15).fill('#1d4ed8');
+        doc.fontSize(8).font('Helvetica-Bold').fillColor('white')
+           .text(text, LX + 4, y + 3, { width: PW - 8, lineBreak: false });
+        doc.fillColor('#111111');
+        y += 15;
+      };
+
+      const drawDataRow = (vals: string[], shade: boolean) => {
+        checkPage();
+        if (shade) doc.rect(LX, y, PW, ROW_H).fill('#f8fafc');
+        vals.forEach((v, i) => cell(i, v));
+        y += ROW_H;
+        drawHLine();
+      };
+
+      const drawTotals = (vals: string[]) => {
+        doc.rect(LX, y, PW, HDR_H).fill('#bfdbfe');
+        vals.forEach((v, i) => cell(i, v, { bold: true, size: 7.5, color: '#1e3a8a' }));
+        y += HDR_H;
+      };
+
+      const $v = (v: number) => v ? `$${v.toFixed(2)}` : '—';
+      const codG = (s: string | null) => {
+        if (!s) return '—';
+        const clean = s.replace(/-/g, '');
+        return clean.length > 20 ? clean.substring(0, 20) + '…' : clean;
+      };
+      const tipoLabel = (t: string) => ({ '01':'CF','03':'CCF','05':'NC','06':'ND' }[t] ?? t);
+
+      // ── Title ───────────────────────────────────────────────────
+      doc.fontSize(12).font('Helvetica-Bold').fillColor('#111')
+         .text(`REPORTE DE VENTAS — ${nombreMes.toUpperCase()} ${anio}`, LX, y, { width: PW });
+      y += 16;
+      doc.fontSize(8.5).font('Helvetica').fillColor('#555')
+         .text(`Generado: ${new Date().toLocaleDateString('es-SV', { dateStyle: 'long' })}`, LX, y, { width: PW });
+      y += 16;
+
+      // ── CF ──────────────────────────────────────────────────────
+      if (cf.length > 0) {
+        drawSectionBanner(`VENTAS A CONSUMIDOR FINAL (CF) — ${cf.length} documento(s)`);
+        drawColHeaders();
+        let [tEx, tGr, tIva, tTot] = [0, 0, 0, 0];
+        cf.forEach((d, i) => {
+          const r = resumen(d); const rec = receptor(d);
+          tEx += r.totalExenta; tGr += r.totalGravada; tIva += r.totalIva; tTot += r.totalPagar;
+          drawDataRow([
+            String(i + 1), fmtFecha(d.fechaEmision), tipoLabel(d.tipoDte),
+            d.numeroControl ?? '—', codG(d.codigoGeneracion),
+            (rec.nombre ?? d.receptorNombre ?? 'Consumidor Final').substring(0, 30),
+            rec.nit ?? rec.dui ?? '—',
+            $v(r.totalExenta), $v(r.totalGravada), $v(r.totalIva), $v(r.totalPagar),
+          ], i % 2 === 1);
+        });
+        drawTotals(['TOTALES','','','','','','', $v(n(tEx)), $v(n(tGr)), $v(n(tIva)), $v(n(tTot))]);
+        y += 8;
+      }
+
+      // ── CCF / NC / ND ───────────────────────────────────────────
+      if (allCcf.length > 0) {
+        if (y > 460) { doc.addPage(); y = 36; }
+        drawSectionBanner(`VENTAS A CONTRIBUYENTES (CCF / NC / ND) — ${allCcf.length} documento(s)`);
+        drawColHeaders();
+        let [tEx, tGr, tIva, tTot] = [0, 0, 0, 0];
+        allCcf.forEach((d, i) => {
+          const r = resumen(d); const rec = receptor(d);
+          tEx += r.totalExenta; tGr += r.totalGravada; tIva += r.totalIva; tTot += r.totalPagar;
+          drawDataRow([
+            String(i + 1), fmtFecha(d.fechaEmision), tipoLabel(d.tipoDte),
+            d.numeroControl ?? '—', codG(d.codigoGeneracion),
+            (rec.nombre ?? d.receptorNombre ?? '').substring(0, 30),
+            rec.nit ?? '—',
+            $v(r.totalExenta), $v(r.totalGravada), $v(r.totalIva), $v(r.totalPagar),
+          ], i % 2 === 1);
+        });
+        drawTotals(['TOTALES','','','','','','', $v(n(tEx)), $v(n(tGr)), $v(n(tIva)), $v(n(tTot))]);
+      }
+
+      doc.end();
+    });
+  }
+
+  // ── PDF Reporte Compras ──────────────────────────────────────────────────
+
+  async pdfCompras(mes: number, anio: number, empresaId: string): Promise<Buffer> {
+    // eslint-disable-next-line @typescript-eslint/no-var-requires
+    const PDFDocument = require('pdfkit') as any;
+
+    const compras   = await this.comprasService.getComprasMes(mes, anio, empresaId);
+    const nombreMes = MESES[mes - 1];
+
+    return new Promise<Buffer>((resolve, reject) => {
+      const doc = new PDFDocument({ size: 'LETTER', layout: 'landscape',
+        margins: { top: 36, bottom: 36, left: 36, right: 36 },
+        info: { Title: `Compras ${nombreMes} ${anio}`, Author: 'iFactu' } });
+      const chunks: Buffer[] = [];
+      doc.on('data', (c: Buffer) => chunks.push(c));
+      doc.on('end',  () => resolve(Buffer.concat(chunks)));
+      doc.on('error', reject);
+
+      const PW = 720; const LX = 36;
+      const ROW_H = 13; const HDR_H = 16;
+
+      // Columns: #, Fecha, Tipo, N° Control, Cód.Gen, Proveedor, NIT, Exenta, No Suj, Gravada, IVA, Total
+      const COLS = [
+        { w: 20 }, { w: 52 }, { w: 26 }, { w: 110 }, { w: 85 },
+        { w: 115 }, { w: 66 }, { w: 46 }, { w: 46 }, { w: 50 }, { w: 46 }, { w: 52 },
+      ];
+      let cx = LX; COLS.forEach(c => { (c as any).x = cx; cx += c.w; });
+      const HEADS = ['#','Fecha','Tipo','N° Control','Cód. Generación','Proveedor','NIT / NRC','Exenta','No Suj.','Gravada','IVA','Total'];
+      const RIGHT_COLS = new Set([7,8,9,10,11]);
+
+      let y = 36;
+
+      const checkPage = () => { if (y > 565) { doc.addPage(); y = 36; } };
+
+      const cell = (col: number, text: string, opts: { bold?: boolean, size?: number, color?: string } = {}) => {
+        const c = COLS[col] as any;
+        doc.fontSize(opts.size ?? 7).font(opts.bold ? 'Helvetica-Bold' : 'Helvetica').fillColor(opts.color ?? '#111');
+        const align = RIGHT_COLS.has(col) ? 'right' : 'left';
+        doc.text(String(text ?? ''), c.x + 2, y + 2, { width: c.w - 4, lineBreak: false, align });
+      };
+
+      const drawHLine = (color = '#e2e8f0', lw = 0.3) =>
+        doc.moveTo(LX, y).lineTo(LX + PW, y).strokeColor(color).lineWidth(lw).stroke();
+
+      const drawColHeaders = () => {
+        doc.rect(LX, y, PW, HDR_H).fill('#d1fae5');
+        HEADS.forEach((h, i) => cell(i, h, { bold: true, size: 7, color: '#065f46' }));
+        y += HDR_H; drawHLine('#6ee7b7', 0.5);
+      };
+
+      const drawSectionBanner = (text: string) => {
+        doc.rect(LX, y, PW, 15).fill('#059669');
+        doc.fontSize(8).font('Helvetica-Bold').fillColor('white')
+           .text(text, LX + 4, y + 3, { width: PW - 8, lineBreak: false });
+        doc.fillColor('#111'); y += 15;
+      };
+
+      const drawDataRow = (vals: string[], shade: boolean, isNC = false) => {
+        checkPage();
+        if (isNC)        doc.rect(LX, y, PW, ROW_H).fill('#fef9c3');
+        else if (shade)  doc.rect(LX, y, PW, ROW_H).fill('#f0fdf4');
+        vals.forEach((v, i) => cell(i, v));
+        y += ROW_H; drawHLine();
+      };
+
+      const drawTotals = (vals: string[]) => {
+        doc.rect(LX, y, PW, HDR_H).fill('#a7f3d0');
+        vals.forEach((v, i) => cell(i, v, { bold: true, size: 7.5, color: '#064e3b' }));
+        y += HDR_H;
+      };
+
+      const $v = (v: number) => v ? `$${v.toFixed(2)}` : '—';
+      const codG = (s: string | null) => {
+        if (!s) return '—';
+        const clean = s.replace(/-/g, '');
+        return clean.length > 20 ? clean.substring(0, 20) + '…' : clean;
+      };
+      const tipoLabel = (t: string) =>
+        ({ '01':'CF','03':'CCF','05':'NC','06':'ND','11':'FEXE','14':'FSE' }[t] ?? t);
+
+      // Title
+      doc.fontSize(12).font('Helvetica-Bold').fillColor('#111')
+         .text(`REPORTE DE COMPRAS — ${nombreMes.toUpperCase()} ${anio}`, LX, y, { width: PW });
+      y += 16;
+      doc.fontSize(8.5).font('Helvetica').fillColor('#555')
+         .text(`Generado: ${new Date().toLocaleDateString('es-SV', { dateStyle: 'long' })}  ·  Total registros: ${compras.length}`, LX, y, { width: PW });
+      y += 16;
+
+      drawSectionBanner(`COMPRAS DEL PERÍODO — ${compras.length} registro(s)`);
+      drawColHeaders();
+
+      let [tEx, tNoSuj, tGr, tIva, tTot] = [0, 0, 0, 0, 0];
+      compras.forEach((c, i) => {
+        const isNC = c.tipoDte === '05';
+        const signo = isNC ? -1 : 1;
+        const ex   = n(signo * Number(c.compraExenta));
+        const noSuj = n(signo * Number(c.compraNoSujeta));
+        const gr   = n(signo * Number(c.compraGravada));
+        const iva  = n(signo * Number(c.ivaCredito));
+        const tot  = n(signo * Number(c.totalCompra));
+        tEx += ex; tNoSuj += noSuj; tGr += gr; tIva += iva; tTot += tot;
+        drawDataRow([
+          String(i + 1),
+          fmtFecha(c.fechaEmision),
+          tipoLabel(c.tipoDte),
+          c.numeroControl ?? '—',
+          codG(c.codigoGeneracion),
+          (c.proveedorNombre ?? '').substring(0, 28),
+          c.proveedorNit ?? c.proveedorNrc ?? '—',
+          $v(Math.abs(ex)),
+          $v(Math.abs(noSuj)),
+          $v(Math.abs(gr)),
+          $v(Math.abs(iva)),
+          isNC ? `(${$v(Math.abs(tot))})` : $v(tot),
+        ], i % 2 === 1, isNC);
+      });
+
+      drawTotals([
+        'TOTALES', '', '', '', '', '', '',
+        $v(n(tEx)), $v(n(tNoSuj)), $v(n(tGr)), $v(n(tIva)), $v(n(tTot)),
+      ]);
+
+      // NC note if applicable
+      const ncCount = compras.filter(c => c.tipoDte === '05').length;
+      if (ncCount > 0) {
+        y += 8;
+        doc.fontSize(7.5).font('Helvetica').fillColor('#b45309')
+           .text(`* ${ncCount} Nota(s) de Crédito recibida(s) — se muestran entre paréntesis y reducen el crédito fiscal.`, LX, y, { width: PW });
+      }
+
+      doc.end();
+    });
+  }
 }
 
 // helper externo para mapear fila de resumen JSON
@@ -818,6 +1096,8 @@ function filaResumen(dte: Dte) {
   return {
     fecha:    dte.fechaEmision,
     control:  dte.numeroControl,
+    codigoGeneracion: dte.codigoGeneracion,
+    tipoDte:  dte.tipoDte,
     nombre:   rec.nombre ?? dte.receptorNombre ?? '',
     nit:      rec.nit ?? '',
     exenta:   r.totalExenta,
