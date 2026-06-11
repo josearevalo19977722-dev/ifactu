@@ -62,6 +62,8 @@ function AppLayout() {
   const qc = useQueryClient();
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [pdvOpen, setPdvOpen] = useState(false);
+  const [clienteModalOpen, setClienteModalOpen] = useState(false);
+  const [clienteBusqueda, setClienteBusqueda] = useState('');
 
   // Cierra la sidebar al cambiar de ruta (clic en NavLink en móvil)
   const closeSidebar = () => setSidebarOpen(false);
@@ -134,48 +136,45 @@ function AppLayout() {
           {/* ── Selector de cliente (CONTADOR con múltiples empresas) ── */}
           {usuario.rol === 'CONTADOR' && misEmpresas.length > 1 && (
             <div className="nav-group">
-              <p className="nav-label">Mis Clientes</p>
-              {misEmpresas.map(emp => {
-                const isActive = emp.id === usuario.empresaId;
-                return (
-                  <button
-                    key={emp.id}
-                    type="button"
-                    onClick={e => {
-                      e.stopPropagation();
-                      if (!isActive) cambiarEmpresa(emp.id).catch(() => {});
-                    }}
-                    style={{
-                      display: 'flex',
-                      alignItems: 'center',
-                      gap: 10,
-                      width: '100%',
-                      background: isActive ? 'rgba(45,212,191,0.12)' : 'transparent',
-                      border: 'none',
-                      borderLeft: isActive ? '3px solid #2dd4bf' : '3px solid transparent',
-                      borderRadius: '0 6px 6px 0',
-                      padding: '8px 12px 8px 13px',
-                      color: isActive ? '#2dd4bf' : '#94a3b8',
-                      fontSize: 13,
-                      fontWeight: isActive ? 600 : 400,
-                      cursor: isActive ? 'default' : 'pointer',
-                      textAlign: 'left',
-                      transition: 'background 0.15s, color 0.15s',
-                      marginBottom: 1,
-                    }}
-                    onMouseEnter={e => { if (!isActive) e.currentTarget.style.background = 'rgba(255,255,255,0.06)'; }}
-                    onMouseLeave={e => { if (!isActive) e.currentTarget.style.background = 'transparent'; }}
-                  >
-                    <span style={{ fontSize: 14, flexShrink: 0 }}>{isActive ? '✓' : '🏢'}</span>
-                    <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', flex: 1 }}>
-                      {emp.nombre}
-                    </span>
-                    {isActive && (
-                      <span style={{ fontSize: 10, opacity: 0.6, flexShrink: 0 }}>activo</span>
-                    )}
-                  </button>
-                );
-              })}
+              <p className="nav-label">Cliente activo</p>
+              {/* Empresa activa — solo la activa, compacta */}
+              <div style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: 8,
+                padding: '7px 12px 7px 13px',
+                borderLeft: '3px solid #2dd4bf',
+                background: 'rgba(45,212,191,0.10)',
+                borderRadius: '0 6px 6px 0',
+                marginBottom: 4,
+              }}>
+                <span style={{ fontSize: 13, flexShrink: 0 }}>✓</span>
+                <span style={{
+                  flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
+                  color: '#2dd4bf', fontSize: 13, fontWeight: 600,
+                }}>
+                  {misEmpresas.find(e => e.id === usuario.empresaId)?.nombre ?? empresaPerfil?.nombreLegal ?? 'Cliente activo'}
+                </span>
+              </div>
+              {/* Botón cambiar */}
+              <button
+                type="button"
+                onClick={e => { e.stopPropagation(); setClienteBusqueda(''); setClienteModalOpen(true); }}
+                style={{
+                  display: 'flex', alignItems: 'center', gap: 8,
+                  width: '100%', background: 'transparent',
+                  border: '1px dashed rgba(255,255,255,0.15)',
+                  borderRadius: 6, padding: '6px 12px',
+                  color: '#94a3b8', fontSize: 12, cursor: 'pointer',
+                  transition: 'background 0.15s, color 0.15s',
+                }}
+                onMouseEnter={e => { e.currentTarget.style.background = 'rgba(255,255,255,0.06)'; e.currentTarget.style.color = '#cbd5e1'; }}
+                onMouseLeave={e => { e.currentTarget.style.background = 'transparent'; e.currentTarget.style.color = '#94a3b8'; }}
+              >
+                <span style={{ fontSize: 13 }}>🔄</span>
+                <span>Cambiar cliente</span>
+                <span style={{ marginLeft: 'auto', fontSize: 10, opacity: 0.5 }}>{misEmpresas.length}</span>
+              </button>
             </div>
           )}
 
@@ -427,6 +426,112 @@ function AppLayout() {
           </Routes>
         </Suspense>
       </main>
+
+      {/* ── Modal cambiar cliente (CONTADOR multi-empresa) ── */}
+      {clienteModalOpen && (
+        <div
+          onClick={() => setClienteModalOpen(false)}
+          style={{
+            position: 'fixed', inset: 0, zIndex: 9999,
+            background: 'rgba(0,0,0,0.55)',
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+            padding: 16,
+          }}
+        >
+          <div
+            onClick={e => e.stopPropagation()}
+            style={{
+              background: '#1e293b',
+              border: '1px solid rgba(255,255,255,0.12)',
+              borderRadius: 12,
+              width: '100%', maxWidth: 420,
+              maxHeight: '80vh',
+              display: 'flex', flexDirection: 'column',
+              boxShadow: '0 25px 50px rgba(0,0,0,0.5)',
+            }}
+          >
+            {/* Header */}
+            <div style={{ padding: '18px 20px 12px', borderBottom: '1px solid rgba(255,255,255,0.08)' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
+                <span style={{ color: '#e2e8f0', fontWeight: 700, fontSize: 15 }}>Seleccionar cliente</span>
+                <button
+                  type="button"
+                  onClick={() => setClienteModalOpen(false)}
+                  style={{ background: 'none', border: 'none', color: '#64748b', cursor: 'pointer', fontSize: 18, lineHeight: 1 }}
+                >✕</button>
+              </div>
+              {/* Búsqueda (solo si hay más de 5 clientes) */}
+              {misEmpresas.length > 5 && (
+                <input
+                  type="text"
+                  placeholder="Buscar cliente..."
+                  value={clienteBusqueda}
+                  onChange={e => setClienteBusqueda(e.target.value)}
+                  autoFocus
+                  style={{
+                    width: '100%', boxSizing: 'border-box',
+                    background: 'rgba(255,255,255,0.06)',
+                    border: '1px solid rgba(255,255,255,0.12)',
+                    borderRadius: 7, padding: '8px 12px',
+                    color: '#e2e8f0', fontSize: 13, outline: 'none',
+                  }}
+                />
+              )}
+            </div>
+
+            {/* Lista de clientes */}
+            <div style={{ overflowY: 'auto', flex: 1, padding: '8px 0' }}>
+              {misEmpresas
+                .filter(e => !clienteBusqueda.trim() || e.nombre.toLowerCase().includes(clienteBusqueda.toLowerCase()))
+                .map(emp => {
+                  const isActive = emp.id === usuario.empresaId;
+                  return (
+                    <button
+                      key={emp.id}
+                      type="button"
+                      onClick={() => {
+                        if (!isActive) { setClienteModalOpen(false); cambiarEmpresa(emp.id).catch(() => {}); }
+                      }}
+                      style={{
+                        display: 'flex', alignItems: 'center', gap: 12,
+                        width: '100%', padding: '12px 20px',
+                        background: isActive ? 'rgba(45,212,191,0.12)' : 'transparent',
+                        border: 'none',
+                        borderLeft: `3px solid ${isActive ? '#2dd4bf' : 'transparent'}`,
+                        color: isActive ? '#2dd4bf' : '#cbd5e1',
+                        fontSize: 14, fontWeight: isActive ? 600 : 400,
+                        cursor: isActive ? 'default' : 'pointer',
+                        textAlign: 'left', transition: 'background 0.12s',
+                      }}
+                      onMouseEnter={e => { if (!isActive) e.currentTarget.style.background = 'rgba(255,255,255,0.05)'; }}
+                      onMouseLeave={e => { if (!isActive) e.currentTarget.style.background = 'transparent'; }}
+                    >
+                      <span style={{ fontSize: 18, flexShrink: 0 }}>{isActive ? '✓' : '🏢'}</span>
+                      <span style={{ flex: 1 }}>{emp.nombre}</span>
+                      {isActive && (
+                        <span style={{
+                          background: 'rgba(45,212,191,0.2)', color: '#2dd4bf',
+                          fontSize: 10, fontWeight: 700, padding: '2px 8px',
+                          borderRadius: 99, flexShrink: 0,
+                        }}>Activo</span>
+                      )}
+                    </button>
+                  );
+                })}
+              {misEmpresas.filter(e => !clienteBusqueda.trim() || e.nombre.toLowerCase().includes(clienteBusqueda.toLowerCase())).length === 0 && (
+                <div style={{ padding: '24px 20px', color: '#64748b', fontSize: 13, textAlign: 'center' }}>
+                  Sin resultados para "{clienteBusqueda}"
+                </div>
+              )}
+            </div>
+
+            {/* Footer con conteo */}
+            <div style={{ padding: '10px 20px', borderTop: '1px solid rgba(255,255,255,0.08)', color: '#64748b', fontSize: 11 }}>
+              {misEmpresas.length} cliente{misEmpresas.length !== 1 ? 's' : ''} asignados
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
