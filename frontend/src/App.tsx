@@ -4,6 +4,7 @@ import { QueryClient, QueryClientProvider, useQuery, useQueryClient } from '@tan
 import { AuthProvider, useAuth } from './context/AuthContext';
 import { ToastProvider } from './context/ToastContext';
 import { Toaster } from 'sileo';
+import 'sileo/styles.css';
 import apiClient from './api/apiClient';
 import { empresaPermiteTipoDte } from './constants/tiposDte';
 import { Login } from './pages/login/Login';
