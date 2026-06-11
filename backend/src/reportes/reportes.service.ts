@@ -2,6 +2,7 @@ import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { Dte } from '../dte/entities/dte.entity';
+import { Empresa } from '../empresa/entities/empresa.entity';
 import { ComprasService } from '../compras/compras.service';
 import * as ExcelJS from 'exceljs';
 
@@ -119,8 +120,13 @@ function titulo(ws: ExcelJS.Worksheet, text: string, cols: number) {
 export class ReportesService {
   constructor(
     @InjectRepository(Dte) private readonly dteRepo: Repository<Dte>,
+    @InjectRepository(Empresa) private readonly empresaRepo: Repository<Empresa>,
     private readonly comprasService: ComprasService,
   ) {}
+
+  private async getEmpresa(empresaId: string): Promise<Empresa | null> {
+    return this.empresaRepo.findOne({ where: { id: empresaId } });
+  }
 
   // Obtener DTEs de un mes/año para un tipo dado, filtrados por empresa y ambiente producción.
   // Solo incluye RECIBIDO y CONTINGENCIA — rechazados/pendientes/anulados no se reportan.
@@ -816,9 +822,10 @@ export class ReportesService {
     // eslint-disable-next-line @typescript-eslint/no-var-requires
     const PDFDocument = require('pdfkit') as any;
 
-    const cf     = await this.getDtesMes(['01'],           mes, anio, empresaId);
-    const allCcf = await this.getDtesMes(['03','05','06'], mes, anio, empresaId);
+    const cf        = await this.getDtesMes(['01'],           mes, anio, empresaId);
+    const allCcf    = await this.getDtesMes(['03','05','06'], mes, anio, empresaId);
     const nombreMes = MESES[mes - 1];
+    const empresa   = await this.getEmpresa(empresaId);
 
     return new Promise<Buffer>((resolve, reject) => {
       const doc = new PDFDocument({ size: 'A4', layout: 'landscape',
@@ -924,13 +931,41 @@ export class ReportesService {
       const codG = (s: string | null) => s ? s.replace(/-/g, '') : '—';
       const tipoLabel = (t: string) => ({ '01':'CF','03':'CCF','05':'NC','06':'ND' }[t] ?? t);
 
-      // ── Title ───────────────────────────────────────────────────
+      // ── Encabezado empresa + título ─────────────────────────────
+      if (empresa) {
+        // Línea superior: nombre legal + nombre comercial
+        const nombreEmp = empresa.nombreComercial
+          ? `${empresa.nombreLegal}  (${empresa.nombreComercial})`
+          : empresa.nombreLegal;
+        doc.fontSize(11).font('Helvetica-Bold').fillColor('#111')
+           .text(nombreEmp, LX, y, { width: PW });
+        y += 14;
+        // NIT / NRC / correo / teléfono en una línea
+        const meta = [
+          `NIT: ${empresa.nit}`,
+          `NRC: ${empresa.nrc}`,
+          empresa.correo   ? `✉ ${empresa.correo}`   : null,
+          empresa.telefono ? `✆ ${empresa.telefono}` : null,
+        ].filter(Boolean).join('   ·   ');
+        doc.fontSize(7.5).font('Helvetica').fillColor('#444').text(meta, LX, y, { width: PW });
+        y += 12;
+        // Dirección
+        const dir = [empresa.complemento, empresa.municipio, empresa.departamento]
+          .filter(Boolean).join(', ');
+        if (dir) {
+          doc.fontSize(7.5).font('Helvetica').fillColor('#666').text(dir, LX, y, { width: PW });
+          y += 12;
+        }
+        // Línea separadora
+        doc.moveTo(LX, y).lineTo(LX + PW, y).strokeColor('#94a3b8').lineWidth(0.5).stroke();
+        y += 8;
+      }
       doc.fontSize(12).font('Helvetica-Bold').fillColor('#111')
          .text(`REPORTE DE VENTAS — ${nombreMes.toUpperCase()} ${anio}`, LX, y, { width: PW });
-      y += 16;
-      doc.fontSize(8.5).font('Helvetica').fillColor('#555')
+      y += 14;
+      doc.fontSize(8).font('Helvetica').fillColor('#555')
          .text(`Generado: ${new Date().toLocaleDateString('es-SV', { dateStyle: 'long' })}`, LX, y, { width: PW });
-      y += 16;
+      y += 14;
 
       // ── CF ──────────────────────────────────────────────────────
       if (cf.length > 0) {
@@ -984,6 +1019,7 @@ export class ReportesService {
 
     const compras   = await this.comprasService.getComprasMes(mes, anio, empresaId);
     const nombreMes = MESES[mes - 1];
+    const empresa   = await this.getEmpresa(empresaId);
 
     return new Promise<Buffer>((resolve, reject) => {
       const doc = new PDFDocument({ size: 'A4', layout: 'landscape',
@@ -1073,11 +1109,35 @@ export class ReportesService {
       const tipoLabel = (t: string) =>
         ({ '01':'CF','03':'CCF','05':'NC','06':'ND','11':'FEXE','14':'FSE' }[t] ?? t);
 
-      // Title
+      // ── Encabezado empresa + título ─────────────────────────────
+      if (empresa) {
+        const nombreEmp = empresa.nombreComercial
+          ? `${empresa.nombreLegal}  (${empresa.nombreComercial})`
+          : empresa.nombreLegal;
+        doc.fontSize(11).font('Helvetica-Bold').fillColor('#111')
+           .text(nombreEmp, LX, y, { width: PW });
+        y += 14;
+        const meta = [
+          `NIT: ${empresa.nit}`,
+          `NRC: ${empresa.nrc}`,
+          empresa.correo   ? `✉ ${empresa.correo}`   : null,
+          empresa.telefono ? `✆ ${empresa.telefono}` : null,
+        ].filter(Boolean).join('   ·   ');
+        doc.fontSize(7.5).font('Helvetica').fillColor('#444').text(meta, LX, y, { width: PW });
+        y += 12;
+        const dir = [empresa.complemento, empresa.municipio, empresa.departamento]
+          .filter(Boolean).join(', ');
+        if (dir) {
+          doc.fontSize(7.5).font('Helvetica').fillColor('#666').text(dir, LX, y, { width: PW });
+          y += 12;
+        }
+        doc.moveTo(LX, y).lineTo(LX + PW, y).strokeColor('#94a3b8').lineWidth(0.5).stroke();
+        y += 8;
+      }
       doc.fontSize(12).font('Helvetica-Bold').fillColor('#111')
          .text(`REPORTE DE COMPRAS — ${nombreMes.toUpperCase()} ${anio}`, LX, y, { width: PW });
-      y += 16;
-      doc.fontSize(8.5).font('Helvetica').fillColor('#555')
+      y += 14;
+      doc.fontSize(8).font('Helvetica').fillColor('#555')
          .text(`Generado: ${new Date().toLocaleDateString('es-SV', { dateStyle: 'long' })}  ·  Total registros: ${compras.length}`, LX, y, { width: PW });
       y += 16;
 
