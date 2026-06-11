@@ -143,6 +143,7 @@ export function Dashboard() {
   const recientes = dtesRecientes?.[0] ?? [];
 
   const planPct = miPlan?.uso?.porcentaje ?? 0;
+  const planIlimitado = (miPlan?.uso?.dtesLimite ?? 0) >= 99999;
 
   return (
     <div className="page page-dashboard">
@@ -215,20 +216,25 @@ export function Dashboard() {
                 </span>
                 <span style={{
                   fontSize: 13, fontWeight: 700,
-                  color: planPct >= 100 ? '#ef4444' : planPct >= 80 ? '#f59e0b' : '#10b981',
+                  color: planIlimitado ? '#10b981'
+                    : planPct >= 100 ? '#ef4444' : planPct >= 80 ? '#f59e0b' : '#10b981',
                 }}>
-                  {miPlan.uso.dtesUsados} / {miPlan.uso.dtesLimite}
+                  {planIlimitado
+                    ? <>{miPlan.uso.dtesUsados} · Ilimitado</>
+                    : <>{miPlan.uso.dtesUsados} / {miPlan.uso.dtesLimite}</>}
                 </span>
               </div>
-              <div style={{ height: 6, borderRadius: 99, background: 'rgba(148,163,184,.2)', overflow: 'hidden' }}>
-                <div style={{
-                  height: '100%',
-                  width: `${Math.min(planPct, 100)}%`,
-                  borderRadius: 99,
-                  background: planPct >= 100 ? '#ef4444' : planPct >= 80 ? '#f59e0b' : '#10b981',
-                  transition: 'width .4s ease',
-                }} />
-              </div>
+              {!planIlimitado && (
+                <div style={{ height: 6, borderRadius: 99, background: 'rgba(148,163,184,.2)', overflow: 'hidden' }}>
+                  <div style={{
+                    height: '100%',
+                    width: `${Math.min(planPct, 100)}%`,
+                    borderRadius: 99,
+                    background: planPct >= 100 ? '#ef4444' : planPct >= 80 ? '#f59e0b' : '#10b981',
+                    transition: 'width .4s ease',
+                  }} />
+                </div>
+              )}
               {planPct >= 80 && (
                 <div style={{ marginTop: 6, fontSize: 12, color: planPct >= 100 ? '#ef4444' : '#f59e0b' }}>
                   {planPct >= 100
@@ -246,18 +252,29 @@ export function Dashboard() {
         {/* ── Sin plan activo ───────────────────────────────────────────────── */}
         {!isSuperAdmin && miPlan && !miPlan.suscripcion && (
           <div style={{
-            background: 'linear-gradient(135deg, #fef2f2, #fff7ed)',
-            border: '1px solid #fca5a5', borderRadius: 10, padding: '14px 20px',
+            background: 'rgba(15, 23, 42, 0.45)',
+            border: '1px solid rgba(239,68,68,0.30)',
+            borderRadius: 12, padding: '12px 18px',
             display: 'flex', alignItems: 'center', gap: 14, marginBottom: 4,
           }}>
-            <span style={{ fontSize: 22 }}>🚫</span>
+            <span style={{
+              width: 38, height: 38, borderRadius: 10, flexShrink: 0,
+              display: 'flex', alignItems: 'center', justifyContent: 'center',
+              background: 'rgba(239,68,68,0.12)', border: '1px solid rgba(239,68,68,0.25)',
+            }}>
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#ef4444"
+                strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <circle cx="12" cy="12" r="10" /><line x1="4.93" y1="4.93" x2="19.07" y2="19.07" />
+              </svg>
+            </span>
             <div style={{ flex: 1 }}>
-              <div style={{ fontWeight: 700, color: '#dc2626', fontSize: 14 }}>Sin plan activo</div>
-              <div style={{ fontSize: 13, color: '#7f1d1d', marginTop: 2 }}>
-                Tu empresa no tiene un plan activo. No podrás emitir DTEs hasta que contrates un plan.
+              <div style={{ fontWeight: 600, fontSize: 14, color: 'var(--text, #e2e8f0)' }}>Sin plan activo</div>
+              <div style={{ fontSize: 12.5, color: 'var(--text-muted)', marginTop: 1 }}>
+                Tu empresa no tiene un plan activo. No podrás emitir DTEs hasta que contrates uno.
               </div>
             </div>
-            <Link to="/billing/mi-plan" className="btn btn-sm" style={{ background: '#dc2626', color: '#fff', border: 'none', whiteSpace: 'nowrap' }}>
+            <Link to="/billing/mi-plan" className="btn btn-sm"
+              style={{ background: '#ef4444', color: '#fff', border: 'none', whiteSpace: 'nowrap' }}>
               Ver planes →
             </Link>
           </div>
@@ -265,27 +282,60 @@ export function Dashboard() {
 
         {/* ── Alerta de DTEs rechazados ─────────────────────────────────────── */}
         {nRechazados > 0 && !statsLoading && (
-          <div style={{
-            background: 'rgba(239,68,68,0.08)',
-            border: '1px solid rgba(239,68,68,0.35)',
-            borderLeft: '4px solid #ef4444',
-            borderRadius: 10, padding: '14px 20px',
-            display: 'flex', alignItems: 'center', gap: 14, marginBottom: 4,
-          }}>
-            <span style={{ fontSize: 22 }}>⚠️</span>
-            <div style={{ flex: 1 }}>
-              <div style={{ fontWeight: 700, color: '#ef4444', fontSize: 14 }}>
-                {nRechazados} DTE{nRechazados > 1 ? 's' : ''} rechazado{nRechazados > 1 ? 's' : ''} por Hacienda
+          <Link
+            to="/dtes?estado=RECHAZADO"
+            style={{
+              display: 'flex', alignItems: 'center', gap: 14,
+              background: 'rgba(15, 23, 42, 0.45)',
+              border: '1px solid rgba(148, 163, 184, 0.14)',
+              borderRadius: 12, padding: '12px 18px', marginBottom: 4,
+              textDecoration: 'none', color: 'inherit',
+              transition: 'border-color .18s ease, background .18s ease',
+            }}
+            onMouseEnter={e => {
+              e.currentTarget.style.borderColor = 'rgba(239,68,68,0.45)';
+              e.currentTarget.style.background = 'rgba(239,68,68,0.05)';
+            }}
+            onMouseLeave={e => {
+              e.currentTarget.style.borderColor = 'rgba(148, 163, 184, 0.14)';
+              e.currentTarget.style.background = 'rgba(15, 23, 42, 0.45)';
+            }}
+          >
+            <span style={{
+              width: 38, height: 38, borderRadius: 10, flexShrink: 0,
+              display: 'flex', alignItems: 'center', justifyContent: 'center',
+              background: 'rgba(239,68,68,0.12)', border: '1px solid rgba(239,68,68,0.25)',
+            }}>
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#ef4444"
+                strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z" />
+                <line x1="12" y1="9" x2="12" y2="13" />
+                <line x1="12" y1="17" x2="12.01" y2="17" />
+              </svg>
+            </span>
+            <div style={{ flex: 1, minWidth: 0 }}>
+              <div style={{ fontWeight: 600, fontSize: 14, color: 'var(--text, #e2e8f0)' }}>
+                Tienes{' '}
+                <span style={{ color: '#ef4444', fontWeight: 700 }}>
+                  {nRechazados} DTE{nRechazados > 1 ? 's' : ''} rechazado{nRechazados > 1 ? 's' : ''}
+                </span>{' '}
+                por Hacienda
               </div>
-              <div style={{ fontSize: 13, color: 'var(--text-muted)', marginTop: 2 }}>
-                Revisa el motivo de rechazo y re-emite o corrige los documentos afectados.
+              <div style={{ fontSize: 12.5, color: 'var(--text-muted)', marginTop: 1 }}>
+                Revisa el motivo de rechazo y corrige los documentos afectados.
               </div>
             </div>
-            <Link to="/dtes?estado=RECHAZADO" className="btn btn-sm"
-              style={{ background: '#ef4444', color: '#fff', border: 'none', whiteSpace: 'nowrap' }}>
-              Ver rechazados →
-            </Link>
-          </div>
+            <span style={{
+              fontSize: 13, fontWeight: 600, color: '#ef4444',
+              whiteSpace: 'nowrap', display: 'flex', alignItems: 'center', gap: 4,
+            }}>
+              Ver rechazados
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                <line x1="5" y1="12" x2="19" y2="12" /><polyline points="12 5 19 12 12 19" />
+              </svg>
+            </span>
+          </Link>
         )}
 
         {/* ── Accesos rápidos ───────────────────────────────────────────────── */}
