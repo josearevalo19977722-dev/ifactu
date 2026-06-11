@@ -856,9 +856,12 @@ export class ReportesService {
       };
 
       // Trunca texto al máximo de chars que caben (Helvetica ~3.8pt/char a size 7)
+      // 0.65 = factor conservador para Helvetica mayúsculas/hex
+      // (avg glyph ~0.56 pero uppercase/hex llegan a ~0.65 × fontSize pt/char)
       const trunc = (str: string, colW: number, sz = 7) => {
-        const max = Math.floor((colW - 4) / (sz * 0.54));
-        return str && str.length > max ? str.substring(0, max - 1) + '…' : (str ?? '');
+        const max = Math.floor((colW - 4) / (sz * 0.65));
+        if (!str) return '';
+        return str.length > max ? str.substring(0, max - 1).trimEnd() + '…' : str;
       };
       // Quita el prefijo "DTE-XX-" del N° control (la col Tipo ya indica CF/CCF)
       const ctrlShort = (s: string | null) => {
@@ -1010,9 +1013,12 @@ export class ReportesService {
 
       const checkPage = () => { if (y > 565) { doc.addPage(); y = 36; } };
 
+      // 0.65 = factor conservador para Helvetica mayúsculas/hex
+      // (avg glyph ~0.56 pero uppercase/hex llegan a ~0.65 × fontSize pt/char)
       const trunc = (str: string, colW: number, sz = 7) => {
-        const max = Math.floor((colW - 4) / (sz * 0.54));
-        return str && str.length > max ? str.substring(0, max - 1) + '…' : (str ?? '');
+        const max = Math.floor((colW - 4) / (sz * 0.65));
+        if (!str) return '';
+        return str.length > max ? str.substring(0, max - 1).trimEnd() + '…' : str;
       };
       const ctrlShort = (s: string | null) => {
         if (!s) return '—';
