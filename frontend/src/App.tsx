@@ -61,7 +61,6 @@ function AppLayout() {
   const { usuario, logout, isAdmin, isSuperAdmin, misEmpresas, cambiarEmpresa } = useAuth();
   const qc = useQueryClient();
   const [sidebarOpen, setSidebarOpen] = useState(false);
-  const [empresaMenuOpen, setEmpresaMenuOpen] = useState(false);
   const [pdvOpen, setPdvOpen] = useState(false);
 
   // Cierra la sidebar al cambiar de ruta (clic en NavLink en móvil)
@@ -131,6 +130,54 @@ function AppLayout() {
         </div>
 
         <nav className="sidebar-nav" aria-label="Navegación principal" onClick={closeSidebar}>
+
+          {/* ── Selector de cliente (CONTADOR con múltiples empresas) ── */}
+          {usuario.rol === 'CONTADOR' && misEmpresas.length > 1 && (
+            <div className="nav-group">
+              <p className="nav-label">Mis Clientes</p>
+              {misEmpresas.map(emp => {
+                const isActive = emp.id === usuario.empresaId;
+                return (
+                  <button
+                    key={emp.id}
+                    type="button"
+                    onClick={e => {
+                      e.stopPropagation();
+                      if (!isActive) cambiarEmpresa(emp.id).catch(() => {});
+                    }}
+                    style={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: 10,
+                      width: '100%',
+                      background: isActive ? 'rgba(45,212,191,0.12)' : 'transparent',
+                      border: 'none',
+                      borderLeft: isActive ? '3px solid #2dd4bf' : '3px solid transparent',
+                      borderRadius: '0 6px 6px 0',
+                      padding: '8px 12px 8px 13px',
+                      color: isActive ? '#2dd4bf' : '#94a3b8',
+                      fontSize: 13,
+                      fontWeight: isActive ? 600 : 400,
+                      cursor: isActive ? 'default' : 'pointer',
+                      textAlign: 'left',
+                      transition: 'background 0.15s, color 0.15s',
+                      marginBottom: 1,
+                    }}
+                    onMouseEnter={e => { if (!isActive) e.currentTarget.style.background = 'rgba(255,255,255,0.06)'; }}
+                    onMouseLeave={e => { if (!isActive) e.currentTarget.style.background = 'transparent'; }}
+                  >
+                    <span style={{ fontSize: 14, flexShrink: 0 }}>{isActive ? '✓' : '🏢'}</span>
+                    <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', flex: 1 }}>
+                      {emp.nombre}
+                    </span>
+                    {isActive && (
+                      <span style={{ fontSize: 10, opacity: 0.6, flexShrink: 0 }}>activo</span>
+                    )}
+                  </button>
+                );
+              })}
+            </div>
+          )}
 
           {/* ── Punto de Venta (acceso rápido, solo no-admin y no-contador) ── */}
           {!isSuperAdmin && usuario.rol !== 'CONTADOR' && (
@@ -282,67 +329,25 @@ function AppLayout() {
         </nav>
 
         <div className="sidebar-footer">
-          {/* ── Selector de empresa (CONTADOR: siempre visible para confirmar empresa activa) ── */}
-          {usuario.rol === 'CONTADOR' && misEmpresas.length > 0 && (
-            <div style={{ padding: '0 8px 6px', position: 'relative' }}>
-              <button
-                type="button"
-                onClick={() => misEmpresas.length > 1 && setEmpresaMenuOpen(o => !o)}
-                style={{
-                  width: '100%',
-                  background: 'rgba(255,255,255,.06)',
-                  border: '1px solid rgba(255,255,255,.1)',
-                  borderRadius: 8,
-                  padding: '6px 10px',
-                  color: '#e2e8f0',
-                  fontSize: 12,
-                  cursor: misEmpresas.length > 1 ? 'pointer' : 'default',
-                  display: 'flex',
-                  justifyContent: 'space-between',
-                  alignItems: 'center',
-                  gap: 6,
-                }}
-              >
-                <span>🏢 {empresaPerfil?.nombreLegal || misEmpresas.find(e => e.id === usuario.empresaId)?.nombre || 'Empresa actual'}</span>
-                {misEmpresas.length > 1 && (
-                  <span style={{ fontSize: 10, opacity: 0.6 }}>{empresaMenuOpen ? '▲' : '▼'}</span>
-                )}
-              </button>
-              {empresaMenuOpen && (
-                <div style={{
-                  position: 'absolute',
-                  bottom: '100%',
-                  left: 8,
-                  right: 8,
-                  background: '#1e293b',
-                  border: '1px solid rgba(255,255,255,.12)',
-                  borderRadius: 8,
-                  overflow: 'hidden',
-                  zIndex: 100,
-                  marginBottom: 4,
-                }}>
-                  {misEmpresas.map(emp => (
-                    <button
-                      key={emp.id}
-                      type="button"
-                      onClick={() => { setEmpresaMenuOpen(false); cambiarEmpresa(emp.id).catch(()=>{}); }}
-                      style={{
-                        width: '100%',
-                        background: emp.id === usuario.empresaId ? 'rgba(99,102,241,.25)' : 'transparent',
-                        border: 'none',
-                        padding: '8px 12px',
-                        color: '#e2e8f0',
-                        fontSize: 12,
-                        cursor: 'pointer',
-                        textAlign: 'left',
-                        borderBottom: '1px solid rgba(255,255,255,.06)',
-                      }}
-                    >
-                      {emp.id === usuario.empresaId ? '✓ ' : '   '}{emp.nombre}
-                    </button>
-                  ))}
-                </div>
-              )}
+          {/* ── Empresa activa (CONTADOR con 1 empresa: indicador compacto) ── */}
+          {usuario.rol === 'CONTADOR' && misEmpresas.length === 1 && (
+            <div style={{ padding: '0 8px 6px' }}>
+              <div style={{
+                background: 'rgba(45,212,191,0.08)',
+                border: '1px solid rgba(45,212,191,0.2)',
+                borderRadius: 8,
+                padding: '6px 10px',
+                color: '#2dd4bf',
+                fontSize: 11,
+                display: 'flex',
+                alignItems: 'center',
+                gap: 6,
+              }}>
+                <span>🏢</span>
+                <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                  {empresaPerfil?.nombreLegal || misEmpresas[0]?.nombre || 'Cliente activo'}
+                </span>
+              </div>
             </div>
           )}
 
