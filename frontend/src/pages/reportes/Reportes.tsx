@@ -81,6 +81,7 @@ export function Reportes() {
   const [mes,  setMesRaw]  = useState(init.mes);
   const [anio, setAnioRaw] = useState(init.anio);
   const [tab,  setTab]     = useState<'cf'|'ccf'|'ventas'|'comprasTab'>('cf');
+  const [paqueteLoading, setPaqueteLoading] = useState(false);
 
   // Al cambiar mes/año, guardarlo en sessionStorage para que otras páginas
   // (Compras, DTEs) también lo compartan y el usuario no pierda el contexto
@@ -238,6 +239,60 @@ export function Reportes() {
                 ↓ Descargar CSV Anexo 3
               </button>
             </div>
+          </div>
+        </div>
+
+        {/* Paquete Completo */}
+        <div className="table-card" style={{ marginBottom: 24 }}>
+          <div className="table-header" style={{ background: 'linear-gradient(135deg,#065f46,#059669)' }}>
+            <span style={{ color: '#fff', fontWeight: 700, fontSize: 14 }}>📦 Paquete Completo del Mes</span>
+            <span style={{ fontSize: 12, color: 'rgba(255,255,255,.75)' }}>PDFs + JSONs + CSVs F-07 en un solo ZIP</span>
+          </div>
+          <div style={{ padding: '18px 20px' }}>
+            <p style={{ margin: '0 0 16px', fontSize: 13, color: 'var(--text-muted)' }}>
+              Descarga todos los DTEs del mes como PDF e JSON, más los tres Anexos CSV para cargar en el portal de Hacienda, todo en un único archivo ZIP.
+            </p>
+            <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap', marginBottom: 16 }}>
+              {[
+                { icon: '📄', label: 'PDFs individuales', desc: 'carpeta pdf/' },
+                { icon: '{ }', label: 'JSONs DTE',         desc: 'carpeta json/' },
+                { icon: '📊', label: 'Anexo 1 CSV',        desc: 'Ventas Contribuyentes' },
+                { icon: '📊', label: 'Anexo 2 CSV',        desc: 'Ventas Consumidor Final' },
+                { icon: '📊', label: 'Anexo 3 CSV',        desc: 'Compras' },
+              ].map(item => (
+                <div key={item.label} style={{
+                  display: 'flex', alignItems: 'center', gap: 8,
+                  background: 'var(--bg-subtle)', borderRadius: 8, padding: '8px 12px',
+                  fontSize: 12,
+                }}>
+                  <span style={{ fontSize: 18 }}>{item.icon}</span>
+                  <div>
+                    <div style={{ fontWeight: 600 }}>{item.label}</div>
+                    <div style={{ color: 'var(--text-muted)', fontSize: 11 }}>{item.desc}</div>
+                  </div>
+                </div>
+              ))}
+            </div>
+            <button
+              className="btn btn-primary"
+              disabled={paqueteLoading}
+              style={{ background: '#059669', borderColor: '#047857', minWidth: 260 }}
+              onClick={async () => {
+                setPaqueteLoading(true);
+                try {
+                  await descargarArchivo(
+                    `/reportes/paquete-completo?${params}`,
+                    `PaqueteCompleto-${anio}-${String(mes).padStart(2,'0')}.zip`,
+                  );
+                } finally {
+                  setPaqueteLoading(false);
+                }
+              }}
+            >
+              {paqueteLoading
+                ? '⏳ Generando paquete...'
+                : `⬇ Descargar Paquete Completo — ${MESES[mes-1]} ${anio}`}
+            </button>
           </div>
         </div>
 

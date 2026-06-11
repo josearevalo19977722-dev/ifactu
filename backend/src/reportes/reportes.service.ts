@@ -4,6 +4,7 @@ import { Repository } from 'typeorm';
 import { Dte } from '../dte/entities/dte.entity';
 import { Empresa } from '../empresa/entities/empresa.entity';
 import { ComprasService } from '../compras/compras.service';
+import { PdfService } from '../dte/services/pdf.service';
 import * as ExcelJS from 'exceljs';
 
 // ─── helpers CSV F-07 ────────────────────────────────────────────────────────
@@ -122,6 +123,7 @@ export class ReportesService {
     @InjectRepository(Dte) private readonly dteRepo: Repository<Dte>,
     @InjectRepository(Empresa) private readonly empresaRepo: Repository<Empresa>,
     private readonly comprasService: ComprasService,
+    private readonly pdfService: PdfService,
   ) {}
 
   private async getEmpresa(empresaId: string): Promise<Empresa | null> {
@@ -1185,6 +1187,66 @@ export class ReportesService {
       doc.end();
     });
   }
+
+  // ─── Paquete completo: PDFs + JSONs + CSVs F-07 en un solo ZIP ───────────────
+  async paqueteCompleto(mes: number, anio: number, empresaId: string): Promise<Buffer> {
+    // eslint-disable-next-line @typescript-eslint/no-var-requires
+    const archiver = require('archiver') as typeof import('archiver');
+
+    const mesStr  = String(mes).padStart(2, '0');
+    const desde   = `${anio}-${mesStr}-01`;
+    const hasta   = new Date(anio, mes, 0).toISOString().split('T')[0];
+
+    // 1. DTEs del mes (no anulados)
+    const dtes = await this.dteRepo.createQueryBuilder('dte')
+      .where('dte.empresaId = :empresaId', { empresaId })
+      .andWhere('dte.fechaEmision >= :desde', { desde })
+      .andWhere('dte.fechaEmision <= :hasta', { hasta })
+      .andWhere("dte.estado != 'ANULADO'")
+      .orderBy('dte.fechaEmision', 'ASC')
+      .getMany();
+
+    // 2. CSVs de los tres anexos F-07
+    const [csv1, csv2, csv3] = await Promise.all([
+      this.csvAnexo1(mes, anio, empresaId),
+      this.csvAnexo2(mes, anio, empresaId),
+      this.csvAnexo3(mes, anio, empresaId),
+    ]);
+
+    // 3. Construir ZIP
+    const archive = archiver('zip', { zlib: { level: 6 } });
+    const chunks: Buffer[] = [];
+    archive.on('data', (chunk: Buffer) => chunks.push(chunk));
+
+    await new Promise<void>(async (resolve, reject) => {
+      archive.on('end', resolve);
+      archive.on('error', reject);
+
+      for (const dte of dtes) {
+        const nombre = (dte.numeroControl ?? dte.id).replace(/[^a-zA-Z0-9\-_]/g, '_');
+
+        // JSON
+        const jsonBuf = Buffer.from(JSON.stringify(dte.jsonDte ?? {}, null, 2), 'utf-8');
+        archive.append(jsonBuf, { name: `json/${nombre}.json` });
+
+        // PDF individual
+        try {
+          const pdfBuf = await this.pdfService.generarPdf(dte.id);
+          archive.append(pdfBuf, { name: `pdf/${nombre}.pdf` });
+        } catch (_) { /* omitir si falla */ }
+      }
+
+      // CSVs F-07
+      const sufijo = `${anio}-${mesStr}`;
+      archive.append(Buffer.from(csv1, 'utf-8'), { name: `csv/Anexo1-VentasContribuyentes-${sufijo}.csv` });
+      archive.append(Buffer.from(csv2, 'utf-8'), { name: `csv/Anexo2-VentasConsumidorFinal-${sufijo}.csv` });
+      archive.append(Buffer.from(csv3, 'utf-8'), { name: `csv/Anexo3-Compras-${sufijo}.csv` });
+
+      archive.finalize();
+    });
+
+    return Buffer.concat(chunks);
+  }
 }
 
 // helper externo para mapear fila de resumen JSON
@@ -1206,3 +1268,4 @@ function filaResumen(dte: Dte) {
     estado:   dte.estado,
   };
 }
+

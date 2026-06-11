@@ -67,3 +67,9 @@ coverage/
 .nyc_output/
 .claude/
 .github/
+
+# ── Extensión Chrome (privado) ────────────────────────────────────────────────
+Extension Contable/
+
+# ── Sitio web J-Solution (privado) ───────────────────────────────────────────
+J-SolutionWeb/

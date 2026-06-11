@@ -171,6 +171,26 @@ export class ReportesController {
     res.end(buf);
   }
 
+  /** Paquete completo: PDFs + JSONs + CSVs F-07 en un solo ZIP */
+  @Get('paquete-completo')
+  async paqueteCompleto(
+    @Query('mes')  mes:  string,
+    @Query('anio') anio: string,
+    @Res() res: Response,
+    @Req() req: Request,
+  ) {
+    const buf  = await this.reportesService.paqueteCompleto(Number(mes), Number(anio), (req.user as any).empresaId);
+    const name = `PaqueteCompleto-${anio}-${mes.padStart(2,'0')}.zip`;
+    res.set({
+      'Content-Type': 'application/zip',
+      'Content-Disposition': `attachment; filename="${name}"`,
+      'Content-Length': buf.length,
+      'Cache-Control': 'no-store, no-cache, must-revalidate',
+      'Pragma': 'no-cache',
+    });
+    res.end(buf);
+  }
+
   /** Anexo 3 — Compras → CSV Hacienda F-07 */
   @Get('csv-anexo3')
   async csvAnexo3(
