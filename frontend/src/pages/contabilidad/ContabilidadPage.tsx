@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { sileo } from 'sileo';
 import apiClient from '../../api/apiClient';
 
 // ── Types ─────────────────────────────────────────────────────────────────────
@@ -1184,7 +1185,7 @@ td{font-size:10px;padding:4px 8px;border-bottom:1px solid #f1f5f9;vertical-align
                   a.click();
                   URL.revokeObjectURL(a.href);
                 } catch (e) {
-                  alert('Error al generar el ZIP. Intenta de nuevo.');
+                  sileo.error({ title: 'Error al generar el ZIP', description: 'Intenta de nuevo.' });
                 } finally {
                   setZipLoading(false);
                 }

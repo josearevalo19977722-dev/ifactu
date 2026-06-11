@@ -1,6 +1,7 @@
 import { useState, useRef } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useForm } from 'react-hook-form';
+import { sileo } from 'sileo';
 
 import apiClient, { API_BASE } from '../../api/apiClient';
 import { EmptyState } from '../../components/EmptyState';
@@ -116,7 +117,11 @@ export function Compras() {
 
   const anularMut = useMutation({
     mutationFn: (id: string) => api.patch(`/compras/${id}/anular`),
-    onSuccess: () => qc.invalidateQueries({ queryKey: ['compras'] }),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['compras'] });
+      sileo.success({ title: 'Compra anulada' });
+    },
+    onError: (err: any) => sileo.error({ title: 'Error al anular', description: err?.response?.data?.message }),
   });
 
   const compraGravada = watch('compraGravada');

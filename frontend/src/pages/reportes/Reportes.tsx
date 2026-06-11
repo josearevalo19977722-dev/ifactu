@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
+import { sileo } from 'sileo';
 
 import apiClient from '../../api/apiClient';
 import { EmptyState } from '../../components/EmptyState';
@@ -43,23 +44,23 @@ interface Resumen {
 
 function fmt(n: number) { return n ? `$${Number(n).toFixed(2)}` : '—'; }
 
+async function fetchArchivo(path: string, filename: string) {
+  // _t rompe caché de nginx/CDN: cada descarga usa una URL única
+  const sep = path.includes('?') ? '&' : '?';
+  const url = `${path}${sep}_t=${Date.now()}`;
+  const resp = await apiClient.get(url, { responseType: 'blob' });
+  const mime = resp.headers['content-type'] ?? 'application/octet-stream';
+  const blob = new Blob([resp.data], { type: mime });
+  const href = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = href;
+  a.download = filename;
+  a.click();
+  URL.revokeObjectURL(href);
+}
+
 async function descargarArchivo(path: string, filename: string) {
-  try {
-    // _t rompe caché de nginx/CDN: cada descarga usa una URL única
-    const sep = path.includes('?') ? '&' : '?';
-    const url = `${path}${sep}_t=${Date.now()}`;
-    const resp = await apiClient.get(url, { responseType: 'blob' });
-    const mime = resp.headers['content-type'] ?? 'application/octet-stream';
-    const blob = new Blob([resp.data], { type: mime });
-    const href = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = href;
-    a.download = filename;
-    a.click();
-    URL.revokeObjectURL(href);
-  } catch (e: any) {
-    alert('Error al descargar: ' + (e.message ?? 'Error desconocido'));
-  }
+  await fetchArchivo(path, filename);
 }
 
 
@@ -84,15 +85,18 @@ export function Reportes() {
   const [paqueteLoading, setPaqueteLoading] = useState(false);
   const [descargando, setDescargando]       = useState<string | null>(null);
 
-  /** Descarga con loading state: bloquea el botón con key único mientras dure */
-  const descargar = async (key: string, path: string, filename: string) => {
-    if (descargando) return;           // ya hay una descarga en curso
+  /** Descarga con sileo.promise(): toast loading → success/error + bloquea el botón */
+  const descargar = (key: string, path: string, filename: string) => {
+    if (descargando) return;
     setDescargando(key);
-    try {
-      await descargarArchivo(path, filename);
-    } finally {
-      setDescargando(null);
-    }
+    sileo.promise(
+      fetchArchivo(path, filename).finally(() => setDescargando(null)),
+      {
+        loading: { title: 'Preparando descarga…' },
+        success: { title: '✓ Descarga lista', description: filename },
+        error:   { title: 'Error al descargar', description: filename },
+      },
+    );
   };
 
   // Al cambiar mes/año, guardarlo en sessionStorage para que otras páginas

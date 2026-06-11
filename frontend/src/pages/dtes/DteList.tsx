@@ -1,6 +1,7 @@
 import { useState, useCallback, useRef } from 'react';
 import { Link } from 'react-router-dom';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { sileo } from 'sileo';
 import { dteApi } from '../../api/dte.api';
 import { API_BASE } from '../../api/apiClient';
 import apiClient from '../../api/apiClient';
@@ -108,7 +109,7 @@ export function DteList() {
         URL.revokeObjectURL(a.href);
       })
       .catch(() => {
-        window.alert('No se pudo descargar el CSV. Comprueba sesión y que el API esté en marcha.');
+        sileo.error({ title: 'No se pudo descargar el CSV', description: 'Comprueba la sesión y que el API esté en marcha.' });
       });
   };
 

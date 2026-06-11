@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { sileo } from 'sileo';
 import apiClient from '../../api/apiClient';
 import { useAuth } from '../../context/AuthContext';
 import { Modal } from '../../components/Modal';
@@ -30,12 +31,15 @@ export function UsuariosPage() {
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ['usuarios'] });
       setModalOpen(false);
+      sileo.success({ title: 'Usuario creado correctamente' });
     },
+    onError: (err: any) => sileo.error({ title: 'Error al crear usuario', description: err?.response?.data?.message }),
   });
 
   const toggleMut = useMutation({
     mutationFn: (id: string) => apiClient.patch(`/auth/usuarios/${id}/toggle`),
     onSuccess: () => qc.invalidateQueries({ queryKey: ['usuarios'] }),
+    onError: (err: any) => sileo.error({ title: 'Error al cambiar estado', description: err?.response?.data?.message }),
   });
 
   const resetPassMut = useMutation({

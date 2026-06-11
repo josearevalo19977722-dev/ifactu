@@ -1,5 +1,6 @@
 import { createContext, useContext, useState, useEffect, type ReactNode } from 'react';
 import axios from 'axios';
+import { sileo } from 'sileo';
 import { API_BASE } from '../api/apiClient';
 
 /** Misma base que `apiClient` (VITE_API_URL o http://127.0.0.1:3002/api) */
@@ -146,7 +147,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       window.location.href = '/';
     } catch (err: any) {
       const msg = err?.response?.data?.message ?? err?.message ?? 'No se pudo cambiar de empresa';
-      alert(`Error al cambiar empresa: ${msg}`);
+      sileo.error({ title: 'Error al cambiar empresa', description: msg });
     }
   };
 

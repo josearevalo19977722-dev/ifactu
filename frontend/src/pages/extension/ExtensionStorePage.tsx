@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
+import { sileo } from 'sileo';
 import apiClient from '../../api/apiClient';
 
 interface Plan {
@@ -42,7 +43,7 @@ export function ExtensionStorePage() {
 
   const comprar = async (plan: Plan) => {
     if (!plan.paymentLinkUrl) {
-      alert('Este plan no está disponible aún. Contáctanos en jsolution.sv@gmail.com');
+      sileo.info({ title: 'Plan no disponible aún', description: 'Contáctanos en jsolution.sv@gmail.com' });
       return;
     }
     setCargando(plan.tipo);

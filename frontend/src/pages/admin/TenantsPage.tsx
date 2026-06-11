@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { sileo } from 'sileo';
 import apiClient from '../../api/apiClient';
 import { CODIGOS_TIPO_DTE_TODOS, OPCIONES_TIPO_DTE } from '../../constants/tiposDte';
 import { useAuth } from '../../context/AuthContext';
@@ -167,7 +168,7 @@ export function TenantsPage() {
       }, 2000);
     } catch (err: any) {
       setLote(l => ({ ...l, polling: false }));
-      alert(err?.response?.data?.message ?? 'Error al iniciar lote');
+      sileo.error({ title: 'Error al iniciar lote', description: err?.response?.data?.message });
     }
   }
 
@@ -188,17 +189,28 @@ export function TenantsPage() {
   // ── Mutations ─────────────────────────────────────────────────────────────
   const createMut = useMutation({
     mutationFn: (data: any) => apiClient.post('/admin/tenants', data),
-    onSuccess: () => { qc.invalidateQueries({ queryKey: ['tenants'] }); setCreateModal(false); },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['tenants'] });
+      setCreateModal(false);
+      sileo.success({ title: 'Empresa creada correctamente' });
+    },
+    onError: (err: any) => sileo.error({ title: 'Error al crear empresa', description: err?.response?.data?.message }),
   });
 
   const updateMut = useMutation({
     mutationFn: (data: any) => apiClient.put(`/admin/tenants/${editTenant.id}`, data),
-    onSuccess: () => { qc.invalidateQueries({ queryKey: ['tenants'] }); setEditTenant(null); },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['tenants'] });
+      setEditTenant(null);
+      sileo.success({ title: 'Empresa actualizada' });
+    },
+    onError: (err: any) => sileo.error({ title: 'Error al actualizar', description: err?.response?.data?.message }),
   });
 
   const toggleMut = useMutation({
     mutationFn: (id: string) => apiClient.patch(`/admin/tenants/${id}/status`),
     onSuccess: () => qc.invalidateQueries({ queryKey: ['tenants'] }),
+    onError: (err: any) => sileo.error({ title: 'Error al cambiar estado', description: err?.response?.data?.message }),
   });
 
   const asignarPlanMut = useMutation({
@@ -207,7 +219,9 @@ export function TenantsPage() {
     onSuccess: (data: any) => {
       qc.invalidateQueries({ queryKey: ['tenants'] });
       setPlanMsg(data.mensaje ?? 'Plan asignado correctamente');
+      sileo.success({ title: 'Plan asignado', description: data.mensaje });
     },
+    onError: (err: any) => sileo.error({ title: 'Error al asignar plan', description: err?.response?.data?.message }),
   });
 
   async function entrarComoEmpresa(empresaId: string) {
@@ -218,7 +232,7 @@ export function TenantsPage() {
       // Recarga completa de página para limpiar todo estado (React Query, localStorage stale, etc.)
       window.location.href = '/';
     } catch (err: any) {
-      alert(err?.response?.data?.message ?? 'No se pudo iniciar impersonación');
+      sileo.error({ title: 'No se pudo iniciar impersonación', description: err?.response?.data?.message });
       setImpersonandoId(null);
     }
   }
