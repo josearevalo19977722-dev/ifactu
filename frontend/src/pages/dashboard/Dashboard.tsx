@@ -473,7 +473,8 @@ export function Dashboard() {
                         outerRadius={88}
                         paddingAngle={3}
                         labelLine={false}
-                        label={({ cx, cy, midAngle, innerRadius, outerRadius, percent, name }) => {
+                        label={(props: any) => {
+                          const { cx = 0, cy = 0, midAngle = 0, innerRadius = 0, outerRadius = 0, percent = 0, name } = props;
                           const RADIAN = Math.PI / 180;
                           const radius = innerRadius + (outerRadius - innerRadius) * 1.45;
                           const x = cx + radius * Math.cos(-midAngle * RADIAN);
@@ -481,7 +482,7 @@ export function Dashboard() {
                           return percent > 0.05 ? (
                             <text x={x} y={y} fill="#94a3b8" textAnchor={x > cx ? 'start' : 'end'}
                               dominantBaseline="central" fontSize={11} fontWeight={600}>
-                              {`${name} ${((percent) * 100).toFixed(0)}%`}
+                              {`${name} ${(percent * 100).toFixed(0)}%`}
                             </text>
                           ) : null;
                         }}
