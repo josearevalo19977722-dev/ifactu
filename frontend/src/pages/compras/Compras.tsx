@@ -43,11 +43,23 @@ const VACIO: Compra = {
 
 function fmt(n: number | string) { return n ? `$${Number(n).toFixed(2)}` : '—'; }
 
+function leerPeriodoGuardado() {
+  const ahora = new Date();
+  try {
+    const raw = sessionStorage.getItem('periodo_activo');
+    if (raw) { const { mes, anio } = JSON.parse(raw); if (mes >= 1 && mes <= 12 && anio >= 2020) return { mes, anio }; }
+  } catch { /* ignorar */ }
+  return { mes: ahora.getMonth() + 1, anio: ahora.getFullYear() };
+}
+
 export function Compras() {
   const qc = useQueryClient();
-  const ahora = new Date();
-  const [mes,   setMes]   = useState(ahora.getMonth() + 1);
-  const [anio,  setAnio]  = useState(ahora.getFullYear());
+  const init = leerPeriodoGuardado();
+  const [mes,   setMesRaw]   = useState(init.mes);
+  const [anio,  setAnioRaw]  = useState(init.anio);
+
+  const setMes  = (v: number) => { setMesRaw(v);  sessionStorage.setItem('periodo_activo', JSON.stringify({ mes: v,   anio })); };
+  const setAnio = (v: number) => { setAnioRaw(v); sessionStorage.setItem('periodo_activo', JSON.stringify({ mes, anio: v })); };
   const [q,     setQ]     = useState('');
   const [page,  setPage]  = useState(1);
   const [modal, setModal] = useState<Compra | null>(null);

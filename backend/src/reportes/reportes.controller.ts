@@ -47,6 +47,8 @@ export class ReportesController {
       'Content-Type': 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
       'Content-Disposition': `attachment; filename="${name}"`,
       'Content-Length': buf.length,
+      'Cache-Control': 'no-store, no-cache, must-revalidate',
+      'Pragma': 'no-cache',
     });
     res.end(buf);
   }
@@ -65,6 +67,8 @@ export class ReportesController {
       'Content-Type': 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
       'Content-Disposition': `attachment; filename="${name}"`,
       'Content-Length': buf.length,
+      'Cache-Control': 'no-store, no-cache, must-revalidate',
+      'Pragma': 'no-cache',
     });
     res.end(buf);
   }
@@ -83,6 +87,8 @@ export class ReportesController {
       'Content-Type': 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
       'Content-Disposition': `attachment; filename="${name}"`,
       'Content-Length': buf.length,
+      'Cache-Control': 'no-store, no-cache, must-revalidate',
+      'Pragma': 'no-cache',
     });
     res.end(buf);
   }
@@ -100,6 +106,8 @@ export class ReportesController {
     res.set({
       'Content-Type': 'text/csv; charset=utf-8',
       'Content-Disposition': `attachment; filename="${name}"`,
+      'Cache-Control': 'no-store, no-cache, must-revalidate',
+      'Pragma': 'no-cache',
     });
     res.end(csv);
   }
@@ -117,6 +125,8 @@ export class ReportesController {
     res.set({
       'Content-Type': 'text/csv; charset=utf-8',
       'Content-Disposition': `attachment; filename="${name}"`,
+      'Cache-Control': 'no-store, no-cache, must-revalidate',
+      'Pragma': 'no-cache',
     });
     res.end(csv);
   }
@@ -134,6 +144,8 @@ export class ReportesController {
     res.set({
       'Content-Type': 'text/csv; charset=utf-8',
       'Content-Disposition': `attachment; filename="${name}"`,
+      'Cache-Control': 'no-store, no-cache, must-revalidate',
+      'Pragma': 'no-cache',
     });
     res.end(csv);
   }

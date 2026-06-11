@@ -28,7 +28,10 @@ function fmt(n: number) { return n ? `$${Number(n).toFixed(2)}` : '—'; }
 
 async function descargarArchivo(path: string, filename: string) {
   try {
-    const resp = await apiClient.get(path, { responseType: 'blob' });
+    // _t rompe caché de nginx/CDN: cada descarga usa una URL única
+    const sep = path.includes('?') ? '&' : '?';
+    const url = `${path}${sep}_t=${Date.now()}`;
+    const resp = await apiClient.get(url, { responseType: 'blob' });
     const mime = resp.headers['content-type'] ?? 'application/octet-stream';
     const blob = new Blob([resp.data], { type: mime });
     const href = URL.createObjectURL(blob);
@@ -43,11 +46,29 @@ async function descargarArchivo(path: string, filename: string) {
 }
 
 
-export function Reportes() {
+/** Lee el mes/año guardado en sessionStorage (puesto por Compras u otras páginas) */
+function leerPeriodoGuardado() {
   const ahora = new Date();
-  const [mes,  setMes]  = useState(ahora.getMonth() + 1);
-  const [anio, setAnio] = useState(ahora.getFullYear());
-  const [tab,  setTab]  = useState<'cf'|'ccf'>('cf');
+  try {
+    const raw = sessionStorage.getItem('periodo_activo');
+    if (raw) {
+      const { mes, anio } = JSON.parse(raw);
+      if (mes >= 1 && mes <= 12 && anio >= 2020) return { mes, anio };
+    }
+  } catch { /* ignorar */ }
+  return { mes: ahora.getMonth() + 1, anio: ahora.getFullYear() };
+}
+
+export function Reportes() {
+  const init = leerPeriodoGuardado();
+  const [mes,  setMesRaw]  = useState(init.mes);
+  const [anio, setAnioRaw] = useState(init.anio);
+  const [tab,  setTab]     = useState<'cf'|'ccf'>('cf');
+
+  // Al cambiar mes/año, guardarlo en sessionStorage para que otras páginas
+  // (Compras, DTEs) también lo compartan y el usuario no pierda el contexto
+  const setMes  = (v: number) => { setMesRaw(v);  sessionStorage.setItem('periodo_activo', JSON.stringify({ mes: v,   anio })); };
+  const setAnio = (v: number) => { setAnioRaw(v); sessionStorage.setItem('periodo_activo', JSON.stringify({ mes, anio: v })); };
 
   const { data, isLoading, error, refetch } = useQuery<Resumen>({
     queryKey: ['reportes-resumen', mes, anio],
