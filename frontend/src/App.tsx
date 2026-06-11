@@ -325,7 +325,7 @@ function AppLayout() {
                     <button
                       key={emp.id}
                       type="button"
-                      onClick={() => { setEmpresaMenuOpen(false); cambiarEmpresa(emp.id); }}
+                      onClick={() => { setEmpresaMenuOpen(false); cambiarEmpresa(emp.id).catch(()=>{}); }}
                       style={{
                         width: '100%',
                         background: emp.id === usuario.empresaId ? 'rgba(99,102,241,.25)' : 'transparent',

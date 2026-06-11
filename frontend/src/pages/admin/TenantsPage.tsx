@@ -1,5 +1,4 @@
 import { useState, useEffect, useRef } from 'react';
-import { useNavigate } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import apiClient from '../../api/apiClient';
 import { CODIGOS_TIPO_DTE_TODOS, OPCIONES_TIPO_DTE } from '../../constants/tiposDte';
@@ -59,7 +58,6 @@ function resumenTiposDte(
 
 export function TenantsPage() {
   const qc = useQueryClient();
-  const navigate = useNavigate();
   const { iniciarImpersonacion } = useAuth();
   const [impersonandoId, setImpersonandoId] = useState<string | null>(null);
 
@@ -217,11 +215,10 @@ export function TenantsPage() {
       setImpersonandoId(empresaId);
       const { data } = await apiClient.post(`/auth/superadmin/impersonar/${empresaId}`);
       iniciarImpersonacion(data.access_token, data.usuario);
-      qc.clear(); // Limpiar caché de React Query para que cargue datos del nuevo tenant
-      navigate('/');
+      // Recarga completa de página para limpiar todo estado (React Query, localStorage stale, etc.)
+      window.location.href = '/';
     } catch (err: any) {
       alert(err?.response?.data?.message ?? 'No se pudo iniciar impersonación');
-    } finally {
       setImpersonandoId(null);
     }
   }

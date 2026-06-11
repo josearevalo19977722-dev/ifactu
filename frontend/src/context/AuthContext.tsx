@@ -134,18 +134,20 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   /** Contador cambia de empresa durante la sesión */
   const cambiarEmpresa = async (empresaId: string) => {
     if (!token) return;
-    const { data } = await axios.post(
-      `${API}/auth/cambiar-empresa`,
-      { empresaId },
-      { headers: { Authorization: `Bearer ${token}` } },
-    );
-    setToken(data.access_token);
-    setUsuario(data.usuario);
-    localStorage.setItem('dte_token', data.access_token);
-    localStorage.setItem('dte_usuario', JSON.stringify(data.usuario));
-    axios.defaults.headers.common['Authorization'] = `Bearer ${data.access_token}`;
-    // Recargar página para que React Query invalide todo el caché
-    window.location.href = '/';
+    try {
+      const { data } = await axios.post(
+        `${API}/auth/cambiar-empresa`,
+        { empresaId },
+        { headers: { Authorization: `Bearer ${token}` } },
+      );
+      localStorage.setItem('dte_token', data.access_token);
+      localStorage.setItem('dte_usuario', JSON.stringify(data.usuario));
+      // Recargar página completa para limpiar todo estado (React Query, refs, etc.)
+      window.location.href = '/';
+    } catch (err: any) {
+      const msg = err?.response?.data?.message ?? err?.message ?? 'No se pudo cambiar de empresa';
+      alert(`Error al cambiar empresa: ${msg}`);
+    }
   };
 
   const logout = () => {
