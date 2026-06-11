@@ -15,13 +15,30 @@ interface FilaCf {
 }
 interface FilaCcf extends FilaCf { nit: string; }
 
+interface GrupoVentas { cantidad: number; exenta: number; noSuj: number; gravada: number; iva: number; total: number; filas: FilaCcf[] }
+
 interface Resumen {
   mes: number; anio: number; nombreMes: string;
   cf:  { cantidad: number; exenta: number; noSuj: number; gravada: number; iva: number; total: number; filas: FilaCf[] };
   ccf: { cantidad: number; exenta: number; noSuj: number; gravada: number; iva: number; total: number; filas: FilaCcf[] };
+  // Desglose CCF/NC/ND separados para el tab "Desglose Ventas"
+  ccfDetalle: {
+    facturas:   GrupoVentas;
+    ncEmitidas: GrupoVentas;
+    ndEmitidas: GrupoVentas;
+    ivaDebito:  number;
+  };
   reten: { cantidad: number; total: number };
-  compras: { cantidad: number; compraGravada: number; ivaCredito: number; total: number };
-  f07: { debitoFiscal: number; creditoFiscal: number; ivaPagar: number };
+  // Compras con todos los campos para el tab "Resumen Compras"
+  compras: {
+    cantidad: number; compraExenta: number; compraNoSuj: number;
+    compraGravada: number; ivaCredito: number; total: number;
+    cantidadNC: number; ivaNC: number;
+  };
+  f07: {
+    debitoFiscal: number; creditoFiscal: number; ivaPagar: number;
+    desglose: { ivaCf: number; ivaCcf: number; ivaNC: number; ivaND: number; creditoBruto: number; ivaNCCompras: number };
+  };
 }
 
 function fmt(n: number) { return n ? `$${Number(n).toFixed(2)}` : '—'; }
@@ -63,7 +80,7 @@ export function Reportes() {
   const init = leerPeriodoGuardado();
   const [mes,  setMesRaw]  = useState(init.mes);
   const [anio, setAnioRaw] = useState(init.anio);
-  const [tab,  setTab]     = useState<'cf'|'ccf'>('cf');
+  const [tab,  setTab]     = useState<'cf'|'ccf'|'ventas'|'comprasTab'>('cf');
 
   // Al cambiar mes/año, guardarlo en sessionStorage para que otras páginas
   // (Compras, DTEs) también lo compartan y el usuario no pierda el contexto
@@ -291,10 +308,10 @@ export function Reportes() {
               </div>
             </div>
 
-            {/* Tabs CF / CCF */}
+            {/* Tabs CF / CCF / Desglose Ventas / Resumen Compras */}
             <div className="table-card">
               <div className="table-header">
-                <div style={{ display: 'flex', gap: 8 }}>
+                <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
                   <button
                     className={`btn btn-sm ${tab === 'cf' ? 'btn-primary' : ''}`}
                     onClick={() => setTab('cf')}>
@@ -304,6 +321,16 @@ export function Reportes() {
                     className={`btn btn-sm ${tab === 'ccf' ? 'btn-primary' : ''}`}
                     onClick={() => setTab('ccf')}>
                     Ventas CCF ({data.ccf.cantidad})
+                  </button>
+                  <button
+                    className={`btn btn-sm ${tab === 'ventas' ? 'btn-primary' : ''}`}
+                    onClick={() => setTab('ventas')}>
+                    📊 Desglose Ventas
+                  </button>
+                  <button
+                    className={`btn btn-sm ${tab === 'comprasTab' ? 'btn-primary' : ''}`}
+                    onClick={() => setTab('comprasTab')}>
+                    🛒 Resumen Compras
                   </button>
                 </div>
                 <span style={{ fontSize: 12, color: 'var(--text-muted)' }}>
@@ -408,6 +435,164 @@ export function Reportes() {
                     </tfoot>
                   )}
                 </table>
+              )}
+
+              {/* ── Tab: Desglose Ventas por tipo de DTE ── */}
+              {tab === 'ventas' && (
+                <div style={{ padding: '16px 20px' }}>
+                  <table className="table" style={{ maxWidth: 700 }}>
+                    <thead>
+                      <tr>
+                        <th style={{ width: 180 }}>Tipo DTE</th>
+                        <th style={{ textAlign: 'center' }}>Docs</th>
+                        <th className="monto">Exenta</th>
+                        <th className="monto">Base Gravada</th>
+                        <th className="monto">IVA</th>
+                        <th className="monto">Total</th>
+                        <th className="monto">Efecto Débito</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {/* Facturas CF */}
+                      <tr>
+                        <td>🧾 Facturas CF (01)</td>
+                        <td style={{ textAlign: 'center' }}>{data.cf.cantidad}</td>
+                        <td className="monto">{fmt(data.cf.exenta)}</td>
+                        <td className="monto">{fmt(data.cf.gravada)}</td>
+                        <td className="monto">{fmt(data.cf.iva)}</td>
+                        <td className="monto">{fmt(data.cf.total)}</td>
+                        <td className="monto" style={{ color: '#ef4444' }}>+{fmt(data.cf.iva)}</td>
+                      </tr>
+                      {/* CCF */}
+                      <tr>
+                        <td>📄 CCF (03)</td>
+                        <td style={{ textAlign: 'center' }}>{data.ccfDetalle.facturas.cantidad}</td>
+                        <td className="monto">{fmt(data.ccfDetalle.facturas.exenta)}</td>
+                        <td className="monto">{fmt(data.ccfDetalle.facturas.gravada)}</td>
+                        <td className="monto">{fmt(data.ccfDetalle.facturas.iva)}</td>
+                        <td className="monto">{fmt(data.ccfDetalle.facturas.total)}</td>
+                        <td className="monto" style={{ color: '#ef4444' }}>+{fmt(data.ccfDetalle.facturas.iva)}</td>
+                      </tr>
+                      {/* NC emitidas */}
+                      <tr style={{ color: data.ccfDetalle.ncEmitidas.cantidad > 0 ? '#10b981' : 'var(--text-muted)' }}>
+                        <td>↩️ NC emitidas (05)</td>
+                        <td style={{ textAlign: 'center' }}>{data.ccfDetalle.ncEmitidas.cantidad}</td>
+                        <td className="monto">{data.ccfDetalle.ncEmitidas.cantidad > 0 ? fmt(data.ccfDetalle.ncEmitidas.exenta) : '—'}</td>
+                        <td className="monto">{data.ccfDetalle.ncEmitidas.cantidad > 0 ? fmt(data.ccfDetalle.ncEmitidas.gravada) : '—'}</td>
+                        <td className="monto">{data.ccfDetalle.ncEmitidas.cantidad > 0 ? fmt(data.ccfDetalle.ncEmitidas.iva) : '—'}</td>
+                        <td className="monto">{data.ccfDetalle.ncEmitidas.cantidad > 0 ? fmt(data.ccfDetalle.ncEmitidas.total) : '—'}</td>
+                        <td className="monto" style={{ color: '#10b981' }}>
+                          {data.ccfDetalle.ncEmitidas.cantidad > 0 ? `−${fmt(data.ccfDetalle.ncEmitidas.iva)}` : '—'}
+                        </td>
+                      </tr>
+                      {/* ND emitidas */}
+                      <tr style={{ color: data.ccfDetalle.ndEmitidas.cantidad > 0 ? 'var(--text-1)' : 'var(--text-muted)' }}>
+                        <td>📤 ND emitidas (06)</td>
+                        <td style={{ textAlign: 'center' }}>{data.ccfDetalle.ndEmitidas.cantidad}</td>
+                        <td className="monto">{data.ccfDetalle.ndEmitidas.cantidad > 0 ? fmt(data.ccfDetalle.ndEmitidas.exenta) : '—'}</td>
+                        <td className="monto">{data.ccfDetalle.ndEmitidas.cantidad > 0 ? fmt(data.ccfDetalle.ndEmitidas.gravada) : '—'}</td>
+                        <td className="monto">{data.ccfDetalle.ndEmitidas.cantidad > 0 ? fmt(data.ccfDetalle.ndEmitidas.iva) : '—'}</td>
+                        <td className="monto">{data.ccfDetalle.ndEmitidas.cantidad > 0 ? fmt(data.ccfDetalle.ndEmitidas.total) : '—'}</td>
+                        <td className="monto" style={{ color: '#ef4444' }}>
+                          {data.ccfDetalle.ndEmitidas.cantidad > 0 ? `+${fmt(data.ccfDetalle.ndEmitidas.iva)}` : '—'}
+                        </td>
+                      </tr>
+                    </tbody>
+                    <tfoot>
+                      <tr style={{ fontWeight: 700, background: 'var(--bg-subtle)' }}>
+                        <td>DÉBITO FISCAL NETO</td>
+                        <td style={{ textAlign: 'center' }}>
+                          {data.cf.cantidad + data.ccf.cantidad}
+                        </td>
+                        <td className="monto">
+                          {fmt(data.cf.exenta + data.ccf.exenta)}
+                        </td>
+                        <td className="monto">
+                          {fmt(data.cf.gravada + data.ccf.gravada)}
+                        </td>
+                        <td className="monto">
+                          {fmt(data.cf.iva + data.ccf.iva)}
+                        </td>
+                        <td className="monto">
+                          {fmt(data.cf.total + data.ccf.total)}
+                        </td>
+                        <td className="monto" style={{ color: '#ef4444' }}>
+                          ${Number(data.f07.debitoFiscal).toFixed(2)}
+                        </td>
+                      </tr>
+                    </tfoot>
+                  </table>
+                  <p style={{ fontSize: 12, color: 'var(--text-muted)', marginTop: 12 }}>
+                    * Efecto Débito = IVA que suma (CF/CCF/ND) o resta (NC emitidas) al débito fiscal del período.
+                    Débito fiscal neto = débito CF + débito CCF + ND − NC.
+                  </p>
+                </div>
+              )}
+
+              {/* ── Tab: Resumen Compras ── */}
+              {tab === 'comprasTab' && (
+                <div style={{ padding: '16px 20px' }}>
+                  <table className="table" style={{ maxWidth: 520 }}>
+                    <thead>
+                      <tr>
+                        <th>Concepto</th>
+                        <th style={{ textAlign: 'center' }}>Docs</th>
+                        <th className="monto">Monto</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      <tr>
+                        <td>Compras Exentas</td>
+                        <td style={{ textAlign: 'center' }}>—</td>
+                        <td className="monto">{fmt(data.compras.compraExenta)}</td>
+                      </tr>
+                      <tr>
+                        <td>Compras No Sujetas</td>
+                        <td style={{ textAlign: 'center' }}>—</td>
+                        <td className="monto">{fmt(data.compras.compraNoSuj)}</td>
+                      </tr>
+                      <tr>
+                        <td>Compras Gravadas (base)</td>
+                        <td style={{ textAlign: 'center' }}>{data.compras.cantidad - data.compras.cantidadNC}</td>
+                        <td className="monto">{fmt(data.compras.compraGravada)}</td>
+                      </tr>
+                      <tr style={{ borderTop: '1px solid var(--border)' }}>
+                        <td>IVA Crédito Fiscal bruto</td>
+                        <td style={{ textAlign: 'center' }}>—</td>
+                        <td className="monto" style={{ color: '#10b981', fontWeight: 600 }}>
+                          {fmt(data.f07.desglose.creditoBruto)}
+                        </td>
+                      </tr>
+                      {data.compras.cantidadNC > 0 && (
+                        <tr style={{ color: '#f59e0b' }}>
+                          <td>  (−) NC recibidas — IVA deducido</td>
+                          <td style={{ textAlign: 'center' }}>{data.compras.cantidadNC}</td>
+                          <td className="monto">−{fmt(data.compras.ivaNC)}</td>
+                        </tr>
+                      )}
+                      <tr style={{ fontWeight: 700, background: 'var(--bg-subtle)' }}>
+                        <td>IVA Crédito Fiscal neto</td>
+                        <td style={{ textAlign: 'center' }}>{data.compras.cantidad}</td>
+                        <td className="monto" style={{ color: '#10b981', fontWeight: 800, fontSize: 15 }}>
+                          ${Number(data.f07.creditoFiscal).toFixed(2)}
+                        </td>
+                      </tr>
+                    </tbody>
+                  </table>
+                  {data.compras.cantidad === 0 && (
+                    <div style={{ marginTop: 16 }}>
+                      <EmptyState
+                        compact
+                        icon="🛒"
+                        title="Sin compras registradas en este período"
+                        description="Sube compras desde el módulo de Compras para que aparezcan aquí."
+                        actions={
+                          <Link to="/compras" className="btn btn-primary btn-sm">Ir a Compras</Link>
+                        }
+                      />
+                    </div>
+                  )}
+                </div>
               )}
             </div>
           </>
