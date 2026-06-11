@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import {
@@ -14,6 +15,7 @@ interface DashboardStats {
   porEstado: { estado: string; cantidad: string; monto: string }[];
   porTipo: { tipoDte: string; cantidad: string }[];
   ultimosMeses: { mes: string; cantidad: string; monto: string }[];
+  rechazadosRecientes?: number;
 }
 
 interface DteReciente {
@@ -144,6 +146,19 @@ export function Dashboard() {
 
   const planPct = miPlan?.uso?.porcentaje ?? 0;
   const planIlimitado = (miPlan?.uso?.dtesLimite ?? 0) >= 99999;
+
+  // Banner de rechazados: solo los de los últimos 7 días, descartable.
+  // El descarte se guarda por cantidad: si aparece un rechazo nuevo, reaparece.
+  const nRechazadosRecientes = stats?.rechazadosRecientes ?? 0;
+  const [bannerDescartado, setBannerDescartado] = useState(
+    () => localStorage.getItem('banner-rechazados-descartado') ?? '',
+  );
+  const mostrarBannerRechazados =
+    nRechazadosRecientes > 0 && bannerDescartado !== String(nRechazadosRecientes);
+  const descartarBanner = () => {
+    localStorage.setItem('banner-rechazados-descartado', String(nRechazadosRecientes));
+    setBannerDescartado(String(nRechazadosRecientes));
+  };
 
   return (
     <div className="page page-dashboard">
@@ -280,25 +295,14 @@ export function Dashboard() {
           </div>
         )}
 
-        {/* ── Alerta de DTEs rechazados ─────────────────────────────────────── */}
-        {nRechazados > 0 && !statsLoading && (
-          <Link
-            to="/dtes?estado=RECHAZADO"
+        {/* ── Alerta de DTEs rechazados (últimos 7 días, descartable) ──────── */}
+        {mostrarBannerRechazados && !statsLoading && (
+          <div
             style={{
               display: 'flex', alignItems: 'center', gap: 14,
               background: 'rgba(15, 23, 42, 0.45)',
               border: '1px solid rgba(148, 163, 184, 0.14)',
               borderRadius: 12, padding: '12px 18px', marginBottom: 4,
-              textDecoration: 'none', color: 'inherit',
-              transition: 'border-color .18s ease, background .18s ease',
-            }}
-            onMouseEnter={e => {
-              e.currentTarget.style.borderColor = 'rgba(239,68,68,0.45)';
-              e.currentTarget.style.background = 'rgba(239,68,68,0.05)';
-            }}
-            onMouseLeave={e => {
-              e.currentTarget.style.borderColor = 'rgba(148, 163, 184, 0.14)';
-              e.currentTarget.style.background = 'rgba(15, 23, 42, 0.45)';
             }}
           >
             <span style={{
@@ -317,16 +321,16 @@ export function Dashboard() {
               <div style={{ fontWeight: 600, fontSize: 14, color: 'var(--text, #e2e8f0)' }}>
                 Tienes{' '}
                 <span style={{ color: '#ef4444', fontWeight: 700 }}>
-                  {nRechazados} DTE{nRechazados > 1 ? 's' : ''} rechazado{nRechazados > 1 ? 's' : ''}
+                  {nRechazadosRecientes} DTE{nRechazadosRecientes > 1 ? 's' : ''} rechazado{nRechazadosRecientes > 1 ? 's' : ''}
                 </span>{' '}
-                por Hacienda
+                por Hacienda en los últimos 7 días
               </div>
               <div style={{ fontSize: 12.5, color: 'var(--text-muted)', marginTop: 1 }}>
                 Revisa el motivo de rechazo y corrige los documentos afectados.
               </div>
             </div>
-            <span style={{
-              fontSize: 13, fontWeight: 600, color: '#ef4444',
+            <Link to="/dtes?estado=RECHAZADO" style={{
+              fontSize: 13, fontWeight: 600, color: '#ef4444', textDecoration: 'none',
               whiteSpace: 'nowrap', display: 'flex', alignItems: 'center', gap: 4,
             }}>
               Ver rechazados
@@ -334,8 +338,23 @@ export function Dashboard() {
                 strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
                 <line x1="5" y1="12" x2="19" y2="12" /><polyline points="12 5 19 12 12 19" />
               </svg>
-            </span>
-          </Link>
+            </Link>
+            <button
+              type="button"
+              onClick={descartarBanner}
+              title="Descartar — reaparecerá si hay rechazos nuevos"
+              style={{
+                background: 'none', border: 'none', cursor: 'pointer', padding: 6,
+                color: 'var(--text-muted)', display: 'flex', alignItems: 'center',
+                borderRadius: 6, flexShrink: 0,
+              }}
+            >
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" />
+              </svg>
+            </button>
+          </div>
         )}
 
         {/* ── Accesos rápidos ───────────────────────────────────────────────── */}

@@ -152,7 +152,7 @@ export class DteController {
     const whereParams = isSuper ? {} : { empresaId, ambiente };
     const countFilter = isSuper ? {} : { empresa: { id: empresaId }, ambiente };
 
-    const [total, porEstado, porTipo, ultimosMeses] = await Promise.all([
+    const [total, porEstado, porTipo, ultimosMeses, rechazadosRecientes] = await Promise.all([
       this.dteRepo.count({ where: countFilter }),
       this.dteRepo
         .createQueryBuilder('dte')
@@ -183,8 +183,14 @@ export class DteController {
         .groupBy("TO_CHAR(dte.\"fechaEmision\", 'YYYY-MM')")
         .orderBy("TO_CHAR(dte.\"fechaEmision\", 'YYYY-MM')", 'ASC')
         .getRawMany(),
+      this.dteRepo
+        .createQueryBuilder('dte')
+        .where(whereBase, whereParams)
+        .andWhere("dte.estado = 'RECHAZADO'")
+        .andWhere("dte.\"createdAt\" >= NOW() - INTERVAL '7 days'")
+        .getCount(),
     ]);
-    return { total, porEstado, porTipo, ultimosMeses };
+    return { total, porEstado, porTipo, ultimosMeses, rechazadosRecientes };
   }
 
   @Get('contingencia/cola')
