@@ -501,8 +501,9 @@ export function ConfiguracionPage() {
                 </div>
                 <div style={{ marginTop: 16 }}>
                   <button className="btn btn-secondary btn-sm" style={{ width: '100%', marginBottom: 12 }}
+                    disabled={updateMut.isPending}
                     onClick={() => updateMut.mutate({ mhApiKey, mhPasswordCert, mhAmbiente })}>
-                    Guardar Credenciales
+                    {updateMut.isPending ? 'Guardando...' : 'Guardar Credenciales'}
                   </button>
                 </div>
               </div>

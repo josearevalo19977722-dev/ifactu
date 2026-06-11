@@ -251,7 +251,10 @@ export function Inventario() {
                         <button className="btn btn-ghost btn-sm" title="Editar"
                           onClick={() => abrirEditar(p)}>✏️</button>
                         <button className="btn btn-ghost btn-sm" title="Desactivar"
-                          onClick={() => { if (confirm(`¿Desactivar "${p.nombre}"?`)) eliminarMut.mutate(p.id); }}>🗑️</button>
+                          disabled={eliminarMut.isPending && eliminarMut.variables === p.id}
+                          onClick={() => { if (confirm(`¿Desactivar "${p.nombre}"?`)) eliminarMut.mutate(p.id); }}>
+                          {eliminarMut.isPending && eliminarMut.variables === p.id ? '⏳' : '🗑️'}
+                        </button>
                       </div>
                     </td>
                   </tr>

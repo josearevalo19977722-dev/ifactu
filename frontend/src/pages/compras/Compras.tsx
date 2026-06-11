@@ -322,8 +322,9 @@ export function Compras() {
                     <td className="monto" style={{ fontWeight: 700 }}>{fmt(c.totalCompra)}</td>
                     <td>
                       <button className="btn btn-ghost btn-sm"
+                        disabled={anularMut.isPending && anularMut.variables === c.id}
                         onClick={() => { if (confirm('¿Anular esta compra?')) anularMut.mutate(c.id!) }}>
-                        Anular
+                        {anularMut.isPending && anularMut.variables === c.id ? '⏳ Anulando...' : 'Anular'}
                       </button>
                     </td>
                   </tr>

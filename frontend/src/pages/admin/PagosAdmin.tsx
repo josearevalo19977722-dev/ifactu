@@ -765,16 +765,18 @@ export function PagosAdmin() {
                       </button>
                       <div style={{ display: 'flex', gap: 4 }}>
                         <button
+                          disabled={toggleOpcionMut.isPending && (toggleOpcionMut.variables as any)?.id === op.id}
                           onClick={() => toggleOpcionMut.mutate({ id: op.id, activo: !op.activo })}
                           style={{ padding: '4px 10px', borderRadius: 6, border: `1px solid ${op.activo ? '#92400e' : '#065f46'}`, background: 'transparent', color: op.activo ? '#fbbf24' : '#34d399', cursor: 'pointer', fontSize: 11, fontWeight: 600 }}
                         >
-                          {op.activo ? '⏸ Desactivar' : '▶ Activar'}
+                          {toggleOpcionMut.isPending && (toggleOpcionMut.variables as any)?.id === op.id ? '⏳' : op.activo ? '⏸ Desactivar' : '▶ Activar'}
                         </button>
                         <button
+                          disabled={eliminarOpcionMut.isPending && eliminarOpcionMut.variables === op.id}
                           onClick={() => { if (confirm(`¿Eliminar "${op.cantidad} DTEs · $${Number(op.precio).toFixed(2)}"?`)) eliminarOpcionMut.mutate(op.id); }}
                           style={{ padding: '4px 10px', borderRadius: 6, border: '1px solid #7f1d1d', background: 'transparent', color: '#f87171', cursor: 'pointer', fontSize: 11, fontWeight: 600 }}
                         >
-                          🗑️
+                          {eliminarOpcionMut.isPending && eliminarOpcionMut.variables === op.id ? '⏳' : '🗑️'}
                         </button>
                       </div>
                     </div>

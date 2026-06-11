@@ -371,9 +371,10 @@ export function TenantsPage() {
                     type="button"
                     className={`tenant-card__badge ${t.activo ? 'tenant-card__badge--on' : 'tenant-card__badge--off'}`}
                     title="Clic para activar o desactivar"
+                    disabled={toggleMut.isPending && toggleMut.variables === t.id}
                     onClick={() => toggleMut.mutate(t.id)}
                   >
-                    {t.activo ? 'Activa' : 'Inactiva'}
+                    {toggleMut.isPending && toggleMut.variables === t.id ? '...' : t.activo ? 'Activa' : 'Inactiva'}
                   </button>
                 </div>
                 <div className="tenant-card__body">

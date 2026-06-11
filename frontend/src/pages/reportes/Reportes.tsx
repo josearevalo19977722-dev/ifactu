@@ -82,6 +82,18 @@ export function Reportes() {
   const [anio, setAnioRaw] = useState(init.anio);
   const [tab,  setTab]     = useState<'cf'|'ccf'|'ventas'|'comprasTab'>('cf');
   const [paqueteLoading, setPaqueteLoading] = useState(false);
+  const [descargando, setDescargando]       = useState<string | null>(null);
+
+  /** Descarga con loading state: bloquea el botón con key único mientras dure */
+  const descargar = async (key: string, path: string, filename: string) => {
+    if (descargando) return;           // ya hay una descarga en curso
+    setDescargando(key);
+    try {
+      await descargarArchivo(path, filename);
+    } finally {
+      setDescargando(null);
+    }
+  };
 
   // Al cambiar mes/año, guardarlo en sessionStorage para que otras páginas
   // (Compras, DTEs) también lo compartan y el usuario no pierda el contexto
@@ -136,8 +148,9 @@ export function Reportes() {
               Facturas consumidor final (tipo 01)<br/>Columnas: fecha, N° control, receptor, exentas, gravadas, IVA
             </div>
             <button className="btn btn-sm" style={{ width: '100%' }}
-              onClick={() => descargarArchivo(`/reportes/libro-ventas-cf?${params}`, `LibroVentasCF-${anio}-${String(mes).padStart(2,'0')}.xlsx`)}>
-              ↓ Descargar Excel
+              disabled={!!descargando}
+              onClick={() => descargar('libro-cf', `/reportes/libro-ventas-cf?${params}`, `LibroVentasCF-${anio}-${String(mes).padStart(2,'0')}.xlsx`)}>
+              {descargando === 'libro-cf' ? '⏳ Descargando...' : '↓ Descargar Excel'}
             </button>
           </div>
 
@@ -148,8 +161,9 @@ export function Reportes() {
               Crédito fiscal + NC + ND (tipos 03/05/06)<br/>Columnas: tipo, fecha, NIT, nombre, gravadas, IVA
             </div>
             <button className="btn btn-sm" style={{ width: '100%' }}
-              onClick={() => descargarArchivo(`/reportes/libro-ventas-ccf?${params}`, `LibroVentasCCF-${anio}-${String(mes).padStart(2,'0')}.xlsx`)}>
-              ↓ Descargar Excel
+              disabled={!!descargando}
+              onClick={() => descargar('libro-ccf', `/reportes/libro-ventas-ccf?${params}`, `LibroVentasCCF-${anio}-${String(mes).padStart(2,'0')}.xlsx`)}>
+              {descargando === 'libro-ccf' ? '⏳ Descargando...' : '↓ Descargar Excel'}
             </button>
           </div>
 
@@ -160,8 +174,9 @@ export function Reportes() {
               Declaración mensual IVA<br/>4 hojas: Resumen · CF · CCF · Retenciones
             </div>
             <button className="btn btn-primary btn-sm" style={{ width: '100%' }}
-              onClick={() => descargarArchivo(`/reportes/anexo-f07?${params}`, `AnexoF07-${anio}-${String(mes).padStart(2,'0')}.xlsx`)}>
-              ↓ Descargar Anexo F-07
+              disabled={!!descargando}
+              onClick={() => descargar('f07', `/reportes/anexo-f07?${params}`, `AnexoF07-${anio}-${String(mes).padStart(2,'0')}.xlsx`)}>
+              {descargando === 'f07' ? '⏳ Descargando...' : '↓ Descargar Anexo F-07'}
             </button>
           </div>
 
@@ -173,8 +188,9 @@ export function Reportes() {
               CF + CCF/NC/ND detallado<br/>N° control, cód. generación, total por operación
             </div>
             <button className="btn btn-sm" style={{ width: '100%', borderColor: '#ef4444', color: '#ef4444' }}
-              onClick={() => descargarArchivo(`/reportes/pdf-ventas?${params}`, `ReporteVentas-${anio}-${String(mes).padStart(2,'0')}.pdf`)}>
-              ↓ Descargar PDF Ventas
+              disabled={!!descargando}
+              onClick={() => descargar('pdf-ventas', `/reportes/pdf-ventas?${params}`, `ReporteVentas-${anio}-${String(mes).padStart(2,'0')}.pdf`)}>
+              {descargando === 'pdf-ventas' ? '⏳ Generando PDF...' : '↓ Descargar PDF Ventas'}
             </button>
           </div>
 
@@ -185,8 +201,9 @@ export function Reportes() {
               Todas las compras del período<br/>N° control, cód. generación, total por operación
             </div>
             <button className="btn btn-sm" style={{ width: '100%', borderColor: '#10b981', color: '#10b981' }}
-              onClick={() => descargarArchivo(`/reportes/pdf-compras?${params}`, `ReporteCompras-${anio}-${String(mes).padStart(2,'0')}.pdf`)}>
-              ↓ Descargar PDF Compras
+              disabled={!!descargando}
+              onClick={() => descargar('pdf-compras', `/reportes/pdf-compras?${params}`, `ReporteCompras-${anio}-${String(mes).padStart(2,'0')}.pdf`)}>
+              {descargando === 'pdf-compras' ? '⏳ Generando PDF...' : '↓ Descargar PDF Compras'}
             </button>
           </div>
         </div>
@@ -206,11 +223,9 @@ export function Reportes() {
                 CCF, Notas de Crédito y Débito (tipos 03/05/06)<br/>20 columnas · 1 fila por DTE
               </div>
               <button className="btn btn-sm" style={{ width: '100%' }}
-                onClick={() => descargarArchivo(
-                  `/reportes/csv-anexo1?${params}`,
-                  `Anexo1-VentasContribuyentes-${anio}-${String(mes).padStart(2,'0')}.csv`
-                )}>
-                ↓ Descargar CSV Anexo 1
+                disabled={!!descargando}
+                onClick={() => descargar('csv1', `/reportes/csv-anexo1?${params}`, `Anexo1-VentasContribuyentes-${anio}-${String(mes).padStart(2,'0')}.csv`)}>
+                {descargando === 'csv1' ? '⏳ Descargando...' : '↓ Descargar CSV Anexo 1'}
               </button>
             </div>
             <div>
@@ -219,11 +234,9 @@ export function Reportes() {
                 Facturas CF (tipo 01)<br/>23 columnas · 1 fila por día
               </div>
               <button className="btn btn-sm" style={{ width: '100%' }}
-                onClick={() => descargarArchivo(
-                  `/reportes/csv-anexo2?${params}`,
-                  `Anexo2-VentasConsumidorFinal-${anio}-${String(mes).padStart(2,'0')}.csv`
-                )}>
-                ↓ Descargar CSV Anexo 2
+                disabled={!!descargando}
+                onClick={() => descargar('csv2', `/reportes/csv-anexo2?${params}`, `Anexo2-VentasConsumidorFinal-${anio}-${String(mes).padStart(2,'0')}.csv`)}>
+                {descargando === 'csv2' ? '⏳ Descargando...' : '↓ Descargar CSV Anexo 2'}
               </button>
             </div>
             <div>
@@ -232,11 +245,9 @@ export function Reportes() {
                 Todas las compras registradas<br/>21 columnas · 1 fila por compra
               </div>
               <button className="btn btn-sm" style={{ width: '100%' }}
-                onClick={() => descargarArchivo(
-                  `/reportes/csv-anexo3?${params}`,
-                  `Anexo3-Compras-${anio}-${String(mes).padStart(2,'0')}.csv`
-                )}>
-                ↓ Descargar CSV Anexo 3
+                disabled={!!descargando}
+                onClick={() => descargar('csv3', `/reportes/csv-anexo3?${params}`, `Anexo3-Compras-${anio}-${String(mes).padStart(2,'0')}.csv`)}>
+                {descargando === 'csv3' ? '⏳ Descargando...' : '↓ Descargar CSV Anexo 3'}
               </button>
             </div>
           </div>

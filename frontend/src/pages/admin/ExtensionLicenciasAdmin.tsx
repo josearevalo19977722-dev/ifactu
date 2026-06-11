@@ -255,21 +255,27 @@ export function ExtensionLicenciasAdmin() {
                       <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
                         <button
                           title="Genera una nueva clave manteniendo el mismo registro"
+                          disabled={regenerarMut.isPending && regenerarMut.variables === lic.id}
                           onClick={() => { if (confirm(`¿Regenerar clave de ${lic.email || lic.nombre}? La clave anterior dejará de funcionar.`)) regenerarMut.mutate(lic.id); }}
                           style={s.btn('#f59e0b')}
                         >
-                          🔄 Clave
+                          {regenerarMut.isPending && regenerarMut.variables === lic.id ? '⏳' : '🔄 Clave'}
                         </button>
                         {lic.activa ? (
                           <button
+                            disabled={revocarMut.isPending && revocarMut.variables === lic.id}
                             onClick={() => { if (confirm(`¿Revocar licencia de ${lic.email}?`)) revocarMut.mutate(lic.id); }}
                             style={s.btn('#ef4444')}
                           >
-                            Revocar
+                            {revocarMut.isPending && revocarMut.variables === lic.id ? '⏳' : 'Revocar'}
                           </button>
                         ) : (
-                          <button onClick={() => reactivarMut.mutate(lic.id)} style={s.btn('#10b981')}>
-                            Reactivar
+                          <button
+                            disabled={reactivarMut.isPending && reactivarMut.variables === lic.id}
+                            onClick={() => reactivarMut.mutate(lic.id)}
+                            style={s.btn('#10b981')}
+                          >
+                            {reactivarMut.isPending && reactivarMut.variables === lic.id ? '⏳' : 'Reactivar'}
                           </button>
                         )}
                       </div>
@@ -318,10 +324,11 @@ export function ExtensionLicenciasAdmin() {
                 <div style={{ display: 'flex', gap: 8 }}>
                   <button onClick={() => abrirModalPlan(p)} style={s.btn('#475569')}>Editar</button>
                   <button
+                    disabled={eliminarPlanMut.isPending && eliminarPlanMut.variables === p.tipo}
                     onClick={() => { if (confirm(`¿Eliminar plan "${p.nombre}"?`)) eliminarPlanMut.mutate(p.tipo); }}
                     style={s.btn('#ef4444')}
                   >
-                    Eliminar
+                    {eliminarPlanMut.isPending && eliminarPlanMut.variables === p.tipo ? '⏳' : 'Eliminar'}
                   </button>
                 </div>
               </div>

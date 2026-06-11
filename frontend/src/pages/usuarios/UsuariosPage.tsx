@@ -143,9 +143,10 @@ export function UsuariosPage() {
                         <button
                           type="button"
                           className="btn btn-ghost btn-sm"
+                          disabled={toggleMut.isPending && toggleMut.variables === u.id}
                           onClick={() => toggleMut.mutate(u.id)}
                         >
-                          {u.activo ? 'Desactivar' : 'Activar'}
+                          {toggleMut.isPending && toggleMut.variables === u.id ? '⏳' : u.activo ? 'Desactivar' : 'Activar'}
                         </button>
                       </div>
                     </td>
