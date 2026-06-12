@@ -557,7 +557,9 @@ function App() {
               </Routes>
             </Suspense>
           </BrowserRouter>
-          <Toaster position="bottom-right" theme="system" />
+          {/* theme fijo en dark: la app es oscura siempre; con "system" el toast
+              salía blanco en equipos con macOS/Windows en modo claro */}
+          <Toaster position="bottom-right" theme="dark" />
         </ToastProvider>
       </AuthProvider>
     </QueryClientProvider>
