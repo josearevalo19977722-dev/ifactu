@@ -22,10 +22,10 @@ export class ExtensionLicenseController {
   // Endpoints públicos (sin auth) — usados directamente por la extensión
   // ══════════════════════════════════════════════════════════════════════════
 
-  /** GET /api/extension/validate?key=XXX */
+  /** GET /api/extension/validate?key=XXX&fp=YYY (fp opcional: enforcement de equipos) */
   @Get('extension/validate')
-  async validate(@Query('key') key: string) {
-    return this.svc.validar(key ?? '');
+  async validate(@Query('key') key: string, @Query('fp') fp?: string) {
+    return this.svc.validar(key ?? '', fp || undefined);
   }
 
   /**

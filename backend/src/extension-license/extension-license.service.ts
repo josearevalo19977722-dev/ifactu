@@ -59,6 +59,11 @@ const PLAN_FEATURES_DEFAULT: Record<string, { cuentas: number; f07: boolean; exc
   ifactu:    { cuentas: 0, f07: true,  excel: true },
 };
 
+/** Límite de dispositivos por plan si no hay config en BD (0 = sin límite) */
+const PLAN_DISPOSITIVOS_DEFAULT: Record<string, number> = {
+  basico: 1, pro: 2, ilimitado: 3, ifactu: 0,
+};
+
 @Injectable()
 export class ExtensionLicenseService {
   private readonly logger = new Logger(ExtensionLicenseService.name);
@@ -129,7 +134,7 @@ export class ExtensionLicenseService {
       .getOne();
   }
 
-  async validar(apiKey: string): Promise<ValidarResult> {
+  async validar(apiKey: string, fingerprint?: string): Promise<ValidarResult> {
     if (!apiKey) return { valid: false, error: 'Clave no proporcionada' };
 
     const lic = await this.buscarPorClave(apiKey);
@@ -137,6 +142,17 @@ export class ExtensionLicenseService {
 
     if (lic.expiresAt && new Date() > lic.expiresAt) {
       return { valid: false, error: 'Licencia expirada' };
+    }
+
+    // Enforcement del límite de equipos: si la extensión manda su
+    // fingerprint, el dispositivo debe estar registrado (o registrarse
+    // aquí si aún hay cupo). Sin fingerprint (versiones viejas de la
+    // extensión) se valida solo la clave, como antes.
+    if (fingerprint) {
+      const dev = await this.registrarDispositivo(lic, fingerprint);
+      if (!dev.success) {
+        return { valid: false, error: dev.error };
+      }
     }
 
     // Reiniciar contador si es nuevo mes
@@ -182,41 +198,53 @@ export class ExtensionLicenseService {
     if (lic.expiresAt && new Date() > lic.expiresAt) {
       return { success: false, error: 'Licencia expirada' };
     }
+    return this.registrarDispositivo(lic, dto.fingerprint, dto.nombre_dispositivo);
+  }
 
-    // Verificar límite de dispositivos según plan
+  /**
+   * Registra (o refresca) un dispositivo para la licencia, respetando el
+   * límite del plan. Usado por /licencias/activar y por /extension/validate.
+   */
+  private async registrarDispositivo(
+    lic: ExtensionLicense,
+    fingerprint: string,
+    nombreDispositivo?: string,
+  ): Promise<{ success: boolean; error?: string }> {
+    // Límite de dispositivos: config en BD > fallback por tipo de plan > 1
     const planCfg = await this.planRepo.findOne({ where: { tipo: lic.plan } }).catch(() => null);
-    const maxDisp  = planCfg?.maxDispositivos ?? 1;
+    const maxDisp = planCfg?.maxDispositivos ?? PLAN_DISPOSITIVOS_DEFAULT[lic.plan] ?? 1;
 
     // Buscar si ya existe este fingerprint para esta licencia
     const existente = await this.deviceRepo.findOne({
-      where: { licenseId: lic.id, fingerprint: dto.fingerprint },
+      where: { licenseId: lic.id, fingerprint },
     });
 
     if (existente) {
-      // Solo actualizar lastSeen
-      existente.nombreDispositivo = dto.nombre_dispositivo ?? existente.nombreDispositivo;
+      // Refrescar lastSeen (y nombre si llegó uno nuevo)
+      existente.lastSeen = new Date();
+      existente.nombreDispositivo = nombreDispositivo ?? existente.nombreDispositivo;
       await this.deviceRepo.save(existente);
       return { success: true };
     }
 
-    // Nuevo dispositivo — verificar límite
+    // Nuevo dispositivo — verificar límite (0 = sin límite)
     const totalActivos = await this.deviceRepo.count({ where: { licenseId: lic.id } });
     if (maxDisp > 0 && totalActivos >= maxDisp) {
       return {
         success: false,
-        error:   `Tu plan permite máximo ${maxDisp} dispositivo(s). Revoca uno antes de activar otro.`,
+        error:   `Tu plan permite máximo ${maxDisp} equipo(s) y ya están todos en uso. Revoca uno o mejora tu plan.`,
       };
     }
 
     await this.deviceRepo.save(
       this.deviceRepo.create({
         licenseId:         lic.id,
-        fingerprint:       dto.fingerprint,
-        nombreDispositivo: dto.nombre_dispositivo ?? null,
+        fingerprint,
+        nombreDispositivo: nombreDispositivo ?? null,
       }),
     );
 
-    this.logger.log(`Dispositivo activado para licencia ${lic.id} — ${dto.nombre_dispositivo}`);
+    this.logger.log(`Dispositivo activado para licencia ${lic.id} — ${nombreDispositivo ?? fingerprint.slice(0, 8)}`);
     return { success: true };
   }
 
