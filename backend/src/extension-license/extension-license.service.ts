@@ -493,10 +493,17 @@ export class ExtensionLicenseService {
       }
     }
 
-    // Buscar qué plan le corresponde según el planId de N1CO
-    const plan = await this.planRepo.findOne({ where: { n1coPlanId: planN1coId } }).catch(() => null);
+    // Buscar qué plan le corresponde según el planId de N1CO.
+    // Cada plan puede tener dos links: el normal y la variante
+    // "plan + actualizaciones de por vida" (checkbox en la tienda).
+    let conUpdates = false;
+    let plan = await this.planRepo.findOne({ where: { n1coPlanId: planN1coId } }).catch(() => null);
+    if (!plan && planN1coId != null) {
+      plan = await this.planRepo.findOne({ where: { n1coPlanIdConUpdates: planN1coId } }).catch(() => null);
+      conUpdates = !!plan;
+    }
 
-    // ── Add-on "Actualizaciones de por vida" ($5 único) ──────────────────────
+    // ── Add-on "Actualizaciones de por vida" ($5 único, suelto) ──────────────
     if (plan?.tipo === 'updates') {
       await this.procesarCompraAddon({ orderCode, email, nombre, monto, payload });
       return;
@@ -514,6 +521,7 @@ export class ExtensionLicenseService {
         licExistente.plan       = plan.tipo;
         licExistente.maxDtesMes = plan.maxDtesMes;
       }
+      if (conUpdates) licExistente.updatesLifetime = true;
       licExistente.n1coOrderCode = orderCode;
       licExistente.expiresAt     = this.calcularExpiracion(plan?.tipo ?? licExistente.plan);
       lic = await this.repo.save(licExistente);
@@ -532,7 +540,7 @@ export class ExtensionLicenseService {
           activa:          true,
           plan:            plan?.tipo ?? 'basico',
           maxDtesMes:      plan?.maxDtesMes ?? 150,
-          updatesLifetime: !!addonPrevio,
+          updatesLifetime: conUpdates || !!addonPrevio,
           expiresAt:       this.calcularExpiracion(plan?.tipo ?? 'basico'),
           nombre:          nombre || null,
           email,

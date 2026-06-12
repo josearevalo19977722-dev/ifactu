@@ -32,6 +32,9 @@ interface Plan {
   maxDtesMes: number;
   maxDispositivos: number;
   paymentLinkUrl: string | null;
+  paymentLinkUrlConUpdates: string | null;
+  n1coPlanId: number | null;
+  n1coPlanIdConUpdates: number | null;
   activo: boolean;
 }
 
@@ -58,7 +61,7 @@ export function ExtensionLicenciasAdmin() {
   const [buscarUsuario, setBuscarUsuario] = useState('');
   const [usuarioSeleccionado, setUsuarioSeleccionado] = useState<Usuario | null>(null);
   const [form, setForm] = useState({ nombre: '', email: '', plan: 'basico' });
-  const [formPlan, setFormPlan] = useState({ tipo: '', nombre: '', precio: '', maxDtesMes: '500', maxDispositivos: '1', paymentLinkUrl: '', activo: true });
+  const [formPlan, setFormPlan] = useState({ tipo: '', nombre: '', precio: '', maxDtesMes: '500', maxDispositivos: '1', paymentLinkUrl: '', paymentLinkUrlConUpdates: '', n1coPlanId: '', n1coPlanIdConUpdates: '', activo: true });
 
   // ── Queries ────────────────────────────────────────────────────────────────
   const { data: licencias = [], isLoading } = useQuery<Licencia[]>({
@@ -134,13 +137,16 @@ export function ExtensionLicenciasAdmin() {
       maxDtesMes: String(p.maxDtesMes),
       maxDispositivos: String(p.maxDispositivos),
       paymentLinkUrl: p.paymentLinkUrl ?? '',
+      paymentLinkUrlConUpdates: p.paymentLinkUrlConUpdates ?? '',
+      n1coPlanId: p.n1coPlanId != null ? String(p.n1coPlanId) : '',
+      n1coPlanIdConUpdates: p.n1coPlanIdConUpdates != null ? String(p.n1coPlanIdConUpdates) : '',
       activo: p.activo,
     });
     setModalPlan(p);
   };
 
   const abrirNuevoPlan = () => {
-    setFormPlan({ tipo: '', nombre: '', precio: '', maxDtesMes: '500', maxDispositivos: '1', paymentLinkUrl: '', activo: true });
+    setFormPlan({ tipo: '', nombre: '', precio: '', maxDtesMes: '500', maxDispositivos: '1', paymentLinkUrl: '', paymentLinkUrlConUpdates: '', n1coPlanId: '', n1coPlanIdConUpdates: '', activo: true });
     setModalPlan('nuevo');
   };
 
@@ -526,6 +532,18 @@ export function ExtensionLicenciasAdmin() {
                 <label style={s.label}>URL de pago N1CO (payment link)</label>
                 <input value={formPlan.paymentLinkUrl} onChange={e => setFormPlan({ ...formPlan, paymentLinkUrl: e.target.value })} style={s.input} placeholder="https://n1co.shop/pay/…" />
               </div>
+              <div>
+                <label style={s.label}>N1CO Plan ID (para que el webhook identifique el plan)</label>
+                <input value={formPlan.n1coPlanId} onChange={e => setFormPlan({ ...formPlan, n1coPlanId: e.target.value })} style={s.input} type="number" placeholder="ej. 1234" />
+              </div>
+              <div>
+                <label style={s.label}>URL de pago variante "+ actualizaciones de por vida" (opcional)</label>
+                <input value={formPlan.paymentLinkUrlConUpdates} onChange={e => setFormPlan({ ...formPlan, paymentLinkUrlConUpdates: e.target.value })} style={s.input} placeholder="https://n1co.shop/pay/… (plan + $5 updates)" />
+              </div>
+              <div>
+                <label style={s.label}>N1CO Plan ID de la variante con updates</label>
+                <input value={formPlan.n1coPlanIdConUpdates} onChange={e => setFormPlan({ ...formPlan, n1coPlanIdConUpdates: e.target.value })} style={s.input} type="number" placeholder="ej. 1235" />
+              </div>
               <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                 <input type="checkbox" checked={formPlan.activo} onChange={e => setFormPlan({ ...formPlan, activo: e.target.checked })} id="plan-activo" />
                 <label htmlFor="plan-activo" style={{ fontSize: 13, color: '#334155' }}>Plan activo (visible en la tienda)</label>
@@ -542,6 +560,9 @@ export function ExtensionLicenciasAdmin() {
                   maxDtesMes:      Number(formPlan.maxDtesMes),
                   maxDispositivos: Number(formPlan.maxDispositivos),
                   paymentLinkUrl:  formPlan.paymentLinkUrl || null,
+                  paymentLinkUrlConUpdates: formPlan.paymentLinkUrlConUpdates || null,
+                  n1coPlanId:      formPlan.n1coPlanId !== '' ? Number(formPlan.n1coPlanId) : null,
+                  n1coPlanIdConUpdates: formPlan.n1coPlanIdConUpdates !== '' ? Number(formPlan.n1coPlanIdConUpdates) : null,
                   activo:          formPlan.activo,
                 })}
                 style={s.btn('#6366f1')}

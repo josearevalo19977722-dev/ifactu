@@ -282,6 +282,8 @@ export class ExtensionLicenseController {
       maxDispositivos?: number;
       n1coPlanId?: number;
       paymentLinkUrl?: string;
+      n1coPlanIdConUpdates?: number;
+      paymentLinkUrlConUpdates?: string;
       activo?: boolean;
     },
   ) {

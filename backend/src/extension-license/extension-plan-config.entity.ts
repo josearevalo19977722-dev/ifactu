@@ -56,6 +56,14 @@ export class ExtensionPlanConfig {
   @Column({ type: 'varchar', length: 500, nullable: true })
   paymentLinkUrl: string | null;
 
+  /** N1CO plan ID de la variante "plan + actualizaciones de por vida" */
+  @Column({ type: 'int', nullable: true })
+  n1coPlanIdConUpdates: number | null;
+
+  /** Payment link de la variante "plan + actualizaciones de por vida" */
+  @Column({ type: 'varchar', length: 500, nullable: true })
+  paymentLinkUrlConUpdates: string | null;
+
   @Column({ type: 'boolean', default: true })
   activo: boolean;
 

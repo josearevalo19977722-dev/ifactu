@@ -14,6 +14,7 @@ interface Plan {
   incluyeF07: boolean;
   incluyeExcel: boolean;
   paymentLinkUrl: string | null;
+  paymentLinkUrlConUpdates: string | null;
 }
 
 const ICONOS: Record<string, string> = {
@@ -46,6 +47,8 @@ const FEATURES = [
 export function ExtensionStorePage() {
   const [email, setEmail] = useState('');
   const [cargando, setCargando] = useState<string | null>(null);
+  // Checkbox "actualizaciones de por vida" por plan (basico/pro)
+  const [conUpdates, setConUpdates] = useState<Record<string, boolean>>({});
 
   const { data: todosLosPlanes = [], isLoading } = useQuery<Plan[]>({
     queryKey: ['extension-planes-publicos'],
@@ -56,13 +59,14 @@ export function ExtensionStorePage() {
   const planes = todosLosPlanes.filter(p => p.tipo !== 'updates');
   const addon  = todosLosPlanes.find(p => p.tipo === 'updates') ?? null;
 
-  const comprar = async (plan: Plan) => {
-    if (!plan.paymentLinkUrl) {
+  const comprar = async (plan: Plan, incluirUpdates = false) => {
+    const url0 = incluirUpdates ? plan.paymentLinkUrlConUpdates : plan.paymentLinkUrl;
+    if (!url0) {
       sileo.info({ title: 'Plan no disponible aún', description: 'Contáctanos en jsolution.sv@gmail.com' });
       return;
     }
     setCargando(plan.tipo);
-    let url = plan.paymentLinkUrl;
+    let url = url0;
     if (email.trim()) {
       const sep = url.includes('?') ? '&' : '?';
       url = `${url}${sep}email=${encodeURIComponent(email.trim())}`;
@@ -176,6 +180,12 @@ export function ExtensionStorePage() {
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: 16, alignItems: 'start' }}>
           {planes.map(plan => {
             const esPopular = plan.tipo === POPULAR;
+            // Checkbox de updates: aplica a planes que no lo incluyen ya
+            const updatesMarcado = plan.tipo !== 'ilimitado' && !!conUpdates[plan.tipo];
+            const precioTotal = updatesMarcado && addon
+              ? Number(plan.precio) + Number(addon.precio)
+              : Number(plan.precio);
+            const linkCompra = updatesMarcado ? plan.paymentLinkUrlConUpdates : plan.paymentLinkUrl;
             return (
               <div
                 key={plan.tipo}
@@ -213,13 +223,16 @@ export function ExtensionStorePage() {
 
                 <div style={{ marginBottom: 20 }}>
                   <span style={{ fontSize: 36, fontWeight: 900, color: esPopular ? '#a5b4fc' : '#f8fafc' }}>
-                    ${conIva(plan.precio).toFixed(2)}
+                    ${conIva(precioTotal).toFixed(2)}
                   </span>
                   <span style={{ fontSize: 13, color: '#64748b', marginLeft: 6 }}>
                     {plan.tipo === 'monthly' ? '/ mes' : plan.tipo === 'annual' ? '/ año' : 'pago único'}
                   </span>
                   <div style={{ fontSize: 11, color: '#64748b', marginTop: 4 }}>
-                    ${Number(plan.precio).toFixed(2)} + IVA (13%)
+                    ${Number(precioTotal).toFixed(2)} + IVA (13%)
+                    {updatesMarcado && addon && (
+                      <span style={{ color: '#6ee7b7' }}> · incluye updates</span>
+                    )}
                   </div>
                 </div>
 
@@ -238,15 +251,30 @@ export function ExtensionStorePage() {
                   {plan.tipo === 'ilimitado' ? (
                     <div style={{ color: '#86efac' }}>🔄 Actualizaciones de por vida incluidas</div>
                   ) : addon ? (
-                    <div style={{ color: '#64748b' }}>
-                      🔄 Actualizaciones de por vida (+${conIva(addon.precio).toFixed(2)} opcional)
-                    </div>
+                    <label style={{
+                      display: 'flex', alignItems: 'flex-start', gap: 8, cursor: 'pointer',
+                      marginTop: 4, padding: '9px 11px', borderRadius: 10,
+                      background: updatesMarcado ? 'rgba(16,185,129,.10)' : 'rgba(255,255,255,.04)',
+                      border: `1px solid ${updatesMarcado ? 'rgba(16,185,129,.45)' : 'rgba(255,255,255,.10)'}`,
+                      transition: 'background .15s, border-color .15s',
+                    }}>
+                      <input
+                        type="checkbox"
+                        checked={updatesMarcado}
+                        onChange={e => setConUpdates({ ...conUpdates, [plan.tipo]: e.target.checked })}
+                        style={{ marginTop: 2, accentColor: '#10b981', width: 15, height: 15, flexShrink: 0 }}
+                      />
+                      <span style={{ fontSize: 12.5, lineHeight: 1.45, color: updatesMarcado ? '#6ee7b7' : '#94a3b8' }}>
+                        🔄 Agregar <strong>actualizaciones de por vida</strong>{' '}
+                        (+${conIva(addon.precio).toFixed(2)})
+                      </span>
+                    </label>
                   ) : null}
                 </div>
 
                 <button
                   disabled={cargando === plan.tipo}
-                  onClick={() => comprar(plan)}
+                  onClick={() => comprar(plan, updatesMarcado)}
                   style={{
                     width: '100%',
                     padding: '12px 0',
@@ -263,7 +291,7 @@ export function ExtensionStorePage() {
                     opacity: cargando === plan.tipo ? 0.7 : 1,
                   } as React.CSSProperties}
                 >
-                  {cargando === plan.tipo ? 'Redirigiendo…' : plan.paymentLinkUrl ? '🛒 Comprar ahora' : 'Próximamente'}
+                  {cargando === plan.tipo ? 'Redirigiendo…' : linkCompra ? '🛒 Comprar ahora' : 'Próximamente'}
                 </button>
               </div>
             );
