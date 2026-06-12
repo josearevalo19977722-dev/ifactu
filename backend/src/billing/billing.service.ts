@@ -11,6 +11,7 @@ import { PaquetesExtrasService } from './paquetes-extras.service';
 import { SuscripcionesService } from '../empresa/services/suscripciones.service';
 import { Empresa } from '../empresa/entities/empresa.entity';
 import { TipoSuscripcion, EstadoSuscripcion } from '../empresa/entities/suscripcion.entity';
+import { ExtensionLicenseService } from '../extension-license/extension-license.service';
 
 /**
  * Valores por defecto — solo se usan si la tabla plan_config está vacía (primer arranque).
@@ -69,6 +70,7 @@ export class BillingService implements OnModuleInit {
     private readonly suscripciones: SuscripcionesService,
     private readonly paquetesExtras: PaquetesExtrasService,
     private readonly config: ConfigService,
+    private readonly extensionLicense: ExtensionLicenseService,
   ) {}
 
   /** Al iniciar, siembra los 3 planes estándar si no existen */
@@ -414,10 +416,18 @@ export class BillingService implements OnModuleInit {
       // Podría ser una recarga recurrente de N1CO con nuevo orderCode
       // Intentar identificar por planId si está disponible en el payload
       const planId = payload?.planId ?? payload?.data?.planId ?? payload?.plan?.planId;
+      let manejado = false;
       if (planId) {
-        await this.procesarWebhookRecurrenteExtra(payload, planId);
-      } else {
-        this.logger.warn(`Webhook: orderCode ${orderCode} no encontrado en pagos`);
+        manejado = await this.procesarWebhookRecurrenteExtra(payload, planId);
+      }
+      if (!manejado) {
+        // No es un pago de billing: puede ser una compra de la extensión
+        // iFactu_Conta (por si N1CO envía todos los webhooks a esta URL).
+        // El procesador de la extensión es idempotente por orderCode.
+        this.logger.log(`Webhook: orderCode ${orderCode} no es de billing; probando como pago de extensión`);
+        await this.extensionLicense
+          .procesarPagoN1co(payload)
+          .catch(err => this.logger.error(`Webhook extensión: ${(err as Error).message}`));
       }
       return;
     }
@@ -441,7 +451,8 @@ export class BillingService implements OnModuleInit {
    * Maneja webhooks recurrentes de N1CO para paquetes extra permanentes.
    * Ocurre cuando N1CO genera una nueva orden para el cobro mensual automático.
    */
-  private async procesarWebhookRecurrenteExtra(payload: any, planId: number): Promise<void> {
+  /** @returns true si el pago correspondía a billing y fue procesado */
+  private async procesarWebhookRecurrenteExtra(payload: any, planId: number): Promise<boolean> {
     const orderCode = payload?.orderCode ?? payload?.code ?? payload?.data?.orderCode;
 
     // Buscar el catálogo que tenga este planId como permanente
@@ -453,7 +464,7 @@ export class BillingService implements OnModuleInit {
       this.logger.warn(
         `Webhook recurrente: planId ${planId} no corresponde a ningún ítem del catálogo`,
       );
-      return;
+      return false;
     }
 
     // Intentar identificar la empresa desde un pago previo con el mismo planId en permanente
@@ -467,7 +478,8 @@ export class BillingService implements OnModuleInit {
       this.logger.warn(
         `Webhook recurrente: no se encontró pago anterior para planId ${planId}`,
       );
-      return;
+      // El planId sí es de billing (existe en catálogo): no reenviar a extensión
+      return true;
     }
 
     const empresa = pagoAnterior.empresa;
@@ -506,6 +518,7 @@ export class BillingService implements OnModuleInit {
       `Cobro recurrente N1CO procesado: empresa=${empresa.id} catalogo=${catalogo.id} ` +
       `planId=${planId} orderCode=${orderCode}`,
     );
+    return true;
   }
 
   /** Activa/renueva la suscripción de la empresa */

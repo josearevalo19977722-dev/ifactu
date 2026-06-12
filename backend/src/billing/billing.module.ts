@@ -13,12 +13,14 @@ import { PaqueteCatalogo } from './entities/paquete-catalogo.entity';
 import { Empresa } from '../empresa/entities/empresa.entity';
 import { Suscripcion } from '../empresa/entities/suscripcion.entity';
 import { EmpresaModule } from '../empresa/empresa.module';
+import { ExtensionLicenseModule } from '../extension-license/extension-license.module';
 
 @Module({
   imports: [
     TypeOrmModule.forFeature([PagoN1co, PlanConfig, PaqueteExtraDte, PaqueteCatalogo, Empresa, Suscripcion]),
     HttpModule,
     forwardRef(() => EmpresaModule),
+    ExtensionLicenseModule,
   ],
   controllers: [BillingController],
   providers: [BillingService, BillingGuardService, N1coService, PaquetesExtrasService],
