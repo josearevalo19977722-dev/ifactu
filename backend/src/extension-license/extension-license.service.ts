@@ -283,6 +283,8 @@ export class ExtensionLicenseService {
   }
 
   async obtenerDeUsuario(usuarioId: string): Promise<ExtensionLicense | null> {
+    // Guard: un where con undefined en TypeORM puede devolver cualquier fila
+    if (!usuarioId) return null;
     return this.repo.findOne({ where: { usuarioId, activa: true } });
   }
 

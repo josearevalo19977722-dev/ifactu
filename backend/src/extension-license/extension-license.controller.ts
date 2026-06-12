@@ -134,7 +134,15 @@ export class ExtensionLicenseController {
   @Get('extension/mi-licencia')
   @UseGuards(JwtAuthGuard)
   async miLicencia(@Request() req: any) {
-    const lic = await this.svc.obtenerDeUsuario(req.user.sub);
+    const { id, rol, nombre, email } = req.user;
+    let lic = await this.svc.obtenerDeUsuario(id);
+
+    // Los contadores tienen plan ilimitado gratis: si no tienen licencia
+    // (cuenta creada antes del hook de registro), se genera aquí.
+    if (!lic && rol === RolUsuario.CONTADOR) {
+      lic = await this.svc.generarParaContador(id, nombre ?? '', email ?? '');
+    }
+
     if (!lic) return { licencia: null };
     return {
       licencia: {
