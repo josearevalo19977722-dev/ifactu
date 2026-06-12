@@ -85,26 +85,16 @@ a {
   text-decoration: none;
 }
 
-/* ── Sileo: workaround Safari ─────────────────────────────────────────────────
-   Sileo dibuja la burbuja con un SVG cuya píldora se posiciona con
-   transform CSS sobre un <rect> + filtro "gooey"; Safari no aplica ese
-   transform y el toast sale deforme (título fuera de la burbuja).
-   Se oculta el SVG y el fondo se da con CSS normal: la tarjeta de la
-   descripción se extiende hacia abajo (padding) hasta solaparse con la
-   píldora del título, formando una sola silueta continua como el diseño
-   original. Colores para theme="dark" (burbuja clara). */
+/* ── Sileo: fix Safari ────────────────────────────────────────────────────────
+   Sileo aplica su filtro "gooey" al <div> del canvas; WebKit no invalida
+   filtros sobre elementos HTML cuando el SVG interno se anima, y el blob
+   queda congelado/desfasado del texto. Moviendo el filtro al <svg> la
+   invalidación funciona y el toast se ve igual que el diseño original.
+   El id del filtro es el del Toaster por defecto ("sileo-default"); si
+   la librería lo cambiara, el toast queda sin goo pero íntegro. */
 [data-sileo-canvas] {
-  display: none !important;
+  filter: none !important;
 }
-[data-sileo-toast] {
-  filter: drop-shadow(0 6px 18px rgba(0, 0, 0, 0.3));
-}
-[data-sileo-header] {
-  background: #f2f2f2;
-  border-radius: 9999px;
-}
-[data-sileo-content] {
-  background: #f2f2f2;
-  border-radius: 16px;
-  padding-bottom: 18px; /* se mete debajo de la píldora: sin costura */
+[data-sileo-svg] {
+  filter: url(#sileo-gooey-sileo-default);
 }
