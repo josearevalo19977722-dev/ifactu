@@ -503,6 +503,27 @@ export class ExtensionLicenseService {
       conUpdates = !!plan;
     }
 
+    // Fallback: N1CO identifica los payment links por slug (pay.n1co.shop/pl/XXXX).
+    // Si el payload no trae planId mapeado, buscar el slug de algún link
+    // configurado dentro del payload completo.
+    if (!plan) {
+      const raw = JSON.stringify(payload);
+      const slugDe = (url: string | null) => {
+        const m = url?.match(/\/pl\/([A-Za-z0-9_-]{6,})/);
+        return m?.[1] ?? null;
+      };
+      const planes = await this.planRepo.find().catch(() => []);
+      for (const p of planes) {
+        const sNormal = slugDe(p.paymentLinkUrl);
+        const sUpd    = slugDe(p.paymentLinkUrlConUpdates);
+        if (sNormal && raw.includes(sNormal)) { plan = p; conUpdates = false; break; }
+        if (sUpd && raw.includes(sUpd))       { plan = p; conUpdates = true;  break; }
+      }
+      if (plan) {
+        this.logger.log(`[ExtensionWebhook] Plan identificado por slug de payment link: ${plan.tipo}${conUpdates ? ' +updates' : ''}`);
+      }
+    }
+
     // ── Add-on "Actualizaciones de por vida" ($5 único, suelto) ──────────────
     if (plan?.tipo === 'updates') {
       await this.procesarCompraAddon({ orderCode, email, nombre, monto, payload });
