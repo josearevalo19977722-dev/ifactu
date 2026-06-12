@@ -78,12 +78,12 @@ export function ExtensionCuentaPage() {
 
         <div style={{ textAlign: 'center', padding: 'clamp(36px, 8vw, 64px) 0 32px' }}>
           <img
-            src="/ifactu-logo.png?v=4"
+            src="/ifactu-logo-trim.png"
             alt="iFactu"
             style={{
-              height: 80, objectFit: 'contain', display: 'block',
-              margin: '0 auto 18px',
-              filter: 'drop-shadow(0 0 24px rgba(99,102,241,.35))',
+              height: 'clamp(56px, 8vw, 80px)', objectFit: 'contain', display: 'block',
+              margin: '0 auto 20px',
+              filter: 'drop-shadow(0 0 32px rgba(99,102,241,.40))',
             }}
           />
           <div style={{

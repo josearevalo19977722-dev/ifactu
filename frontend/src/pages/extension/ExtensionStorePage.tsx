@@ -87,12 +87,12 @@ export function ExtensionStorePage() {
       {/* ── Hero ── */}
       <div style={{ textAlign: 'center', padding: 'clamp(36px, 8vw, 64px) 20px clamp(24px, 5vw, 48px)' }}>
         <img
-          src="/ifactu-logo.png?v=4"
+          src="/ifactu-logo-trim.png"
           alt="iFactu"
           style={{
-            height: 96, objectFit: 'contain', display: 'block',
-            margin: '0 auto 22px',
-            filter: 'drop-shadow(0 0 24px rgba(99,102,241,.35))',
+            height: 'clamp(64px, 9vw, 96px)', objectFit: 'contain', display: 'block',
+            margin: '0 auto 24px',
+            filter: 'drop-shadow(0 0 32px rgba(99,102,241,.40))',
           }}
         />
         <div style={{
