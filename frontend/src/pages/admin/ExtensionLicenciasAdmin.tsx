@@ -36,10 +36,15 @@ interface Plan {
 }
 
 const PLAN_NOMBRES: Record<string, string> = {
+  basico: 'Básico', pro: 'Pro', ilimitado: 'Ilimitado',
+  ifactu: 'iFactu', updates: 'Updates de por vida',
+  // Legacy
   free: 'Gratuito', monthly: 'Mensual', annual: 'Anual',
   lifetime_1: 'Vitalicio 1eq', lifetime_2: 'Vitalicio 2eq', lifetime_5: 'Vitalicio 5eq',
-  ifactu: 'iFactu',
 };
+
+/** Planes que NO se asignan como plan de licencia (add-ons / internos) */
+const PLANES_NO_ASIGNABLES = ['updates', 'ifactu', 'free'];
 
 type Tab = 'licencias' | 'planes';
 
@@ -52,7 +57,7 @@ export function ExtensionLicenciasAdmin() {
   const [modoCrear, setModoCrear] = useState<'ifactu' | 'externo'>('ifactu');
   const [buscarUsuario, setBuscarUsuario] = useState('');
   const [usuarioSeleccionado, setUsuarioSeleccionado] = useState<Usuario | null>(null);
-  const [form, setForm] = useState({ nombre: '', email: '', plan: 'monthly' });
+  const [form, setForm] = useState({ nombre: '', email: '', plan: 'basico' });
   const [formPlan, setFormPlan] = useState({ tipo: '', nombre: '', precio: '', maxDtesMes: '500', maxDispositivos: '1', paymentLinkUrl: '', activo: true });
 
   // ── Queries ────────────────────────────────────────────────────────────────
@@ -434,11 +439,11 @@ export function ExtensionLicenciasAdmin() {
                 <div>
                   <label style={s.label}>Plan</label>
                   <select value={form.plan} onChange={e => setForm({ ...form, plan: e.target.value })} style={s.input}>
-                    {planes.filter(p => p.activo).map(p => (
+                    {planes.filter(p => p.activo && !PLANES_NO_ASIGNABLES.includes(p.tipo)).map(p => (
                       <option key={p.tipo} value={p.tipo}>{p.nombre} — ${Number(p.precio).toFixed(2)}</option>
                     ))}
-                    {planes.length === 0 && Object.entries(PLAN_NOMBRES).filter(([k]) => k !== 'ifactu' && k !== 'free').map(([k, v]) => (
-                      <option key={k} value={k}>{v}</option>
+                    {planes.length === 0 && (['basico', 'pro', 'ilimitado'] as const).map(k => (
+                      <option key={k} value={k}>{PLAN_NOMBRES[k]}</option>
                     ))}
                   </select>
                 </div>
