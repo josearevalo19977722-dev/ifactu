@@ -3,8 +3,11 @@ import { Suspense, useState, useEffect } from 'react';
 import { QueryClient, QueryClientProvider, useQuery, useQueryClient } from '@tanstack/react-query';
 import { AuthProvider, useAuth } from './context/AuthContext';
 import { ToastProvider } from './context/ToastContext';
-import { Toaster } from 'sileo';
+import { Toaster, sileo } from 'sileo';
 import 'sileo/styles.css';
+
+// Solo en dev: permite disparar toasts desde la consola para depurar estilos
+if (import.meta.env.DEV) (window as any).__sileo = sileo;
 import apiClient from './api/apiClient';
 import { empresaPermiteTipoDte } from './constants/tiposDte';
 import { Login } from './pages/login/Login';

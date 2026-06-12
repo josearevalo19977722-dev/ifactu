@@ -84,3 +84,23 @@ a {
   color: inherit;
   text-decoration: none;
 }
+
+/* ── Sileo: workaround Safari ─────────────────────────────────────────────────
+   Sileo dibuja la burbuja con un SVG cuya píldora se posiciona con
+   transform CSS sobre un <rect> + filtro "gooey"; Safari no aplica ese
+   transform y el toast sale deforme (título fuera de la burbuja).
+   Se oculta el SVG y el fondo se da con CSS normal, idéntico en todos
+   los navegadores. Colores para theme="dark" (burbuja clara). */
+[data-sileo-canvas] {
+  display: none !important;
+}
+[data-sileo-header] {
+  background: #f2f2f2;
+  border-radius: 9999px;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.25);
+}
+[data-sileo-content] {
+  background: #f2f2f2;
+  border-radius: 16px;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.25);
+}
