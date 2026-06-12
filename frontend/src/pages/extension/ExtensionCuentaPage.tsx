@@ -77,9 +77,31 @@ export function ExtensionCuentaPage() {
       <div style={{ maxWidth: 640, margin: '0 auto' }}>
 
         <div style={{ textAlign: 'center', padding: 'clamp(36px, 8vw, 64px) 0 32px' }}>
-          <div style={{ display: 'inline-flex', alignItems: 'center', gap: 10, background: 'rgba(99,102,241,.15)', border: '1px solid rgba(99,102,241,.3)', borderRadius: 99, padding: '6px 16px', marginBottom: 20 }}>
-            <span style={{ fontSize: 18 }}>🧩</span>
-            <span style={{ fontSize: 13, fontWeight: 600, color: '#a5b4fc' }}>iFactu_Conta</span>
+          <img
+            src="/ifactu-logo.png?v=4"
+            alt="iFactu"
+            style={{
+              height: 80, objectFit: 'contain', display: 'block',
+              margin: '0 auto 18px',
+              filter: 'drop-shadow(0 0 24px rgba(99,102,241,.35))',
+            }}
+          />
+          <div style={{
+            display: 'inline-flex', alignItems: 'center', gap: 9,
+            background: 'linear-gradient(90deg, rgba(99,102,241,.22), rgba(168,85,247,.18))',
+            border: '1px solid rgba(129,140,248,.5)',
+            boxShadow: '0 0 28px rgba(99,102,241,.28), inset 0 1px 0 rgba(255,255,255,.10)',
+            borderRadius: 99, padding: '8px 18px', marginBottom: 20,
+          }}>
+            <svg width="17" height="17" viewBox="0 0 100 100" aria-hidden>
+              <circle cx="50" cy="50" r="50" fill="#fff" />
+              <path d="M50 50 L6.7 25 A50 50 0 0 1 93.3 25 Z" fill="#EA4335" />
+              <path d="M50 50 L50 100 A50 50 0 0 1 6.7 25 Z" fill="#34A853" />
+              <path d="M50 50 L93.3 25 A50 50 0 0 1 50 100 Z" fill="#FBBC05" />
+              <circle cx="50" cy="50" r="24" fill="#fff" />
+              <circle cx="50" cy="50" r="19" fill="#4285F4" />
+            </svg>
+            <span style={{ fontSize: 13, fontWeight: 700, letterSpacing: .3, color: '#c7d2fe' }}>iFactu_Conta</span>
           </div>
           <h1 style={{ fontSize: 'clamp(24px, 4vw, 36px)', fontWeight: 900, margin: '0 0 10px' }}>Mi licencia</h1>
           <p style={{ fontSize: 15, color: '#94a3b8', margin: 0 }}>
